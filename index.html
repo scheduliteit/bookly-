@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="EasyBookly" />
+    <meta name="theme-color" content="#006bff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="EasyBookly - Professional online scheduling and payment platform for your business. Book appointments, sync calendars, and accept payments easily." />
+    <meta name="keywords" content="EasyBookly, scheduling, booking, appointments, calendar sync, business management, payments" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="EasyBookly - Professional Online Scheduling" />
+    <meta property="og:description" content="The ultimate scheduling platform for modern businesses. Sync your calendar and start taking bookings today." />
+    <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/5968/5968260.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="EasyBookly - Professional Online Scheduling" />
+    <meta property="twitter:description" content="The ultimate scheduling platform for modern businesses. Sync your calendar and start taking bookings today." />
+    <meta property="twitter:image" content="https://cdn-icons-png.flaticon.com/512/5968/5968260.png" />
+
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968260.png" />
+    <title>EasyBookly - Online Scheduling</title>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sab: env(safe-area-inset-bottom);
+      }
+      body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: #ffffff;
+        color: #1a1a1a;
+        -webkit-font-smoothing: antialiased;
+        padding-top: var(--sat);
+        padding-bottom: var(--sab);
+      }
+      .custom-scroll::-webkit-scrollbar { width: 6px; }
+      .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+      .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+      html, body { overscroll-behavior-y: none; }
+      
+      .btn-primary {
+        background-color: #006bff;
+        color: white;
+        transition: all 0.2s ease;
+      }
+      .btn-primary:hover {
+        background-color: #0056cc;
+      }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
