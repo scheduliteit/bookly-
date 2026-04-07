@@ -1,6 +1,6 @@
 {
-  "name": "Schedulite Pro - Intelligent Scheduling",
-  "description": "The ultimate intelligent scheduling platform for modern businesses - Sync v3",
+  "name": "EasyBookly - Intelligent Scheduling",
+  "description": "The ultimate intelligent scheduling platform for modern businesses",
   "requestFramePermissions": [
     "camera",
     "microphone",

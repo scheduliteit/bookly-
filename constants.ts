@@ -9,8 +9,8 @@ export const MOCK_CLIENTS: Client[] = [
 ];
 
 export const MOCK_APPOINTMENTS: Appointment[] = [
-  { id: 'a1', clientId: '1', clientName: 'Noa Cohen', service: '30 Minute Meeting', date: '2024-05-20', time: '09:00', duration: 30, status: 'confirmed', price: 150 },
-  { id: 'a2', clientId: 'public-2', clientName: 'James Wilson', service: '60 Minute Meeting', date: '2024-05-20', time: '14:30', duration: 60, status: 'confirmed', price: 300 },
+  { id: 'a1', userId: 'mock-user', clientId: '1', clientName: 'Noa Cohen', service: '30 Minute Meeting', date: '2024-05-20', time: '09:00', duration: 30, status: 'confirmed', price: 150 },
+  { id: 'a2', userId: 'mock-user', clientId: 'public-2', clientName: 'James Wilson', service: '60 Minute Meeting', date: '2024-05-20', time: '14:30', duration: 60, status: 'confirmed', price: 300 },
 ];
 
 export const SERVICES: Service[] = [

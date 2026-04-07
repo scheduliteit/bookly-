@@ -1,20 +1,35 @@
 
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { auth, googleProvider, signInWithPopup } from '../firebase';
 
 interface LoginProps {
-  onLogin: (email: string) => void;
+  onLogin: (email: string, uid: string, displayName: string | null) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
-      onLogin(email);
+    // For now, we'll just use Google Login as it's the only one configured
+    handleGoogleLogin();
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user) {
+        onLogin(result.user.email || '', result.user.uid, result.user.displayName);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -69,9 +84,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
             <button 
               type="submit"
-              className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-dark shadow-lg shadow-brand-blue/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              disabled={isLoading}
+              className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-dark shadow-lg shadow-brand-blue/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isRegistering ? 'Get Started' : 'Sign In'} <ArrowRight size={18} />
+              {isLoading ? 'Processing...' : (isRegistering ? 'Get Started' : 'Sign In')} <ArrowRight size={18} />
             </button>
           </form>
 
@@ -80,7 +96,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold"><span className="bg-white px-4 text-slate-400">Or continue with</span></div>
           </div>
 
-          <button className="w-full py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-sm text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
+          <button 
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+            className="w-full py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-sm text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+          >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
             Google
           </button>

@@ -9,13 +9,24 @@ import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
 import Stripe from 'stripe';
-import dbConnect from './src/lib/mongoose.js';
-import { Appointment, Client } from './src/models/index.js';
+
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
+
+// Initialize Firebase for server-side use
+let db: any;
+try {
+  const firebaseConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf-8'));
+  const firebaseApp = initializeApp(firebaseConfig);
+  db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+} catch (error) {
+  console.error('Failed to initialize Firebase on server:', error);
+}
 
 const app = express();
 const PORT = 3000;
@@ -23,13 +34,16 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// API Routes with User Isolation
+// API Routes with Firestore
 app.get('/api/appointments', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.headers['x-user-id'] as string;
+  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  
   try {
-    await dbConnect();
-    const query = userId ? { userId } : {};
-    const appointments = await Appointment.find(query).sort({ createdAt: -1 });
+    const q = query(collection(db, 'appointments'), where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+    const appointments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     res.json(appointments);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -37,21 +51,22 @@ app.get('/api/appointments', async (req, res) => {
 });
 
 app.post('/api/appointments', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.headers['x-user-id'] as string;
+  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  
   try {
-    await dbConnect();
-    const newApt = new Appointment({ ...req.body, userId });
-    await newApt.save();
-    res.status(201).json(newApt);
+    const docRef = await addDoc(collection(db, 'appointments'), { ...req.body, userId });
+    res.status(201).json({ ...req.body, id: docRef.id, userId });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
 app.delete('/api/appointments/:id', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
-    await dbConnect();
-    await Appointment.findByIdAndDelete(req.params.id);
+    await deleteDoc(doc(db, 'appointments', req.params.id));
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -59,26 +74,25 @@ app.delete('/api/appointments/:id', async (req, res) => {
 });
 
 app.put('/api/appointments/:id', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.headers['x-user-id'] as string;
   try {
-    await dbConnect();
-    const updated = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, userId },
-      { new: true }
-    );
-    res.json(updated);
+    await updateDoc(doc(db, 'appointments', req.params.id), { ...req.body, userId });
+    res.json({ ...req.body, id: req.params.id, userId });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/clients', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.headers['x-user-id'] as string;
+  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  
   try {
-    await dbConnect();
-    const query = userId ? { userId } : {};
-    const clients = await Client.find(query).sort({ createdAt: -1 });
+    const q = query(collection(db, 'clients'), where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+    const clients = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     res.json(clients);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -86,9 +100,9 @@ app.get('/api/clients', async (req, res) => {
 });
 
 app.delete('/api/clients/:id', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
-    await dbConnect();
-    await Client.findByIdAndDelete(req.params.id);
+    await deleteDoc(doc(db, 'clients', req.params.id));
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -100,20 +114,18 @@ app.get('/api/availability', (req, res) => {
   res.json(["09:00", "10:00", "11:00", "12:00", "13:30", "14:30", "15:30", "16:30"]);
 });
 
-app.get('/api/public/profile/:username', (req, res) => {
-  // In a real app, you'd look up the user by username in the DB
-  // For now, we'll return the default business data
-  res.json({
-    businessName: "EasyBookly Studio",
-    businessCategory: "Consulting",
-    services: [
-      { name: "Strategy Session", price: 150, duration: 60, description: "Deep dive into your business goals.", color: "blue" },
-      { name: "Quick Sync", price: 50, duration: 15, description: "Fast check-in for active projects.", color: "emerald" },
-      { name: "Technical Audit", price: 250, duration: 90, description: "Full review of your tech stack.", color: "violet" }
-    ],
-    currency: "USD",
-    legalData: { privacyPolicy: "", termsOfService: "", gdprStrict: true }
-  });
+app.get('/api/public/profile/:userId', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  try {
+    const docSnap = await getDoc(doc(db, 'public_profiles', req.params.userId));
+    if (docSnap.exists()) {
+      res.json(docSnap.data());
+    } else {
+      res.status(404).json({ error: 'Profile not found' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // OAuth Routes
@@ -348,14 +360,14 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
 });
 
 app.post('/api/payments/payme-callback', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   // PayMe sends a POST request when payment is completed
   const { payme_sale_id, status, appointmentId } = req.body;
-  if (status === 'success') {
+  if (status === 'success' && appointmentId) {
     try {
-      await dbConnect();
-      await Appointment.findByIdAndUpdate(appointmentId, { status: 'confirmed' });
+      await updateDoc(doc(db, 'appointments', appointmentId), { status: 'confirmed' });
     } catch (error) {
-      console.error('PayMe Callback Error:', error);
+      console.error('Failed to update appointment status after payment:', error);
     }
   }
   res.sendStatus(200);
@@ -380,12 +392,15 @@ app.post('/api/payments/payout', (req, res) => {
 });
 
 app.get('/api/payments/success', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const { sessionId, appointmentId } = req.query;
-  try {
-    await dbConnect();
-    await Appointment.findByIdAndUpdate(appointmentId, { status: 'confirmed' });
-  } catch (error) {
-    console.error('Payment Success Error:', error);
+  
+  if (appointmentId) {
+    try {
+      await updateDoc(doc(db, 'appointments', appointmentId as string), { status: 'confirmed' });
+    } catch (error) {
+      console.error('Failed to update appointment status on success:', error);
+    }
   }
   
   res.send(`
@@ -422,25 +437,18 @@ app.get('/api/payments/cancel', (req, res) => {
 });
 
 // Vite middleware for development
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-    
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`EasyBookly Dev Server running on http://localhost:${PORT}`);
-    });
-  }
-  // In production (Vercel), we don't call app.listen()
-  // The platform handles the request via the exported app
-}
-
 if (process.env.NODE_ENV !== 'production') {
-  startServer();
+  const { createServer: createViteServer } = await import('vite');
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: 'spa',
+  });
+  app.use(vite.middlewares);
 }
 
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`EasyBookly Server running on http://localhost:${PORT}`);
+});
+
+export { app };
 export default app;

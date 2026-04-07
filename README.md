@@ -1,4 +1,4 @@
-# Schedulite Pro
+# EasyBookly
 The ultimate intelligent scheduling platform for modern businesses.
 
 ## Sync Status

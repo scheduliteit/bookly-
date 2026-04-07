@@ -8,13 +8,15 @@ interface AddAppointmentModalProps {
   onAdd: (appointment: Appointment) => void;
   clients: any[];
   services: any[];
+  userId: string;
 }
 
 const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({ 
   onClose, 
   onAdd, 
   clients, 
-  services
+  services,
+  userId
 }) => {
   const [formData, setFormData] = useState({
     clientName: '',
@@ -29,6 +31,7 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({
     const service = services.find(s => s.name === formData.service);
     const newApt: Appointment = {
       id: Math.random().toString(36).substr(2, 9),
+      userId: userId,
       clientId: 'manual',
       clientName: formData.clientName,
       service: formData.service,

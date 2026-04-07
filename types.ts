@@ -4,6 +4,24 @@ export interface User {
   email: string;
   name: string;
   businessName: string;
+  businessCategory?: string;
+  services: Service[];
+  currency: 'ILS' | 'USD' | 'EUR' | 'GBP';
+  workingHours: {
+    [key: string]: {
+      start: string;
+      end: string;
+      active: boolean;
+    };
+  };
+  legalData: {
+    privacyPolicy: string;
+    termsOfService: string;
+    gdprStrict: boolean;
+  };
+  onboardingCompleted: boolean;
+  connectedApps?: string[];
+  subscriptionPlan?: 'basic' | 'premium';
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';
@@ -15,6 +33,7 @@ export interface Client {
   phone: string;
   lastVisit?: string;
   notes?: string;
+  userId?: string;
 }
 
 export interface Service {
@@ -28,6 +47,7 @@ export interface Service {
 
 export interface Appointment {
   id: string;
+  userId: string;
   clientId: string;
   clientName: string;
   service: string;

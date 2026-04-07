@@ -7,6 +7,7 @@ import { geminiAssistant } from '../services/geminiService';
 import { paymentService } from '../services/paymentService';
 
 interface PublicBookingPageProps {
+  userId?: string;
   businessName?: string;
   services?: Service[];
   legalData?: { privacyPolicy: string; termsOfService: string; gdprStrict: boolean };
@@ -16,6 +17,7 @@ interface PublicBookingPageProps {
 }
 
 const PublicBookingPage: React.FC<PublicBookingPageProps> = ({ 
+  userId: propUserId,
   businessName: initialBusinessName, 
   services: initialServices, 
   legalData: initialLegalData, 
@@ -23,6 +25,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   onBookingComplete, 
   onBack 
 }) => {
+  const [userId, setUserId] = useState(propUserId || 'default');
   const [businessName, setBusinessName] = useState(initialBusinessName || '');
   const [services, setServices] = useState<Service[]>(initialServices || []);
   const [legalData, setLegalData] = useState(initialLegalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
@@ -48,16 +51,16 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
 
   useEffect(() => {
-    if (!initialBusinessName) {
+    if (!initialBusinessName && userId !== 'default') {
       const fetchProfile = async () => {
         try {
-          // In a real app, extract username from URL
-          const res = await fetch('/api/public/profile/default');
-          const data = await res.json();
-          setBusinessName(data.businessName);
-          setServices(data.services);
-          setLegalData(data.legalData);
-          setCurrency(data.currency);
+          const data = await api.publicProfile.get(userId);
+          if (data) {
+            setBusinessName(data.businessName);
+            setServices(data.services);
+            setLegalData(data.legalData);
+            setCurrency(data.currency);
+          }
         } catch (err) {
           console.error("Failed to fetch public profile", err);
         } finally {
@@ -65,8 +68,10 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         }
       };
       fetchProfile();
+    } else if (initialBusinessName) {
+      setIsLoading(false);
     }
-  }, [initialBusinessName]);
+  }, [initialBusinessName, userId]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -87,6 +92,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       // Create the appointment first (as pending if payment is required)
       const result = await api.appointments.create({ 
         id: appointmentId, 
+        userId: userId, // The owner of the business
         clientId: 'public-' + Date.now(),
         clientName: clientInfo.name, 
         service: selectedService.name, 

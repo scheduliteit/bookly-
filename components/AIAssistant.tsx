@@ -118,7 +118,11 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setIsVoiceMode(true);
       // Use process.env.API_KEY for selected key
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === '' || apiKey === 'undefined') {
+        throw new Error("API Key is missing for voice mode.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
