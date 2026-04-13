@@ -12,7 +12,7 @@ interface ClientCRMProps {
 
 const ClientCRM: React.FC<ClientCRMProps> = ({ clients, appointments, onDeleteClient }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const lang = (localStorage.getItem('bookly_lang') as Language) || 'en';
+  const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
   const t = translations[lang];
 
   const filteredClients = clients.filter(c => 

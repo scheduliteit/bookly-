@@ -40,7 +40,7 @@ const Settings: React.FC<SettingsProps> = ({
   });
   const [isConnecting, setIsConnecting] = useState(false);
   const [isPayoutInProgress, setIsPayoutInProgress] = useState(false);
-  const [isCalendarConnected, setIsCalendarConnected] = useState(() => localStorage.getItem('bookly_calendar_connected') === 'true');
+  const [isCalendarConnected, setIsCalendarConnected] = useState(() => localStorage.getItem('easybookly_calendar_connected') === 'true');
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -56,9 +56,9 @@ const Settings: React.FC<SettingsProps> = ({
         const provider = event.data.provider;
         if (provider === 'google') {
           setIsCalendarConnected(true);
-          localStorage.setItem('bookly_calendar_connected', 'true');
+          localStorage.setItem('easybookly_calendar_connected', 'true');
         } else if (provider === 'outlook') {
-          localStorage.setItem('bookly_outlook_connected', 'true');
+          localStorage.setItem('easybookly_outlook_connected', 'true');
         }
         
         if (!connectedApps.includes(provider)) {

@@ -2,11 +2,11 @@
 import { Appointment, Client } from '../types';
 
 const KEYS = {
-  APPOINTMENTS: 'bookly_appointments',
-  CLIENTS: 'bookly_clients',
-  SERVICES: 'bookly_services',
-  BUSINESS: 'bookly_business_config',
-  SUBSCRIPTION: 'bookly_subscription_plan'
+  APPOINTMENTS: 'easybookly_appointments',
+  CLIENTS: 'easybookly_clients',
+  SERVICES: 'easybookly_services',
+  BUSINESS: 'easybookly_business_config',
+  SUBSCRIPTION: 'easybookly_subscription_plan'
 };
 
 export const storageService = {

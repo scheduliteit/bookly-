@@ -9,7 +9,7 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
-  const lang = (localStorage.getItem('bookly_lang') as Language) || 'en';
+  const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
   const t = translations[lang];
 
   const menuItems = [

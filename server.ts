@@ -18,14 +18,20 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
+console.log('[SERVER] Starting with NODE_ENV:', process.env.NODE_ENV);
+console.log('[SERVER] NETLIFY env:', process.env.NETLIFY);
+
 // Initialize Firebase for server-side use
 let db: any;
 try {
-  const firebaseConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf-8'));
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  console.log('[SERVER] Loading Firebase config from:', configPath);
+  const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   const firebaseApp = initializeApp(firebaseConfig);
   db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+  console.log('[SERVER] Firebase initialized successfully');
 } catch (error) {
-  console.error('Failed to initialize Firebase on server:', error);
+  console.error('[SERVER] Failed to initialize Firebase on server:', error);
 }
 
 const app = express();
@@ -33,6 +39,15 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use((req, res, next) => {
+  console.log(`[SERVER] Request: ${req.method} ${req.url}`);
+  next();
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
 
 // API Routes with Firestore
 app.get('/api/appointments', async (req, res) => {
@@ -437,18 +452,37 @@ app.get('/api/payments/cancel', (req, res) => {
 });
 
 // Vite middleware for development
-if (process.env.NODE_ENV !== 'production') {
+const isDev = process.env.NODE_ENV !== 'production' || !fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
+console.log('[SERVER] Mode:', isDev ? 'Development (Vite)' : 'Production (Static)');
+
+if (isDev) {
   const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({
     server: { middlewareMode: true },
     appType: 'spa',
   });
   app.use(vite.middlewares);
+} else {
+  const distPath = path.join(process.cwd(), 'dist');
+  console.log('[SERVER] Serving static files from:', distPath);
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`EasyBookly Server running on http://localhost:${PORT}`);
+// Global error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[SERVER UNCAUGHT ERROR]', err);
+  res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
+
+// Start server if not imported as a module (e.g., in Netlify/Vercel)
+if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`EasyBookly Server running on http://localhost:${PORT}`);
+  });
+}
 
 export { app };
 export default app;

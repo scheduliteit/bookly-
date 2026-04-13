@@ -8,7 +8,18 @@ Sync ID: force-sync-v3
 ## Tech Stack
 - **Frontend**: React + Vite + Tailwind CSS
 - **Backend**: Express (Node.js)
-- **Deployment**: Vercel
+- **Deployment**: Netlify (with Netlify Functions)
+
+## Netlify Deployment Guide
+1. **GitHub**: Ensure your latest code is pushed to GitHub.
+2. **Netlify**: Create a new site from Git.
+3. **Build Settings**:
+   - Build Command: `npm run build`
+   - Publish Directory: `dist`
+   - Functions Directory: `netlify/functions`
+4. **Environment Variables**: Add all keys from `.env.example` to Netlify's environment settings.
+5. **Domain**: In Netlify, go to **Domain Management** and add your GoDaddy domain.
+6. **GoDaddy**: Update your DNS settings (Nameservers or A/CNAME records) as instructed by Netlify.
 
 ## Sync Trigger
 This is a manual sync trigger to force the GitHub repository to update.

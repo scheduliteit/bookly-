@@ -19,7 +19,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState("Analyzing your session velocity...");
-  const lang = (localStorage.getItem('bookly_lang') as Language) || 'en';
+  const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
   const t = translations[lang];
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessName, appointments, clien
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-32 max-w-7xl mx-auto">
-      {/* Bookly-style Header */}
+      {/* EasyBookly-style Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Event Types</h2>
@@ -62,7 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessName, appointments, clien
         </div>
         <div className="flex-1">
           <p className="text-sm font-bold text-brand-dark">{businessName}</p>
-          <p className="text-xs text-slate-400 font-medium">bookly.pro/{businessName.toLowerCase().replace(/\s+/g, '-')}</p>
+          <p className="text-xs text-slate-400 font-medium">easybookly.com/{businessName.toLowerCase().replace(/\s+/g, '-')}</p>
         </div>
         <button onClick={onOpenPublicView} className="text-brand-blue text-xs font-bold hover:underline">Preview your booking site</button>
       </div>

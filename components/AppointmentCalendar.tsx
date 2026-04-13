@@ -111,7 +111,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         )}
       </div>
 
-      {/* Bookly Help Tip */}
+      {/* EasyBookly Help Tip */}
       <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-200">
          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-blue shadow-sm">
            <AlertCircle size={20} />
