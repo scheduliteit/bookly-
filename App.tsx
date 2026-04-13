@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
-  const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('USD');
+  const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('ILS');
   const [businessName, setBusinessName] = useState('');
   const [businessCategory, setBusinessCategory] = useState('Consulting');
   const [subscriptionPlan, setSubscriptionPlan] = useState<'basic' | 'premium'>('basic');

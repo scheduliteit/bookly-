@@ -103,7 +103,9 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         price: selectedService.price,
       });
 
-      if (selectedService.price > 0) {
+      const isFreeMode = import.meta.env.VITE_FREE_MODE === 'true';
+      
+      if (selectedService.price > 0 && !isFreeMode) {
         // Redirect to Payment Gateway (Stripe or PayMe)
         const { url } = await paymentService.createCheckoutSession({
           serviceName: selectedService.name,

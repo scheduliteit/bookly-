@@ -22,14 +22,18 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
     if (!showCheckout) return;
     setIsProcessing(showCheckout.plan);
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const isFreeMode = import.meta.env.VITE_FREE_MODE === 'true';
     
-    const totalAmount = showCheckout.price * (billingCycle === 'annual' ? 12 : 1);
-    
-    await paymentService.processIncomingPayment(
-      totalAmount, 
-      `Standard Subscription: ${showCheckout.name}`
-    );
+    if (!isFreeMode) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const totalAmount = showCheckout.price * (billingCycle === 'annual' ? 12 : 1);
+      
+      await paymentService.processIncomingPayment(
+        totalAmount, 
+        `Standard Subscription: ${showCheckout.name}`
+      );
+    }
     
     onPlanChange(showCheckout.plan as 'basic' | 'premium');
     setShowCheckout(null);
@@ -41,11 +45,13 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
   const monthlyElite = 30;
   const annualElite = 25;
 
+  const isFreeMode = import.meta.env.VITE_FREE_MODE === 'true';
+
   const plans = [
     {
       id: 'basic' as const,
       name: 'Essentials',
-      price: billingCycle === 'annual' ? annualStarter : monthlyStarter,
+      price: isFreeMode ? 0 : (billingCycle === 'annual' ? annualStarter : monthlyStarter),
       description: 'Ideal for individuals and small teams starting out.',
       features: [
         'Unlimited Event Types',
@@ -61,7 +67,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
     {
       id: 'premium' as const,
       name: 'Professional',
-      price: billingCycle === 'annual' ? annualElite : monthlyElite,
+      price: isFreeMode ? 0 : (billingCycle === 'annual' ? annualElite : monthlyElite),
       description: 'Advanced features for growing businesses and teams.',
       features: [
         'All Essential Features',
@@ -72,7 +78,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
         'Priority Global Support'
       ],
       icon: Crown,
-      buttonText: 'Upgrade Now',
+      buttonText: isFreeMode ? 'Switch to Pro' : 'Upgrade Now',
       isPopular: true,
       badge: 'Best Value',
       tagline: 'SCALABLE GROWTH'
@@ -180,7 +186,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
                     className="w-full py-6 bg-brand-blue text-white rounded-[28px] font-black text-sm shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                    >
                      {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Lock size={18} />}
-                     {isProcessing ? 'Processing Payment...' : `Pay $${billingCycle === 'annual' ? (showCheckout.price * 12).toLocaleString() : showCheckout.price.toLocaleString()}`}
+                     {isProcessing ? 'Processing...' : isFreeMode ? 'Activate Plan' : `Pay $${billingCycle === 'annual' ? (showCheckout.price * 12).toLocaleString() : showCheckout.price.toLocaleString()}`}
                    </button>
                    
                    <p className="text-[10px] text-center font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">

@@ -20,7 +20,8 @@ async function testConnection() {
     }
   }
 }
-testConnection();
+// Connection test is optional and can be called explicitly if needed
+// testConnection();
 
 export { 
   signInWithPopup, 

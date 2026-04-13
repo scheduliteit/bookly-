@@ -17,11 +17,8 @@ export const api = {
       });
     },
     create: async (data: Appointment): Promise<Appointment> => {
-      const userId = auth.currentUser?.uid;
-      if (!userId) throw new Error('User not authenticated');
-      
       const docRef = doc(collection(db, 'appointments'));
-      const newApt = { ...data, id: docRef.id, userId };
+      const newApt = { ...data, id: docRef.id };
       try {
         await setDoc(docRef, newApt);
         return newApt;

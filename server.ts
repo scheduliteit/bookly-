@@ -4,7 +4,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
@@ -13,20 +12,17 @@ import Stripe from 'stripe';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 dotenv.config();
 
 console.log('[SERVER] Starting with NODE_ENV:', process.env.NODE_ENV);
 console.log('[SERVER] NETLIFY env:', process.env.NETLIFY);
 
+const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
+
 // Initialize Firebase for server-side use
 let db: any;
 try {
-  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-  console.log('[SERVER] Loading Firebase config from:', configPath);
-  const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  console.log('[SERVER] Initializing Firebase with config');
   const firebaseApp = initializeApp(firebaseConfig);
   db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
   console.log('[SERVER] Firebase initialized successfully');
@@ -451,38 +447,11 @@ app.get('/api/payments/cancel', (req, res) => {
   `);
 });
 
-// Vite middleware for development
-const isDev = process.env.NODE_ENV !== 'production' || !fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
-console.log('[SERVER] Mode:', isDev ? 'Development (Vite)' : 'Production (Static)');
-
-if (isDev) {
-  const { createServer: createViteServer } = await import('vite');
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  });
-  app.use(vite.middlewares);
-} else {
-  const distPath = path.join(process.cwd(), 'dist');
-  console.log('[SERVER] Serving static files from:', distPath);
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
-
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('[SERVER UNCAUGHT ERROR]', err);
   res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
-
-// Start server if not imported as a module (e.g., in Netlify/Vercel)
-if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`EasyBookly Server running on http://localhost:${PORT}`);
-  });
-}
 
 export { app };
 export default app;
