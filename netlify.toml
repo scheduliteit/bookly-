@@ -6,17 +6,7 @@
 [functions]
   node_bundler = "esbuild"
   included_files = ["firebase-applet-config.json"]
-  external_node_modules = ["vite", "esbuild", "lightningcss"]
 
 [functions.api]
+  external_node_modules = ["vite", "esbuild", "lightningcss"]
   format = "esm"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
