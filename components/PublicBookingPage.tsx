@@ -184,7 +184,12 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         </div>
         <div className="flex gap-4">
            <button className="px-6 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md">Add to Calendar</button>
-           <button onClick={onBack} className="px-6 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-500">Close</button>
+           <button 
+            onClick={() => onBack ? onBack() : window.location.href = '/'} 
+            className="px-6 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all"
+           >
+            Close
+           </button>
         </div>
       </div>
     );
@@ -237,9 +242,22 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         
         {/* Left Side: Summary & Branding */}
         <div className="w-full md:w-[360px] border-b md:border-b-0 md:border-r border-slate-100 p-10 bg-white">
-          <button onClick={() => { if(step > 1) setStep(step - 1); else onBack?.(); }} className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 mb-10 transition-all">
-            <ArrowLeft size={18} />
-          </button>
+          <div className="flex items-center gap-3 mb-10">
+            <button 
+              onClick={() => { 
+                if (step > 1) setStep(step - 1); 
+                else if (onBack) onBack();
+                else window.location.href = '/';
+              }} 
+              className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"
+              title="Go Back"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            {onBack && step === 1 && (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Return to App</span>
+            )}
+          </div>
           
           <div className="space-y-6">
             <div className="flex items-center gap-4">

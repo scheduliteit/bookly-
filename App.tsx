@@ -211,6 +211,7 @@ const App: React.FC = () => {
       <PublicBookingPage 
         userId={publicUserId || 'default'}
         onBookingComplete={handleNewBooking}
+        onBack={() => window.location.href = '/'}
       />
     );
   }
