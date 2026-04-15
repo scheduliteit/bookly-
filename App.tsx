@@ -20,6 +20,7 @@ import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
 import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'undefined' && API_KEY !== '';
@@ -238,38 +239,53 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
-      case 'calendar':
-        return <AppointmentCalendar appointments={appointments} onAddClick={() => setShowAddModal(true)} onUpdateAppointment={(a) => api.appointments.update(a)} onDeleteAppointment={(id) => api.appointments.delete(id)} connectedApps={connectedApps} currency={currency} />;
-      case 'clients':
-        return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} onAddClient={() => setShowAddModal(true)} />;
-      case 'marketing':
-        return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
-      case 'ai-assistant':
-        return <AIAssistant appointments={appointments} clients={clients} />;
-      case 'subscription':
-        return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} />;
-      case 'settings':
-        return (
-          <Settings 
-            businessName={businessName} 
-            onUpdateBusinessName={(val) => updateUserSettings({ businessName: val })} 
-            services={services}
-            onUpdateServices={(val) => updateUserSettings({ services: val })}
-            connectedApps={connectedApps}
-            onUpdateConnectedApps={(val) => updateUserSettings({ connectedApps: val })}
-            legalData={legalData}
-            onUpdateLegalData={(val) => updateUserSettings({ legalData: val })}
-            currency={currency}
-            onUpdateCurrency={(val) => updateUserSettings({ currency: val })}
-            initialTab={settingsTab}
-          />
-        );
-      default:
-        return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => setActiveTab('settings')} />;
-    }
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="h-full"
+        >
+          {(() => {
+            switch (activeTab) {
+              case 'dashboard':
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
+              case 'calendar':
+                return <AppointmentCalendar appointments={appointments} onAddClick={() => setShowAddModal(true)} onUpdateAppointment={(a) => api.appointments.update(a)} onDeleteAppointment={(id) => api.appointments.delete(id)} connectedApps={connectedApps} currency={currency} />;
+              case 'clients':
+                return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} onAddClient={() => setShowAddModal(true)} />;
+              case 'marketing':
+                return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
+              case 'ai-assistant':
+                return <AIAssistant appointments={appointments} clients={clients} />;
+              case 'subscription':
+                return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} />;
+              case 'settings':
+                return (
+                  <Settings 
+                    businessName={businessName} 
+                    onUpdateBusinessName={(val) => updateUserSettings({ businessName: val })} 
+                    services={services}
+                    onUpdateServices={(val) => updateUserSettings({ services: val })}
+                    connectedApps={connectedApps}
+                    onUpdateConnectedApps={(val) => updateUserSettings({ connectedApps: val })}
+                    legalData={legalData}
+                    onUpdateLegalData={(val) => updateUserSettings({ legalData: val })}
+                    currency={currency}
+                    onUpdateCurrency={(val) => updateUserSettings({ currency: val })}
+                    initialTab={settingsTab}
+                  />
+                );
+              default:
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => setActiveTab('settings')} />;
+            }
+          })()}
+        </motion.div>
+      </AnimatePresence>
+    );
   };
 
   return (

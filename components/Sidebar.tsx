@@ -84,20 +84,25 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
           <Settings size={18} />
           Settings
         </button>
-        <button 
-          onClick={() => setActiveTab('subscription')}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm ${activeTab === 'subscription' ? 'bg-slate-50 text-brand-dark' : 'text-slate-500 hover:bg-slate-50'}`}
-        >
-          <CreditCard size={18} />
-          Billing
-        </button>
-        <button 
-          onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm text-rose-500 hover:bg-rose-50 mt-4"
-        >
-          <LogOut size={18} />
-          Sign Out
-        </button>
+        
+        <div className="mt-4 pt-4 border-t border-slate-50">
+          <div className="px-4 py-3 flex items-center gap-3 group cursor-pointer hover:bg-slate-50 rounded-xl transition-all">
+            <div className="w-10 h-10 bg-brand-blue text-white rounded-full flex items-center justify-center font-black shadow-lg shadow-brand-blue/20 group-hover:scale-110 transition-transform">
+              {onLogout ? 'S' : 'U'}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <p className="text-sm font-black text-brand-dark truncate">scheduliteit@gmail.com</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Premium Plan</p>
+            </div>
+          </div>
+          <button 
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm text-rose-500 hover:bg-rose-50 mt-2"
+          >
+            <LogOut size={18} />
+            Sign Out
+          </button>
+        </div>
       </div>
     </div>
   );
