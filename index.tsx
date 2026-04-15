@@ -48,7 +48,6 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 }
 
 const rootElement = document.getElementById('root');
-console.log("Mounting React app to root element...", rootElement);
 
 if (!rootElement) {
   console.error("Could not find root element to mount to");
@@ -56,7 +55,6 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-console.log("React root created, rendering...");
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
@@ -64,4 +62,3 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-console.log("Render call completed.");
