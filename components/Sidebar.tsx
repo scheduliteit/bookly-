@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut } from 'lucide-react';
+import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus } from 'lucide-react';
+import Logo from './Logo';
 
 interface SidebarProps {
   activeTab: string;
@@ -22,12 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
   return (
     <div className="hidden md:flex w-64 bg-white border-r border-[#eaebed] h-full flex-col shrink-0 relative z-50">
       <div className="p-8 pb-4">
-        <h1 className="text-2xl font-black text-brand-dark flex items-center gap-2.5 tracking-tight cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-          <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center text-white">
-            <div className="w-4 h-4 bg-white rounded-sm rotate-45" />
-          </div>
-          <span className="text-[#006bff]">EasyBookly</span>
-        </h1>
+        <Logo size="md" className="cursor-pointer" onClick={() => setActiveTab('dashboard')} />
       </div>
       
       <nav className="flex-1 px-4 pt-8 space-y-1">
@@ -105,9 +101,5 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
     </div>
   );
 };
-
-const Plus = ({ size, strokeWidth }: { size: number, strokeWidth: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-);
 
 export default Sidebar;

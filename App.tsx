@@ -14,6 +14,7 @@ import ClientCRM from './components/ClientCRM';
 import AddAppointmentModal from './components/AddAppointmentModal';
 import Onboarding from './components/Onboarding';
 import Login from './components/Login';
+import Logo from './components/Logo';
 import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
@@ -182,11 +183,11 @@ const App: React.FC = () => {
   if (isInitializing || !isAuthReady) {
     return (
       <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-6 p-6 text-center">
-         <div className="w-20 h-20 bg-brand-blue rounded-[24px] flex items-center justify-center text-white shadow-2xl shadow-brand-blue/20 animate-bounce">
-            <Radio size={40} />
+         <div className="animate-bounce mb-4">
+            <Logo size="xl" showText={false} />
          </div>
          <div className="space-y-2">
-           <h2 className="text-slate-900 text-lg font-black tracking-tight">Initializing EasyBookly</h2>
+           <Logo size="md" className="justify-center mb-2" />
            <p className="text-slate-500 text-sm font-medium max-w-[280px]">Connecting to secure servers and loading your business profile...</p>
          </div>
          {authError && (
@@ -280,8 +281,8 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 bg-white border-b border-[#eaebed] flex items-center justify-between px-8 shrink-0 z-20">
           <div className="flex items-center gap-6 flex-1">
-             <div className="md:hidden w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center text-white font-bold">
-               {businessName.charAt(0)}
+             <div className="md:hidden">
+               <Logo size="sm" showText={false} />
              </div>
              <div className="relative w-full max-w-sm hidden md:block">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />

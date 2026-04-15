@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '../firebase';
+import Logo from './Logo';
 
 interface LoginProps {
   onLogin: (email: string, uid: string, displayName: string | null) => void;
@@ -80,9 +81,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-[#fcfcfc] flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-[440px] space-y-8 animate-in fade-in zoom-in-95 duration-500">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-brand-blue rounded-2xl flex items-center justify-center text-white mx-auto shadow-xl shadow-brand-blue/20">
-            <ShieldCheck size={32} />
-          </div>
+          <Logo size="lg" className="justify-center" />
           <div className="space-y-1">
             <h1 className="text-3xl font-black text-brand-dark tracking-tight">
               {isRegistering ? 'Create your account' : 'Welcome back'}

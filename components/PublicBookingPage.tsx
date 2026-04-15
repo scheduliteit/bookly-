@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, ChevronRight, CheckCircle2, User, Phone, ShieldCheck, Check, Globe, Loader2, Lock, Languages, Info, ArrowLeft, ArrowRight, CalendarDays, Star, Zap, Users, Shield, MessageSquareText, Globe2, Sparkles, Send, X, Radio } from 'lucide-react';
 import { api } from '../services/api';
 import { Service } from '../types';
+import Logo from './Logo';
 import { geminiAssistant } from '../services/geminiService';
 import { paymentService } from '../services/paymentService';
 
@@ -148,10 +149,10 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-4">
-         <div className="w-16 h-16 bg-brand-blue rounded-2xl flex items-center justify-center text-white shadow-xl animate-pulse">
-            <Radio size={32} />
+         <div className="animate-pulse">
+            <Logo size="xl" showText={false} />
          </div>
-         <h2 className="text-slate-900 text-sm font-bold tracking-widest uppercase">Loading Booking Page...</h2>
+         <Logo size="md" className="justify-center" />
       </div>
     );
   }
@@ -242,9 +243,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
           
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-brand-blue rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-brand-blue/20">
-                {businessName.charAt(0)}
-              </div>
+              <Logo size="lg" showText={false} />
               <div>
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{businessName}</p>
                 <h1 className="text-2xl font-black text-slate-900">{selectedService?.name || 'Schedule Time'}</h1>
@@ -448,8 +447,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       </div>
       
       <div className="mt-12 flex items-center gap-3 py-2 px-4 bg-white/50 backdrop-blur-md rounded-full border border-white/20 text-slate-400 hover:text-slate-600 transition-all cursor-pointer">
-        <ShieldCheck size={16} className="text-emerald-500" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verified Secure by EasyBookly Scheduling</span>
+        <Logo size="sm" />
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] ml-2">Verified Secure</span>
       </div>
     </div>
   );
