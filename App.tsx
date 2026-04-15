@@ -26,6 +26,7 @@ const hasValidKey = Boolean(API_KEY) && API_KEY !== 'undefined' && API_KEY !== '
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [publicUserId, setPublicUserId] = useState<string | null>(() => {
     const match = window.location.pathname.match(/^\/book\/([^/]+)/);
     return match ? match[1] : null;
@@ -56,7 +57,17 @@ const App: React.FC = () => {
 
   // Auth Listener
   useEffect(() => {
+    console.log("App component mounted. Auth ready:", isAuthReady, "User:", user?.uid);
+    
+    // Set a safety timeout for initialization
+    const timeoutId = setTimeout(() => {
+      if (isInitializing) {
+        console.warn("Auth initialization is taking longer than expected...");
+      }
+    }, 5000);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser ? "User logged in" : "No user");
       try {
         if (firebaseUser) {
           // Fetch user settings from Firestore
@@ -72,6 +83,7 @@ const App: React.FC = () => {
             setCurrency(userData.currency || 'USD');
             setSubscriptionPlan(userData.subscriptionPlan || 'basic');
           } else {
+            console.log("New user detected, creating profile...");
             // New user
             const newUser: User = {
               id: firebaseUser.uid,
@@ -95,20 +107,27 @@ const App: React.FC = () => {
             };
             setUser(newUser);
             await api.user.save(newUser);
+            console.log("New user profile saved.");
           }
         } else {
           setUser(null);
           setIsOnboarded(false);
         }
-      } catch (error) {
+        setAuthError(null);
+      } catch (error: any) {
         console.error("Initialization error:", error);
+        setAuthError(error.message || "Failed to load your profile. Please check your internet connection.");
         showToast("Failed to load user data", "error");
       } finally {
         setIsAuthReady(true);
         setIsInitializing(false);
+        clearTimeout(timeoutId);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Sync Data
@@ -165,11 +184,25 @@ const App: React.FC = () => {
 
   if (isInitializing || !isAuthReady) {
     return (
-      <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-4">
-         <div className="w-16 h-16 bg-brand-blue rounded-2xl flex items-center justify-center text-white shadow-xl animate-pulse">
-            <Radio size={32} />
+      <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-6 p-6 text-center">
+         <div className="w-20 h-20 bg-brand-blue rounded-[24px] flex items-center justify-center text-white shadow-2xl shadow-brand-blue/20 animate-bounce">
+            <Radio size={40} />
          </div>
-         <h2 className="text-slate-900 text-sm font-bold tracking-widest uppercase">Initializing EasyBookly...</h2>
+         <div className="space-y-2">
+           <h2 className="text-slate-900 text-lg font-black tracking-tight">Initializing EasyBookly</h2>
+           <p className="text-slate-500 text-sm font-medium max-w-[280px]">Connecting to secure servers and loading your business profile...</p>
+         </div>
+         {authError && (
+           <div className="mt-8 p-4 bg-rose-50 border border-rose-100 rounded-2xl max-w-md animate-in fade-in slide-in-from-bottom-4">
+             <p className="text-rose-600 text-xs font-bold mb-3">{authError}</p>
+             <button 
+               onClick={() => window.location.reload()}
+               className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all"
+             >
+               Retry Connection
+             </button>
+           </div>
+         )}
       </div>
     );
   }

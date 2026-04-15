@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup } from '../firebase';
+import { Lock, Mail, ArrowRight, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
+import { auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '../firebase';
 
 interface LoginProps {
   onLogin: (email: string, uid: string, displayName: string | null) => void;
@@ -12,22 +12,65 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For now, we'll just use Google Login as it's the only one configured
-    handleGoogleLogin();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isRegistering) {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        // Set a default display name if registering
+        await updateProfile(result.user, {
+          displayName: email.split('@')[0]
+        });
+        onLogin(result.user.email || '', result.user.uid, result.user.displayName);
+      } else {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        onLogin(result.user.email || '', result.user.uid, result.user.displayName);
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      let message = `Error (${error.code || 'unknown'}): ${error.message || 'An error occurred during authentication.'}`;
+      
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        message = 'Invalid email or password. Please check your credentials.';
+      } else if (error.code === 'auth/email-already-in-use') {
+        message = 'This email is already registered. Try logging in instead.';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'Password is too weak. Please use at least 6 characters.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = 'This login method is not enabled. Please enable it in the Firebase Console.';
+      } else if (error.code === 'auth/popup-blocked') {
+        message = 'The login popup was blocked. Please allow popups for this site.';
+      }
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
         onLogin(result.user.email || '', result.user.uid, result.user.displayName);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      let message = `Error (${error.code || 'unknown'}): ${error.message || 'An unexpected error occurred during Google login.'}`;
+      if (error.code === 'auth/popup-blocked') {
+        message = '🚨 POPUP BLOCKED: Your browser blocked the login window. Please look at your address bar and click "Allow Popups" for this site, then try again.';
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        message = 'Login was cancelled.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = 'Google login is not enabled. Please enable it in the Firebase Console.';
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +94,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
+          {error && (
+            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 text-rose-600 animate-in slide-in-from-top-2">
+              <AlertCircle className="shrink-0 mt-0.5" size={18} />
+              <div className="text-xs font-bold leading-relaxed">
+                {error}
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>

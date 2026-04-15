@@ -28,13 +28,17 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968260.png" />
     <title>EasyBookly - Online Scheduling</title>
     <script>
+      // Force clear all service workers and caches to fix the white screen issue
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('SW registered: ', registration);
-          }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-          });
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          for (let name of names) caches.delete(name);
         });
       }
     </script>
