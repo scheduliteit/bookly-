@@ -58,6 +58,19 @@ const App: React.FC = () => {
     gdprStrict: true
   });
 
+  // Hash Change Listener for navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Check initial hash
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // Auth Listener
   useEffect(() => {
     // Set a safety timeout for initialization
@@ -237,19 +250,6 @@ const App: React.FC = () => {
       />
     );
   }
-
-  // Hash Change Listener for navigation
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription'].includes(hash)) {
-        setActiveTab(hash);
-      }
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Check initial hash
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
 
   const renderContent = () => {
     return (
