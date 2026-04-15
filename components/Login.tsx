@@ -78,100 +78,148 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] flex items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-[440px] space-y-8 animate-in fade-in zoom-in-95 duration-500">
-        <div className="text-center space-y-4">
-          <Logo size="lg" className="justify-center" />
-          <div className="space-y-1">
-            <h1 className="text-3xl font-black text-brand-dark tracking-tight">
-              {isRegistering ? 'Create your account' : 'Welcome back'}
+    <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans selection:bg-brand-blue/10 selection:text-brand-blue">
+      {/* Left Panel: Welcoming Hero */}
+      <div className="hidden md:flex md:w-1/2 bg-brand-blue p-16 flex-col justify-between relative overflow-hidden">
+        {/* Abstract background shapes */}
+        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-[-5%] left-[-5%] w-64 h-64 bg-brand-dark/20 rounded-full blur-2xl" />
+        
+        <div className="relative z-10">
+          <Logo size="lg" className="text-white mb-20" />
+          <div className="space-y-6 max-w-lg">
+            <h1 className="text-6xl font-black text-white leading-[0.9] tracking-tight">
+              The world's <span className="text-brand-dark">simplest</span> way to book.
             </h1>
-            <p className="text-slate-500 font-medium">
-              {isRegistering ? 'Start your 14-day free trial today.' : 'Log in to manage your business.'}
+            <p className="text-xl text-white/80 font-medium leading-relaxed">
+              Join 10,000+ professionals who use EasyBookly to automate their schedule and grow their business.
             </p>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
-          {error && (
-            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 text-rose-600 animate-in slide-in-from-top-2">
-              <AlertCircle className="shrink-0 mt-0.5" size={18} />
-              <div className="text-xs font-bold leading-relaxed">
-                {error}
-              </div>
+        <div className="relative z-10 space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="flex -space-x-3">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="w-10 h-10 rounded-full border-2 border-brand-blue bg-slate-200 overflow-hidden">
+                  <img src={`https://picsum.photos/seed/user${i}/100/100`} alt="User" referrerPolicy="no-referrer" />
+                </div>
+              ))}
             </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="email" 
-                  required
-                  placeholder="name@company.com"
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all font-medium"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+            <p className="text-sm text-white/60 font-bold uppercase tracking-widest">Trusted by experts</p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
+            <div>
+              <p className="text-3xl font-black text-white">99.9%</p>
+              <p className="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">Uptime Reliability</p>
             </div>
+            <div>
+              <p className="text-3xl font-black text-white">24/7</p>
+              <p className="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">AI Concierge</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="password" 
-                  required
-                  placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all font-medium"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+      {/* Right Panel: Login Form */}
+      <div className="flex-1 flex items-center justify-center p-8 md:p-16 bg-[#fcfcfc]">
+        <div className="w-full max-w-[400px] space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
+          <div className="md:hidden flex justify-center mb-8">
+            <Logo size="lg" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-3xl font-black text-brand-dark tracking-tight">
+              {isRegistering ? 'Create your account' : 'Welcome back'}
+            </h2>
+            <p className="text-slate-500 font-medium">
+              {isRegistering ? 'Start your 14-day free trial today.' : 'Log in to manage your business.'}
+            </p>
+          </div>
+
+          <div className="space-y-8">
+            {error && (
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 text-rose-600 animate-in shake duration-500">
+                <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                <div className="text-xs font-bold leading-relaxed">
+                  {error}
+                </div>
               </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors" size={18} />
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="name@company.com"
+                    className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl text-sm focus:border-brand-blue outline-none transition-all font-bold placeholder:text-slate-300"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors" size={18} />
+                  <input 
+                    type="password" 
+                    required
+                    placeholder="••••••••"
+                    className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl text-sm focus:border-brand-blue outline-none transition-all font-bold placeholder:text-slate-300"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-5 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-dark shadow-2xl shadow-brand-blue/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {isLoading ? 'Processing...' : (isRegistering ? 'Get Started' : 'Sign In')} <ArrowRight size={18} />
+              </button>
+            </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black"><span className="bg-[#fcfcfc] px-4 text-slate-300">Or continue with</span></div>
             </div>
 
             <button 
-              type="submit"
+              onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-dark shadow-lg shadow-brand-blue/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-sm text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              {isLoading ? 'Processing...' : (isRegistering ? 'Get Started' : 'Sign In')} <ArrowRight size={18} />
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+              Google
             </button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-            <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold"><span className="bg-white px-4 text-slate-400">Or continue with</span></div>
           </div>
 
-          <button 
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-            className="w-full py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-sm text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-            Google
-          </button>
-        </div>
+          <p className="text-center text-sm font-bold text-slate-400">
+            {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button 
+              onClick={() => setIsRegistering(!isRegistering)}
+              className="text-brand-blue font-black hover:underline"
+            >
+              {isRegistering ? 'Log in' : 'Create one for free'}
+            </button>
+          </p>
 
-        <p className="text-center text-sm font-medium text-slate-500">
-          {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button 
-            onClick={() => setIsRegistering(!isRegistering)}
-            className="text-brand-blue font-bold hover:underline"
-          >
-            {isRegistering ? 'Log in' : 'Create one for free'}
-          </button>
-        </p>
-
-        <div className="flex items-center justify-center gap-6 pt-4 opacity-40 grayscale">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-            <ShieldCheck size={14} /> SOC2 Compliant
-          </div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-            <Zap size={14} /> ISO 27001
+          <div className="flex items-center justify-center gap-8 pt-4 opacity-20 grayscale">
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+              <ShieldCheck size={14} /> SOC2
+            </div>
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+              <Zap size={14} /> ISO 27001
+            </div>
           </div>
         </div>
       </div>
