@@ -57,7 +57,7 @@ const App: React.FC = () => {
 
   // Auth Listener
   useEffect(() => {
-    console.log("App component mounted. Auth ready:", isAuthReady, "User:", user?.uid);
+    console.log("App component mounted. Auth ready:", isAuthReady, "User:", user?.id);
     
     // Set a safety timeout for initialization
     const timeoutId = setTimeout(() => {
