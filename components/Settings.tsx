@@ -15,6 +15,7 @@ interface SettingsProps {
   onUpdateLegalData: (data: any) => void;
   currency: 'ILS' | 'USD' | 'EUR' | 'GBP';
   onUpdateCurrency: (cur: 'ILS' | 'USD' | 'EUR' | 'GBP') => void;
+  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal';
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -27,10 +28,28 @@ const Settings: React.FC<SettingsProps> = ({
   legalData,
   onUpdateLegalData,
   currency,
-  onUpdateCurrency
+  onUpdateCurrency,
+  initialTab
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'availability' | 'payouts' | 'legal'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+  const [newService, setNewService] = useState<Partial<Service>>({ name: '', duration: 30, price: 0, color: '#006bff' });
+
+  const handleAddService = () => {
+    if (!newService.name) return;
+    onUpdateServices([...services, newService as Service]);
+    setNewService({ name: '', duration: 30, price: 0, color: '#006bff' });
+  };
+
+  const handleDeleteService = (serviceName: string) => {
+    onUpdateServices(services.filter(s => s.name !== serviceName));
+  };
   const [merchantStats, setMerchantStats] = useState<MerchantStats>({
     grossEarnings: 0,
     netEarnings: 0,
@@ -123,10 +142,11 @@ const Settings: React.FC<SettingsProps> = ({
           <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Management</h2>
           <p className="text-sm text-slate-500">Configure your business identity and rules.</p>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
           {[
-            { id: 'availability', label: 'Availability' },
             { id: 'profile', label: 'Profile' },
+            { id: 'services', label: 'Event Types' },
+            { id: 'availability', label: 'Availability' },
             { id: 'payouts', label: 'Payments' },
             { id: 'legal', label: 'Legal' }
           ].map((tab) => (
@@ -140,6 +160,82 @@ const Settings: React.FC<SettingsProps> = ({
           ))}
         </div>
       </div>
+
+      {activeTab === 'services' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-brand-dark">Event Types</h3>
+                <p className="text-xs text-slate-500 mt-1">Manage the types of appointments clients can book.</p>
+              </div>
+              <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
+                <Zap size={20} />
+              </div>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {services.map((service) => (
+                  <div key={service.name} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: service.color || '#006bff' }} />
+                      <div>
+                        <p className="text-sm font-bold text-brand-dark">{service.name}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{service.duration} mins • ${service.price}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteService(service.name)}
+                      className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-6 border-t border-slate-100">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Add New Event Type</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-2">
+                    <input 
+                      type="text" 
+                      placeholder="Event Name (e.g. 30 Min Meeting)" 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue"
+                      value={newService.name}
+                      onChange={e => setNewService({...newService, name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <input 
+                      type="number" 
+                      placeholder="Duration (min)" 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue"
+                      value={newService.duration}
+                      onChange={e => setNewService({...newService, duration: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <input 
+                      type="number" 
+                      placeholder="Price ($)" 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue"
+                      value={newService.price}
+                      onChange={e => setNewService({...newService, price: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+                <button 
+                  onClick={handleAddService}
+                  className="mt-4 px-6 py-2.5 bg-brand-blue text-white rounded-lg font-bold text-sm hover:bg-brand-dark transition-all flex items-center gap-2"
+                >
+                  <Plus size={16} /> Add Event Type
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'availability' && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-bottom-4">

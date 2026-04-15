@@ -9,14 +9,15 @@ interface SidebarProps {
   subscriptionPlan?: 'basic' | 'premium';
   connectedApps: string[];
   onLogout?: () => void;
+  onAddClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, connectedApps }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, connectedApps, onAddClick }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Event Types', icon: LinkIcon },
     { id: 'calendar', label: 'Scheduled Events', icon: Calendar },
     { id: 'marketing', label: 'Workflows', icon: Zap },
-    { id: 'ai-assistant', label: 'Routing Forms', icon: Layers },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
     { id: 'clients', label: 'Contacts', icon: Users },
   ];
 
@@ -29,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
       <nav className="flex-1 px-4 pt-8 space-y-1">
         <div className="pb-4">
            <button 
-             onClick={() => setActiveTab('dashboard')}
+             onClick={onAddClick}
              className="w-full flex items-center gap-3 px-4 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md hover:bg-blue-700 transition-all mb-8"
            >
               <Plus size={18} strokeWidth={3} /> Create

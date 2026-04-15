@@ -3,7 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Megaphone, Image as ImageIcon, Copy, Download, Loader2, Wand2, Smartphone, Monitor, Square, Check, RefreshCw, Video, Play, AlertCircle, ExternalLink, Lock, CheckCircle, Clock, Zap, ArrowRight, Mail, MessageSquare } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
-const MarketingStudio: React.FC = () => {
+interface MarketingStudioProps {
+  onAddWorkflow?: () => void;
+}
+
+const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
   const [activeTab, setActiveTab] = useState<'workflows' | 'creative'>('workflows');
   const [creativeMode, setCreativeMode] = useState<'image' | 'video'>('image');
   const [prompt, setPrompt] = useState("");
@@ -76,7 +80,7 @@ const MarketingStudio: React.FC = () => {
                 <h3 className="font-bold text-brand-dark">Create a custom workflow</h3>
                 <p className="text-sm text-slate-500">Add an automation for any event type in seconds.</p>
               </div>
-              <button className="mt-2 px-6 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md">Create workflow</button>
+              <button onClick={onAddWorkflow} className="mt-2 px-6 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md">Create workflow</button>
            </div>
         </div>
       ) : (

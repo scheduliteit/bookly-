@@ -8,9 +8,10 @@ interface ClientCRMProps {
   clients: Client[];
   appointments: Appointment[];
   onDeleteClient: (id: string) => void;
+  onAddClient?: () => void;
 }
 
-const ClientCRM: React.FC<ClientCRMProps> = ({ clients, appointments, onDeleteClient }) => {
+const ClientCRM: React.FC<ClientCRMProps> = ({ clients, appointments, onDeleteClient, onAddClient }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
   const t = translations[lang];
@@ -40,7 +41,7 @@ const ClientCRM: React.FC<ClientCRMProps> = ({ clients, appointments, onDeleteCl
           <button className="px-5 py-2.5 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all">
             Export CSV
           </button>
-          <button className="px-6 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md hover:bg-brand-dark transition-all">
+          <button onClick={onAddClient} className="px-6 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md hover:bg-brand-dark transition-all">
             Add New Client
           </button>
         </div>

@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -238,13 +239,13 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} />;
+        return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
       case 'calendar':
         return <AppointmentCalendar appointments={appointments} onAddClick={() => setShowAddModal(true)} onUpdateAppointment={(a) => api.appointments.update(a)} onDeleteAppointment={(id) => api.appointments.delete(id)} connectedApps={connectedApps} currency={currency} />;
       case 'clients':
-        return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} />;
+        return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} onAddClient={() => setShowAddModal(true)} />;
       case 'marketing':
-        return <MarketingStudio />;
+        return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
       case 'ai-assistant':
         return <AIAssistant appointments={appointments} clients={clients} />;
       case 'subscription':
@@ -262,10 +263,11 @@ const App: React.FC = () => {
             onUpdateLegalData={(val) => updateUserSettings({ legalData: val })}
             currency={currency}
             onUpdateCurrency={(val) => updateUserSettings({ currency: val })}
+            initialTab={settingsTab}
           />
         );
       default:
-        return <Dashboard businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} />;
+        return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => setActiveTab('settings')} />;
     }
   };
 
@@ -277,6 +279,7 @@ const App: React.FC = () => {
         subscriptionPlan={subscriptionPlan} 
         connectedApps={connectedApps}
         onLogout={handleLogout}
+        onAddClick={() => setShowAddModal(true)}
       />
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 bg-white border-b border-[#eaebed] flex items-center justify-between px-8 shrink-0 z-20">
@@ -316,6 +319,14 @@ const App: React.FC = () => {
           {renderContent()}
         </div>
         
+        {/* Mobile FAB */}
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="md:hidden fixed right-6 bottom-24 w-14 h-14 bg-brand-blue text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-all"
+        >
+          <Plus size={24} strokeWidth={3} />
+        </button>
+
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </main>
 
