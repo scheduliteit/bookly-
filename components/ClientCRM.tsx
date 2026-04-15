@@ -38,7 +38,10 @@ const ClientCRM: React.FC<ClientCRMProps> = ({ clients, appointments, onDeleteCl
           <p className="text-sm text-slate-500 mt-1 font-medium">Manage your relationships and track client growth.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-5 py-2.5 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all">
+          <button 
+            onClick={() => alert('Exporting contacts to CSV...')}
+            className="px-5 py-2.5 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all"
+          >
             Export CSV
           </button>
           <button onClick={onAddClient} className="px-6 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md hover:bg-brand-dark transition-all">
@@ -73,7 +76,10 @@ const ClientCRM: React.FC<ClientCRMProps> = ({ clients, appointments, onDeleteCl
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button className="text-sm font-bold text-slate-500 flex items-center gap-2 hover:text-brand-dark transition-all">
+        <button 
+          onClick={() => alert('Advanced filters coming soon!')}
+          className="text-sm font-bold text-slate-500 flex items-center gap-2 hover:text-brand-dark transition-all"
+        >
           <Filter size={16} /> Advanced Filters
         </button>
       </div>

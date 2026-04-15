@@ -238,6 +238,19 @@ const App: React.FC = () => {
     );
   }
 
+  // Hash Change Listener for navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Check initial hash
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const renderContent = () => {
     return (
       <AnimatePresence mode="wait">
@@ -252,7 +265,7 @@ const App: React.FC = () => {
           {(() => {
             switch (activeTab) {
               case 'dashboard':
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} />;
               case 'calendar':
                 return <AppointmentCalendar appointments={appointments} onAddClick={() => setShowAddModal(true)} onUpdateAppointment={(a) => api.appointments.update(a)} onDeleteAppointment={(id) => api.appointments.delete(id)} connectedApps={connectedApps} currency={currency} />;
               case 'clients':

@@ -86,7 +86,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
         </button>
         
         <div className="mt-4 pt-4 border-t border-slate-50">
-          <div className="px-4 py-3 flex items-center gap-3 group cursor-pointer hover:bg-slate-50 rounded-xl transition-all">
+          <div 
+            onClick={() => setActiveTab('settings')}
+            className="px-4 py-3 flex items-center gap-3 group cursor-pointer hover:bg-slate-50 rounded-xl transition-all"
+          >
             <div className="w-10 h-10 bg-brand-blue text-white rounded-full flex items-center justify-center font-black shadow-lg shadow-brand-blue/20 group-hover:scale-110 transition-transform">
               {onLogout ? 'S' : 'U'}
             </div>

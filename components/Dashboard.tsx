@@ -17,9 +17,10 @@ interface DashboardProps {
   currency: 'ILS' | 'USD' | 'EUR' | 'GBP';
   onOpenPublicView: () => void;
   onAddEventType?: () => void;
+  setActiveTab?: (tab: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView, onAddEventType }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView, onAddEventType, setActiveTab }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState("Analyzing your session velocity...");
   const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
@@ -121,7 +122,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
             </h4>
             <p className="text-xl text-white font-medium leading-relaxed italic">"{aiInsight}"</p>
          </div>
-         <button onClick={() => window.location.hash = '#ai-assistant'} className="px-6 py-3 bg-white text-brand-blue rounded-full font-black text-sm hover:bg-brand-dark hover:text-white transition-all shrink-0">
+         <button onClick={() => setActiveTab?.('ai-assistant')} className="px-6 py-3 bg-white text-brand-blue rounded-full font-black text-sm hover:bg-brand-dark hover:text-white transition-all shrink-0">
            Full Analysis
          </button>
       </motion.div>
@@ -226,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                 </div>
               )}
             </div>
-            <button onClick={() => window.location.hash = '#calendar'} className="w-full py-4 bg-slate-50 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all border-t border-slate-100">
+            <button onClick={() => setActiveTab?.('calendar')} className="w-full py-4 bg-slate-50 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all border-t border-slate-100">
               View Full Calendar
             </button>
           </div>
@@ -239,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                 <LayoutGrid size={20} className="text-brand-blue" />
                 <span className="text-[10px] font-black uppercase tracking-widest">New Event</span>
               </button>
-              <button onClick={() => window.location.hash = '#ai-assistant'} className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl flex flex-col items-center gap-2 transition-all border border-white/5">
+              <button onClick={() => setActiveTab?.('ai-assistant')} className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl flex flex-col items-center gap-2 transition-all border border-white/5">
                 <Sparkles size={20} className="text-amber-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest">AI Audit</span>
               </button>

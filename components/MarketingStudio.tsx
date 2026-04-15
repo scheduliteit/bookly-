@@ -101,17 +101,58 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
                     <button onClick={() => setCreativeMode('image')} className={`flex-1 py-3 rounded-lg border text-sm font-bold transition-all ${creativeMode === 'image' ? 'border-brand-blue bg-brand-blue/5 text-brand-blue' : 'border-slate-200 text-slate-500'}`}>Image Ad</button>
                     <button onClick={() => setCreativeMode('video')} className={`flex-1 py-3 rounded-lg border text-sm font-bold transition-all ${creativeMode === 'video' ? 'border-brand-blue bg-brand-blue/5 text-brand-blue' : 'border-slate-200 text-slate-500'}`}>Video Promo</button>
                  </div>
-                 <button className="w-full py-4 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all flex items-center justify-center gap-2">
-                   <Sparkles size={18} /> Generate Creative
+                 <button 
+                   onClick={async () => {
+                     if (!prompt) return;
+                     setIsGenerating(true);
+                     setResult(null);
+                     // Mock generation delay
+                     await new Promise(r => setTimeout(r, 2000));
+                     setResult({
+                       image: creativeMode === 'image' ? `https://picsum.photos/seed/${prompt.length}/800/800` : undefined,
+                       video: creativeMode === 'video' ? 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4' : undefined,
+                       caption: `✨ Ready to transform your business? Book your next ${prompt.substring(0, 15)}... session with us today! Link in bio. #EasyBookly #Productivity`
+                     });
+                     setIsGenerating(false);
+                   }}
+                   disabled={isGenerating || !prompt}
+                   className="w-full py-4 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                   {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                   {isGenerating ? 'Generating...' : 'Generate Creative'}
                  </button>
               </div>
            </div>
            
-           <div className="bg-slate-100 rounded-xl flex items-center justify-center p-12 border-2 border-dashed border-slate-200">
-              <div className="text-center space-y-2 text-slate-400">
-                 <ImageIcon size={48} className="mx-auto opacity-20" />
-                 <p className="text-sm font-bold">Creative Preview Area</p>
-              </div>
+           <div className="bg-slate-100 rounded-xl flex items-center justify-center p-12 border-2 border-dashed border-slate-200 overflow-hidden relative">
+              {result ? (
+                <div className="w-full h-full flex flex-col gap-4 animate-in zoom-in-95 duration-500">
+                  {result.image && (
+                    <img src={result.image} alt="AI Generated" className="w-full h-auto rounded-lg shadow-xl" referrerPolicy="no-referrer" />
+                  )}
+                  {result.video && (
+                    <video src={result.video} controls className="w-full h-auto rounded-lg shadow-xl" />
+                  )}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200">
+                    <p className="text-xs text-slate-600 font-medium italic">"{result.caption}"</p>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(result.caption || '');
+                        alert('Caption copied!');
+                      }}
+                      className="mt-3 flex items-center gap-2 text-[10px] font-black text-brand-blue uppercase tracking-widest"
+                    >
+                      <Copy size={12} /> Copy Caption
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center space-y-2 text-slate-400">
+                   <ImageIcon size={48} className="mx-auto opacity-20" />
+                   <p className="text-sm font-bold">Creative Preview Area</p>
+                   <p className="text-[10px] uppercase tracking-widest">Enter a prompt to start</p>
+                </div>
+              )}
            </div>
         </div>
       )}
