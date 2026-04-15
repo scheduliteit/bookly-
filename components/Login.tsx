@@ -42,7 +42,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       } else if (error.code === 'auth/weak-password') {
         message = 'Password is too weak. Please use at least 6 characters.';
       } else if (error.code === 'auth/operation-not-allowed') {
-        message = `🚨 LOGIN DISABLED: You must enable "Email/Password" in your Firebase Console (Authentication > Sign-in method). \n\n(Verify Project: bookly-9e98f)`;
+        message = `🚨 LOGIN DISABLED: You must enable "Email/Password" in your Firebase Console (Authentication > Sign-in method). \n\n(Verify Project: project-a78dac39-7bf0-47db-af6)`;
       } else if (error.code === 'auth/popup-blocked') {
         message = 'The login popup was blocked. Please allow popups for this site.';
       }
@@ -68,7 +68,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       } else if (error.code === 'auth/cancelled-popup-request') {
         message = 'Login was cancelled.';
       } else if (error.code === 'auth/operation-not-allowed') {
-        message = `🚨 GOOGLE DISABLED: You must enable "Google" in your Firebase Console (Authentication > Sign-in method). \n\n(Verify Project: bookly-9e98f)`;
+        message = `🚨 GOOGLE DISABLED: You must enable "Google" in your Firebase Console (Authentication > Sign-in method). \n\n(Verify Project: project-a78dac39-7bf0-47db-af6)`;
       }
       setError(message);
     } finally {

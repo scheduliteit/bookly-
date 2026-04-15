@@ -1,10 +1,10 @@
 {
-  "projectId": "bookly-9e98f",
-  "appId": "1:1092822182345:web:07433de805ac25a3a2e018",
-  "apiKey": "AIzaSyCnafsINsAYYkfY43a7hNdar8eEkGE1eF4",
-  "authDomain": "bookly-9e98f.firebaseapp.com",
-  "firestoreDatabaseId": "(default)",
-  "storageBucket": "bookly-9e98f.firebasestorage.app",
-  "messagingSenderId": "1092822182345",
-  "measurementId": "G-BD9CVFH188"
+  "projectId": "project-a78dac39-7bf0-47db-af6",
+  "appId": "1:178624002955:web:e78a277cfb69026a548d8e",
+  "apiKey": "AIzaSyBbXYo1O6WJdUXrQ6Nb6CdUa14MfjbvAI4",
+  "authDomain": "project-a78dac39-7bf0-47db-af6.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-08a916cb-26a6-4eae-8668-338ef05fa8ce",
+  "storageBucket": "project-a78dac39-7bf0-47db-af6.firebasestorage.app",
+  "messagingSenderId": "178624002955",
+  "measurementId": ""
 }

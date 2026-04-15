@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [initStatus, setInitStatus] = useState<string>("Connecting to secure servers...");
   const [publicUserId, setPublicUserId] = useState<string | null>(() => {
     const match = window.location.pathname.match(/^\/book\/([^/]+)/);
     return match ? match[1] : null;
@@ -63,13 +64,15 @@ const App: React.FC = () => {
     const timeoutId = setTimeout(() => {
       if (isInitializing) {
         console.warn("Auth initialization is taking longer than expected...");
+        setInitStatus("Still loading... Please check if your Firestore Database is created in the Firebase Console.");
       }
-    }, 5000);
+    }, 8000);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("Auth state changed:", firebaseUser ? "User logged in" : "No user");
       try {
         if (firebaseUser) {
+          setInitStatus("Loading your business profile...");
           // Fetch user settings from Firestore
           const userData = await api.user.get(firebaseUser.uid);
           if (userData) {
@@ -190,7 +193,7 @@ const App: React.FC = () => {
          </div>
          <div className="space-y-2">
            <h2 className="text-slate-900 text-lg font-black tracking-tight">Initializing EasyBookly</h2>
-           <p className="text-slate-500 text-sm font-medium max-w-[280px]">Connecting to secure servers and loading your business profile...</p>
+           <p className="text-slate-500 text-sm font-medium max-w-[280px]">{initStatus}</p>
          </div>
          {authError && (
            <div className="mt-8 p-4 bg-rose-50 border border-rose-100 rounded-2xl max-w-md animate-in fade-in slide-in-from-bottom-4">
