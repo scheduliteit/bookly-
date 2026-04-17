@@ -25,9 +25,12 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', showText = tru
         <CalendarCheck2 size={currentSize.icon} strokeWidth={2.5} />
       </div>
       {showText && (
-        <span className={`${currentSize.text} font-black tracking-tight text-slate-900`}>
-          Easy<span className="text-[#006bff]">Bookly</span>
-        </span>
+        <div className="flex flex-col">
+          <span className={`${currentSize.text} font-black tracking-tight text-slate-900 leading-none`}>
+            Easy<span className="text-[#006bff]">Bookly</span>
+          </span>
+          <span className="text-[8px] font-black bg-brand-blue text-white w-fit px-1.5 py-0.5 rounded-sm uppercase tracking-tighter mt-1">Free Era Active</span>
+        </div>
       )}
     </div>
   );

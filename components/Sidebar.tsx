@@ -60,6 +60,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
           </button>
         ))}
 
+        {/* Early Access Info */}
+        {!isAdmin && (
+          <div className="mt-6 px-4 py-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10 mx-1">
+             <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={12} className="text-brand-blue" />
+                <span className="text-[9px] font-black text-brand-blue uppercase tracking-widest">Early Access Active</span>
+             </div>
+             <p className="text-[10px] font-bold text-slate-500 leading-tight italic">
+               Enjoy global premium features free during our beta phase.
+             </p>
+          </div>
+        )}
+
         {/* Global Sync Status */}
         {connectedApps.length > 0 && (
           <div className="mt-8 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 mx-2">
@@ -103,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-black text-brand-dark truncate">{user?.email || 'User Account'}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.subscriptionPlan === 'premium' ? 'Premium Plan' : 'Free Plan'}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Free Early Access</p>
             </div>
           </div>
           <button 

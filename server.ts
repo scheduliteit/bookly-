@@ -384,6 +384,43 @@ app.post('/api/payments/payme-callback', async (req, res) => {
   res.sendStatus(200);
 });
 
+app.post('/api/payments/create-subscription-checkout', async (req, res) => {
+  const { plan, userId, email, successUrl, cancelUrl } = req.body;
+  
+  if (!stripe) {
+    return res.status(400).json({ error: 'Stripe is not configured in environment.' });
+  }
+
+  try {
+    const priceId = plan === 'premium' 
+      ? process.env.STRIPE_PREMIUM_PRICE_ID 
+      : process.env.STRIPE_BASIC_PRICE_ID;
+
+    if (!priceId) {
+      throw new Error(`Price ID not found for plan: ${plan}. Please set it in .env.`);
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1,
+      }],
+      mode: 'subscription',
+      customer_email: email,
+      client_reference_id: userId,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { userId, plan }
+    });
+    
+    res.json({ id: session.id, url: session.url });
+  } catch (error: any) {
+    console.error('[SERVER] Subscription Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/payments/payout', (req, res) => {
   if (merchantStats.pendingPayout <= 0) return res.status(400).json({ error: 'No funds' });
   

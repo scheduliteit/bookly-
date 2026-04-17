@@ -23,6 +23,7 @@ export interface User {
   connectedApps?: string[];
   subscriptionPlan?: 'basic' | 'premium';
   role?: 'admin' | 'user';
+  createdAt?: string; // ISO string for trial tracking
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';

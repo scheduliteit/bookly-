@@ -20,7 +20,7 @@ import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
-import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink } from 'lucide-react';
+import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
@@ -107,6 +107,7 @@ const App: React.FC = () => {
               businessCategory: 'Consulting',
               services: [],
               currency: 'USD',
+              createdAt: new Date().toISOString(), // Start trial now
               workingHours: {
                 monday: { start: '09:00', end: '17:00', active: true },
                 tuesday: { start: '09:00', end: '17:00', active: true },
@@ -196,6 +197,19 @@ const App: React.FC = () => {
     }
   };
 
+  // Trial Calculation
+  const getTrialDaysRemaining = () => {
+    if (!user?.createdAt) return 30;
+    const start = new Date(user.createdAt);
+    const now = new Date();
+    const diff = now.getTime() - start.getTime();
+    const days = 30 - Math.floor(diff / (1000 * 60 * 60 * 24));
+    return Math.max(0, days);
+  };
+  
+  const trialDays = getTrialDaysRemaining();
+  const isTrialExpired = false; // "all free for now"
+
   if (isInitializing || !isAuthReady) {
     return (
       <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-6 p-6 text-center">
@@ -253,6 +267,36 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    if (isTrialExpired) {
+      return (
+        <div className="h-full flex items-center justify-center p-8">
+           <div className="bg-white border border-slate-100 rounded-[40px] p-12 max-w-xl text-center shadow-2xl shadow-brand-blue/5 space-y-8 animate-in zoom-in-95 duration-700">
+              <div className="w-20 h-20 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                 <Lock size={32} />
+              </div>
+              <div>
+                 <h2 className="text-3xl font-black text-brand-dark tracking-tight">Your AI Trial has Finished</h2>
+                 <p className="text-slate-500 font-medium mt-4">You've successfully managed your first 30 days! To continue using the Command Center, AI Assistant, and Automated Workflows, please upgrade to a paid plan.</p>
+              </div>
+              <div className="bg-slate-50 p-6 rounded-3xl flex items-center gap-4 text-left">
+                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-blue shadow-sm">
+                    <CheckCircle2 size={20} />
+                 </div>
+                 <div>
+                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight">Access Locked</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Dashboard • AI Features • Clients</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => setActiveTab('subscription')}
+                className="w-full py-5 bg-brand-blue text-white rounded-full font-black text-lg shadow-xl shadow-brand-blue/20 hover:scale-105 transition-all flex items-center justify-center gap-3"
+              >
+                Choose Your Plan <ArrowRight size={20} />
+              </button>
+           </div>
+        </div>
+      );
+    }
     return (
       <AnimatePresence mode="wait">
         <motion.div
@@ -288,7 +332,7 @@ const App: React.FC = () => {
               case 'management':
                 return <AdminPanel />;
               case 'subscription':
-                return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} />;
+                return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} user={user!} />;
               case 'settings':
                 return (
                   <Settings 
@@ -327,6 +371,14 @@ const App: React.FC = () => {
       />
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 bg-white border-b border-[#eaebed] flex items-center justify-between px-8 shrink-0 z-20">
+          {trialDays > 0 && trialDays <= 10 && user?.subscriptionPlan !== 'premium' && (
+            <div className="absolute top-16 left-0 right-0 bg-brand-dark text-white py-1 px-8 flex items-center justify-between z-30 animate-in slide-in-from-top duration-500">
+               <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                 <Zap size={10} className="text-amber-400" /> Trial ends in {trialDays} days. Upgrade now to keep your AI features.
+               </p>
+               <button onClick={() => setActiveTab('subscription')} className="text-[10px] font-black underline uppercase tracking-widest decoration-amber-400">Upgrade</button>
+            </div>
+          )}
           <div className="flex items-center gap-6 flex-1">
              <div className="md:hidden">
                <Logo size="sm" showText={false} />

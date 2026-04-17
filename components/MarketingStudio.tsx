@@ -84,8 +84,29 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
            </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-right-4">
-           <div className="space-y-6">
+        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             {[
+               { label: 'Potential Reached', value: '12,482', icon: Megaphone, color: 'text-brand-blue' },
+               { label: 'Infinite AI Potential', value: 'Unlimited', icon: Zap, color: 'text-amber-500' },
+               { label: 'Campaign Conversion', value: '+12.4%', icon: Sparkles, color: 'text-emerald-500' }
+             ].map((stat, i) => (
+               <div key={i} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center gap-4">
+                     <div className={`p-3 bg-slate-50 rounded-2xl ${stat.color}`}>
+                        <stat.icon size={20} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                        <p className="text-xl font-black text-brand-dark">{stat.value}</p>
+                     </div>
+                  </div>
+               </div>
+             ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
               <div className="bg-white border border-slate-200 rounded-xl p-8 space-y-6">
                  <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Ad Narrative</label>
@@ -178,37 +199,38 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
                     {isGenerating ? 'Generating...' : 'Generate Creative'}
                  </button>
               </div>
-           </div>
-           
-           <div className="bg-slate-100 rounded-xl flex items-center justify-center p-12 border-2 border-dashed border-slate-200 overflow-hidden relative min-h-[400px]">
-              {result ? (
-                <div className="w-full h-full flex flex-col gap-4 animate-in zoom-in-95 duration-500">
-                  {result.image && (
-                    <img src={result.image} alt="AI Generated" className="w-full h-auto rounded-lg shadow-xl" referrerPolicy="no-referrer" />
-                  )}
-                  {result.video && (
-                    <video src={result.video} controls className="w-full h-auto rounded-lg shadow-xl" />
-                  )}
-                  <div className="bg-white p-4 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-600 font-medium italic">"{result.caption}"</p>
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(result.caption || '');
-                      }}
-                      className="mt-3 flex items-center gap-2 text-[10px] font-black text-brand-blue uppercase tracking-widest"
-                    >
-                      <Copy size={12} /> Copy Caption
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center space-y-2 text-slate-400">
-                   <ImageIcon size={48} className="mx-auto opacity-20" />
-                   <p className="text-sm font-bold">Creative Preview Area</p>
-                   <p className="text-[10px] uppercase tracking-widest">{isGenerating ? 'Gemini is creating your masterpiece...' : 'Enter a prompt to start'}</p>
-                </div>
-              )}
-           </div>
+            </div>
+            
+            <div className="bg-slate-100 rounded-xl flex items-center justify-center p-12 border-2 border-dashed border-slate-200 overflow-hidden relative min-h-[400px]">
+               {result ? (
+                 <div className="w-full h-full flex flex-col gap-4 animate-in zoom-in-95 duration-500">
+                   {result.image && (
+                     <img src={result.image} alt="AI Generated" className="w-full h-auto rounded-lg shadow-xl" referrerPolicy="no-referrer" />
+                   )}
+                   {result.video && (
+                     <video src={result.video} controls className="w-full h-auto rounded-lg shadow-xl" />
+                   )}
+                   <div className="bg-white p-4 rounded-xl border border-slate-200">
+                     <p className="text-xs text-slate-600 font-medium italic">"{result.caption}"</p>
+                     <button 
+                       onClick={() => {
+                         navigator.clipboard.writeText(result.caption || '');
+                       }}
+                       className="mt-3 flex items-center gap-2 text-[10px] font-black text-brand-blue uppercase tracking-widest"
+                     >
+                       <Copy size={12} /> Copy Caption
+                     </button>
+                   </div>
+                 </div>
+               ) : (
+                 <div className="text-center space-y-2 text-slate-400">
+                    <ImageIcon size={48} className="mx-auto opacity-20" />
+                    <p className="text-sm font-bold">Creative Preview Area</p>
+                    <p className="text-[10px] uppercase tracking-widest">{isGenerating ? 'Gemini is creating your masterpiece...' : 'Enter a prompt to start'}</p>
+                 </div>
+               )}
+            </div>
+          </div>
         </div>
       )}
     </div>

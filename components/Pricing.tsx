@@ -2,13 +2,15 @@
 import React, { useState } from 'react';
 import { Check, Shield, Rocket, Sparkles, Star, Loader2, Crown, Zap, Lock, ShieldCheck, CreditCard, ArrowRight, SmartphoneNfc, FileText, Globe } from 'lucide-react';
 import { paymentService } from '../services/paymentService';
+import { User } from '../types';
 
 interface PricingProps {
   currentPlan: 'basic' | 'premium';
   onPlanChange: (plan: 'basic' | 'premium') => void;
+  user: User;
 }
 
-const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
+const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState<{plan: string, price: number, name: string} | null>(null);
@@ -22,19 +24,26 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
     if (!showCheckout) return;
     setIsProcessing(showCheckout.plan);
     
-    const isFreeMode = import.meta.env.VITE_FREE_MODE === 'true';
+  const isFreeMode = true; // "all free for now"
     
     if (!isFreeMode) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const totalAmount = showCheckout.price * (billingCycle === 'annual' ? 12 : 1);
-      
-      await paymentService.processIncomingPayment(
-        totalAmount, 
-        `Standard Subscription: ${showCheckout.name}`
-      );
+      try {
+        const { url } = await paymentService.createSubscriptionCheckout({
+          plan: showCheckout.plan,
+          userId: user.id,
+          email: user.email,
+          successUrl: `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/#subscription`
+        });
+        window.location.href = url;
+      } catch (err: any) {
+        alert("Payment integration error: " + err.message);
+        setIsProcessing(null);
+      }
+      return;
     }
     
+    await new Promise(resolve => setTimeout(resolve, 1000));
     onPlanChange(showCheckout.plan as 'basic' | 'premium');
     setShowCheckout(null);
     setIsProcessing(null);
@@ -45,7 +54,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
   const monthlyElite = 30;
   const annualElite = 25;
 
-  const isFreeMode = import.meta.env.VITE_FREE_MODE === 'true';
+  const isFreeMode = true; // "all free for now"
 
   const plans = [
     {
@@ -92,10 +101,10 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange }) => {
           <Sparkles size={12} className="animate-pulse" /> Global Scheduling Power
         </div>
         <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">
-          Simple plans. <span className="text-brand-blue">Powerful results.</span>
+          Free for <span className="text-brand-blue">Early Adopters.</span>
         </h2>
         <p className="text-slate-500 max-w-2xl mx-auto font-medium text-xl leading-relaxed">
-          Join thousands of professionals who save time with our automated scheduling platform.
+          We're finalizing our payment gateways. Enjoy full access to all features for free during our early access phase.
         </p>
 
         <div className="flex flex-col items-center gap-6 pt-8">

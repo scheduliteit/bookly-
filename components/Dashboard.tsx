@@ -5,6 +5,7 @@ import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, C
 import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
+import ViralHypePanel from './ViralHypePanel';
 
 interface DashboardProps {
   user: User;
@@ -22,15 +23,18 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView, onAddEventType, setActiveTab }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [aiInsight, setAiInsight] = useState("Analyzing your session velocity...");
+  const [aiInsight, setAiInsight] = useState("Analyzing your business performance...");
+  const [isAdviceLoading, setIsAdviceLoading] = useState(false);
   const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
   const t = translations[lang];
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
 
   useEffect(() => {
     const fetchAi = async () => {
-      const res = await geminiAssistant.getSummary(appointments);
+      setIsAdviceLoading(true);
+      const res = await geminiAssistant.getStrategicGrowthAdvice(appointments);
       setAiInsight(res);
+      setIsAdviceLoading(false);
     };
     if (appointments.length > 0) fetchAi();
   }, [appointments]);
@@ -83,6 +87,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
           </button>
         </div>
       </motion.div>
+
+      {/* VIRAL HYPE PANEL - The Free Revolution */}
+      <ViralHypePanel onExplore={() => setActiveTab?.('ai-assistant')} />
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -163,9 +170,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
          </div>
          <div className="flex-1 text-center md:text-left">
             <h4 className="text-xs font-black text-white/60 flex items-center justify-center md:justify-start gap-2 uppercase tracking-[0.2em] mb-2">
-               Gemini Strategic Insight <span className="bg-emerald-400 text-brand-dark text-[8px] px-2 py-0.5 rounded-full font-black">AI ACTIVE</span>
+               Strategic Growth Advice <span className="bg-emerald-400 text-brand-dark text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">AI Analysis Complete</span>
             </h4>
-            <p className="text-xl text-white font-medium leading-relaxed italic">"{aiInsight}"</p>
+            <p className={`text-xl text-white font-medium leading-relaxed italic ${isAdviceLoading ? 'animate-pulse opacity-50' : ''}`}>
+              "{isAdviceLoading ? 'Consulting the Gemini strategic core...' : aiInsight}"
+            </p>
          </div>
          <button onClick={() => setActiveTab?.('ai-assistant')} className="px-6 py-3 bg-white text-brand-blue rounded-full font-black text-sm hover:bg-brand-dark hover:text-white transition-all shrink-0">
            Full Analysis

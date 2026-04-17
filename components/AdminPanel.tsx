@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Users, CreditCard, Activity, ShieldCheck, Database, Globe, 
+  Users, CreditCard, Activity, ShieldCheck, Database, Globe, Calendar,
   ArrowUpRight, ArrowDownRight, Search, Filter, MoreHorizontal,
   Server, Cpu, HardDrive, Terminal, Zap, LayoutGrid, List,
   Settings, Bell, AlertTriangle, RefreshCw, CheckCircle2,
@@ -22,28 +22,28 @@ const AdminPanel: React.FC = () => {
 
   // Mock Data for Charts
   const revenueData = [
-    { name: 'Mon', value: 3200 },
-    { name: 'Tue', value: 4100 },
-    { name: 'Wed', value: 3800 },
-    { name: 'Thu', value: 5400 },
-    { name: 'Fri', value: 4900 },
-    { name: 'Sat', value: 6200 },
-    { name: 'Sun', value: 5800 },
+    { name: 'Mon', value: 32 },
+    { name: 'Tue', value: 41 },
+    { name: 'Wed', value: 38 },
+    { name: 'Thu', value: 54 },
+    { name: 'Fri', value: 49 },
+    { name: 'Sat', value: 62 },
+    { name: 'Sun', value: 58 },
   ];
 
   const platformStats = [
     { label: 'Total Businesses', value: '1,284', change: '+12%', icon: Users, color: 'text-brand-blue', bg: 'bg-brand-blue/10' },
-    { label: 'Monthly Revenue', value: '$42,500', change: '+8%', icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Platform Bookings', value: '842', change: '+24%', icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Platform Load', value: '14.2%', change: '-2%', icon: Cpu, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { label: 'System Uptime', value: '99.99%', change: 'Stable', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
   const recentUsers = [
-    { id: '1', name: 'Dr. Sarah Smith', email: 'sarah@dental.com', business: 'Elite Dental Care', plan: 'Premium', status: 'Active', joined: '2 hours ago', storage: '1.2GB' },
-    { id: '2', name: 'John Miller', email: 'john@training.com', business: 'Miller Personal Training', plan: 'Basic', status: 'Active', joined: '5 hours ago', storage: '400MB' },
-    { id: '3', name: 'Aria Chen', email: 'aria@yoga.com', business: 'Zen Yoga Studio', plan: 'Premium', status: 'Active', joined: '1 day ago', storage: '800MB' },
-    { id: '4', name: 'Marcus Brown', email: 'marcus@legal.com', business: 'Brown & Co Legal', plan: 'Basic', status: 'Pending', joined: '2 days ago', storage: '120MB' },
-    { id: '5', name: 'Sofia Rodriguez', email: 'sofia@photo.com', business: 'Luz Photography', plan: 'Premium', status: 'Active', joined: '3 days ago', storage: '2.5GB' },
+    { id: '1', name: 'Dr. Sarah Smith', email: 'sarah@dental.com', business: 'Elite Dental Care', plan: 'Free Early Access', status: 'Active', joined: '2 hours ago', storage: '1.2GB' },
+    { id: '2', name: 'John Miller', email: 'john@training.com', business: 'Miller Personal Training', plan: 'Free Early Access', status: 'Active', joined: '5 hours ago', storage: '400MB' },
+    { id: '3', name: 'Aria Chen', email: 'aria@yoga.com', business: 'Zen Yoga Studio', plan: 'Free Early Access', status: 'Active', joined: '1 day ago', storage: '800MB' },
+    { id: '4', name: 'Marcus Brown', email: 'marcus@legal.com', business: 'Brown & Co Legal', plan: 'Free Early Access', status: 'Pending', joined: '2 days ago', storage: '120MB' },
+    { id: '5', name: 'Sofia Rodriguez', email: 'sofia@photo.com', business: 'Luz Photography', plan: 'Free Early Access', status: 'Active', joined: '3 days ago', storage: '2.5GB' },
   ];
 
   const renderOverview = () => (
@@ -80,8 +80,8 @@ const AdminPanel: React.FC = () => {
         <div className="lg:col-span-2 bg-white border border-slate-100 rounded-[32px] p-8 shadow-sm">
            <div className="flex items-center justify-between mb-8">
               <div>
-                 <h3 className="text-xl font-black text-brand-dark">Revenue Growth</h3>
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Daily platform earnings across all accounts</p>
+                 <h3 className="text-xl font-black text-brand-dark">Booking Growth</h3>
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Daily platform activity across all accounts</p>
               </div>
               <div className="flex bg-slate-50 p-1 rounded-xl">
                  <button className="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white shadow-sm text-brand-blue">Week</button>
@@ -227,7 +227,7 @@ const AdminPanel: React.FC = () => {
                   </td>
                   <td className="px-8 py-6">
                      <div className="flex flex-col gap-1">
-                        <span className={`w-fit text-[10px] font-black px-2.5 py-1 rounded-full ${user.plan === 'Premium' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        <span className={`w-fit text-[10px] font-black px-2.5 py-1 rounded-full ${user.plan === 'Free Early Access' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                            {user.plan}
                         </span>
                         <p className="text-[9px] font-bold text-slate-400 uppercase ml-1">Joined {user.joined}</p>

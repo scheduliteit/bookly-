@@ -27,21 +27,37 @@ export class GeminiAssistant {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `You are a helpful assistant for ${businessName}. A client is looking at the "${serviceName}" service and asks: "${question}". 
-        Answer professionally and concisely in 2 sentences. If you don't know specific details, invite them to book the session to discuss further.`,
+        contents: `You are the High-Performance Virtual Concierge for ${businessName}. A client is inquiring about the "${serviceName}" experience: "${question}". 
+        Answer with extreme professionalism, warmth, and a touch of luxury. Aim to make them feel heard and excited to book. 2-3 sentences.`,
       });
       return response.text;
     } catch (error) {
       console.error("Gemini Error:", error);
-      return "I'm here to help! Please feel free to book a session and we can discuss all your questions in detail.";
+      return "I'm here to ensure your experience is seamless. Please feel free to book a session and we can discuss all your questions in detail.";
+    }
+  }
+
+  async getStrategicGrowthAdvice(appointments: Appointment[]) {
+    try {
+      const ai = this.getAI();
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `You are a world-class SaaS Strategy Consultant. Analyze these appointments: ${JSON.stringify(appointments)}. 
+        Provide one "Proactive Strategy" for the business owner to increase revenue or efficiency this week. 
+        Focus on trends you see in the data (e.g., busiest days, popular services). 1 sentence.`,
+      });
+      return response.text;
+    } catch (error) {
+      return "Focus on high-value client retention this week.";
     }
   }
 
   async analyzeSchedule(appointments: Appointment[], clients: Client[], query: string) {
-    const context = `You are the EasyBookly Operations Core. 
+    const context = `You are the EasyBookly Strategic Operations Master. Your goal is business growth.
     Business Data Context: ${appointments.length} total bookings.
     Schedule Data: ${JSON.stringify(appointments)}.
-    Current Date: ${new Date().toISOString().split('T')[0]}.`;
+    Current Date: ${new Date().toISOString().split('T')[0]}.
+    When answering, don't just give facts—give proactive suggestions on how to improve the schedule.`;
 
     let latLng = { latitude: 32.0853, longitude: 34.7818 }; 
     try {
