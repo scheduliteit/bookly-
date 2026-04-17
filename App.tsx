@@ -267,7 +267,17 @@ const App: React.FC = () => {
               case 'dashboard':
                 return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} />;
               case 'calendar':
-                return <AppointmentCalendar appointments={appointments} onAddClick={() => setShowAddModal(true)} onUpdateAppointment={(a) => api.appointments.update(a)} onDeleteAppointment={(id) => api.appointments.delete(id)} connectedApps={connectedApps} currency={currency} />;
+                return (
+                  <AppointmentCalendar 
+                    appointments={appointments} 
+                    onAddClick={() => setShowAddModal(true)} 
+                    onUpdateAppointment={(a) => api.appointments.update(a)} 
+                    onDeleteAppointment={(id) => api.appointments.delete(id)} 
+                    onNavigate={setActiveTab}
+                    connectedApps={connectedApps} 
+                    currency={currency} 
+                  />
+                );
               case 'clients':
                 return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} onAddClient={() => setShowAddModal(true)} />;
               case 'marketing':

@@ -9,6 +9,7 @@ interface AppointmentCalendarProps {
   onAddClick: () => void;
   onUpdateAppointment?: (apt: Appointment) => void;
   onDeleteAppointment?: (id: string) => void;
+  onNavigate?: (tab: string) => void;
   connectedApps: string[];
   currency?: 'ILS' | 'USD' | 'EUR' | 'GBP';
 }
@@ -18,18 +19,19 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   onAddClick, 
   onUpdateAppointment, 
   onDeleteAppointment,
+  onNavigate,
   connectedApps,
   currency
 }) => {
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
+  const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
 
   const filterAppointments = () => {
     const now = new Date();
     return appointments.filter(apt => {
       const aptDate = new Date(`${apt.date}T${apt.time}`);
-      if (activeTab === 'upcoming') return aptDate >= now;
-      if (activeTab === 'past') return aptDate < now;
+      if (localActiveTab === 'upcoming') return aptDate >= now;
+      if (localActiveTab === 'past') return aptDate < now;
       return false;
     }).sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
   };
@@ -58,9 +60,9 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         {['upcoming', 'pending', 'past'].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab as any)}
+            onClick={() => setLocalActiveTab(tab as any)}
             className={`pb-4 px-1 text-sm font-bold capitalize transition-all border-b-2 ${
-              activeTab === tab ? 'border-brand-blue text-brand-dark' : 'border-transparent text-slate-400 hover:text-slate-600'
+              localActiveTab === tab ? 'border-brand-blue text-brand-dark' : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
           >
             {tab}
@@ -75,7 +77,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
               <CalendarIcon size={32} />
             </div>
-            <p className="text-slate-500 font-medium">No {activeTab} events scheduled.</p>
+            <p className="text-slate-500 font-medium">No {localActiveTab} events scheduled.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -127,7 +129,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
             <p className="text-xs text-slate-500">If you're not seeing times you expect, check your Working Hours and Calendar Sync settings.</p>
          </div>
           <button 
-            onClick={() => setActiveTab?.('ai-assistant')}
+            onClick={() => onNavigate?.('ai-assistant')}
             className="text-brand-blue text-xs font-bold hover:underline"
           >
             Troubleshoot

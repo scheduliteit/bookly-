@@ -106,6 +106,51 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
         ))}
       </div>
 
+      {/* Primary Share Link Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white border-2 border-brand-blue/10 rounded-[32px] p-8 md:p-10 flex flex-col md:flex-row items-center gap-10 shadow-xl shadow-brand-blue/5 border-dashed"
+      >
+        <div className="w-full md:w-auto flex flex-col items-center md:items-start text-center md:text-left">
+           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+             Live Booking Page
+           </div>
+           <h3 className="text-2xl font-black text-brand-dark tracking-tight mb-2">Your Personal Booking Link</h3>
+           <p className="text-slate-500 font-medium max-w-sm">Share this link with your clients so they can view your availability and book sessions instantly.</p>
+        </div>
+        
+        <div className="flex-1 w-full bg-slate-50 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 border border-slate-100">
+           <div className="flex-1 w-full relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                 <Globe size={18} />
+              </div>
+              <input 
+                readOnly
+                value={`${window.location.origin}/book/${user.id}`}
+                className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-slate-600 outline-none"
+              />
+           </div>
+           <div className="flex gap-3 w-full md:w-auto">
+              <button 
+                onClick={() => handleCopyLink('primary')}
+                className="flex-1 md:flex-none px-6 py-3 bg-brand-blue text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-brand-dark transition-all active:scale-95"
+              >
+                {copiedId === 'primary' ? <Check size={18} /> : <Copy size={18} />}
+                {copiedId === 'primary' ? 'COPIED' : 'COPY LINK'}
+              </button>
+              <button 
+                onClick={onOpenPublicView}
+                className="p-3 bg-white border border-slate-200 text-slate-400 rounded-xl hover:text-brand-blue hover:border-brand-blue transition-all"
+                title="View Page"
+              >
+                <ExternalLink size={18} />
+              </button>
+           </div>
+        </div>
+      </motion.div>
+
       {/* AI Intelligence Layer */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
