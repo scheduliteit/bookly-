@@ -26,7 +26,7 @@ export class GeminiAssistant {
     try {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: `You are a helpful assistant for ${businessName}. A client is looking at the "${serviceName}" service and asks: "${question}". 
         Answer professionally and concisely in 2 sentences. If you don't know specific details, invite them to book the session to discuss further.`,
       });
@@ -52,7 +52,7 @@ export class GeminiAssistant {
     try {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: [{ parts: [{ text: context }, { text: query }] }],
         config: {
           tools: [
@@ -89,7 +89,7 @@ export class GeminiAssistant {
     try {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-pro',
+        model: 'gemini-3.1-pro-preview',
         contents: `Analyze this appointment and generate a strategic briefing. 
         Client: ${appointment.clientName}
         Service: ${appointment.service}
@@ -108,7 +108,7 @@ export class GeminiAssistant {
     try {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: { parts: [{ text: `Draft a friendly, professional one-sentence appointment reminder for ${appointment.clientName} for their ${appointment.service} session at ${businessName} on ${appointment.date} at ${appointment.time}.` }] },
       });
       return response.text;
@@ -122,7 +122,7 @@ export class GeminiAssistant {
     try {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: `Summarize business performance for these appointments: ${JSON.stringify(appointments)}. 2 sentences max. Highlight if revenue is high.`,
       });
       return response.text;

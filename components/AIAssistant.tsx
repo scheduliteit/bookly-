@@ -125,7 +125,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
       const ai = new GoogleGenAI({ apiKey });
       
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-3.1-flash-live-preview',
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } },
@@ -139,7 +139,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
               const pcmBlob = createBlob(inputData);
               sessionPromise.then((session) => {
-                session.sendRealtimeInput({ media: pcmBlob });
+                session.sendRealtimeInput({ audio: pcmBlob });
               });
             };
             source.connect(scriptProcessor);

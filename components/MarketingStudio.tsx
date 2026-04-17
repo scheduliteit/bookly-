@@ -85,7 +85,6 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-right-4">
-           {/* Creative Studio Content (Simplified from previous version to fit 100% clone aesthetic) */}
            <div className="space-y-6">
               <div className="bg-white border border-slate-200 rounded-xl p-8 space-y-6">
                  <div className="space-y-2">
@@ -101,30 +100,87 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
                     <button onClick={() => setCreativeMode('image')} className={`flex-1 py-3 rounded-lg border text-sm font-bold transition-all ${creativeMode === 'image' ? 'border-brand-blue bg-brand-blue/5 text-brand-blue' : 'border-slate-200 text-slate-500'}`}>Image Ad</button>
                     <button onClick={() => setCreativeMode('video')} className={`flex-1 py-3 rounded-lg border text-sm font-bold transition-all ${creativeMode === 'video' ? 'border-brand-blue bg-brand-blue/5 text-brand-blue' : 'border-slate-200 text-slate-500'}`}>Video Promo</button>
                  </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Aspect Ratio</label>
+                    <div className="flex gap-4">
+                       <button onClick={() => setAspectRatio("1:1")} className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all ${aspectRatio === "1:1" ? "border-brand-blue bg-brand-blue/5 text-brand-blue" : "border-slate-200 text-slate-500"}`}>1:1 Square</button>
+                       <button onClick={() => setAspectRatio("9:16")} className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all ${aspectRatio === "9:16" ? "border-brand-blue bg-brand-blue/5 text-brand-blue" : "border-slate-200 text-slate-500"}`}>9:16 Stories</button>
+                    </div>
+                 </div>
                  <button 
-                   onClick={async () => {
-                     if (!prompt) return;
-                     setIsGenerating(true);
-                     setResult(null);
-                     // Mock generation delay
-                     await new Promise(r => setTimeout(r, 2000));
-                     setResult({
-                       image: creativeMode === 'image' ? `https://picsum.photos/seed/${prompt.length}/800/800` : undefined,
-                       video: creativeMode === 'video' ? 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4' : undefined,
-                       caption: `✨ Ready to transform your business? Book your next ${prompt.substring(0, 15)}... session with us today! Link in bio. #EasyBookly #Productivity`
-                     });
-                     setIsGenerating(false);
-                   }}
-                   disabled={isGenerating || !prompt}
-                   className="w-full py-4 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                 >
-                   {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                   {isGenerating ? 'Generating...' : 'Generate Creative'}
+                    onClick={async () => {
+                      if (!prompt || isGenerating) return;
+                      setIsGenerating(true);
+                      setResult(null);
+                      
+                      try {
+                        const hasSelectedKey = await (window as any).aistudio?.hasSelectedApiKey();
+                        if (!hasSelectedKey) {
+                          await (window as any).aistudio?.openSelectKey();
+                        }
+
+                        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+                        if (!apiKey || apiKey === '' || apiKey === 'undefined') {
+                           throw new Error("Missing API Key. Please select an API key from the top menu.");
+                        }
+                        
+                        const ai = new GoogleGenAI({ apiKey });
+                        
+                        if (creativeMode === 'image') {
+                          const genResponse = await ai.models.generateContent({
+                            model: 'gemini-2.5-flash-image',
+                            contents: [{ parts: [{ text: `Create a professional marketing image for: ${prompt}. Also provide a punchy social media caption.` }] }],
+                            config: {
+                              imageConfig: { aspectRatio: aspectRatio === "1:1" ? "1:1" : "9:16" }
+                            }
+                          });
+
+                          let imageBase64 = "";
+                          let caption = "";
+
+                          for (const part of genResponse.candidates?.[0]?.content?.parts || []) {
+                            if (part.inlineData) {
+                              imageBase64 = `data:image/png;base64,${part.inlineData.data}`;
+                            } else if (part.text) {
+                              caption += part.text;
+                            }
+                          }
+
+                          setResult({ 
+                            image: imageBase64 || `https://picsum.photos/seed/${prompt.length}/800/800`, 
+                            caption: caption.trim() || `✨ Transform your business! Book your session today.` 
+                          });
+                        } else {
+                          const captionResponse = await ai.models.generateContent({
+                            model: 'gemini-3-flash-preview',
+                            contents: [{ parts: [{ text: `Write a high-energy script and social media caption for a 15-second promo video about: ${prompt}` }] }]
+                          });
+
+                          setResult({
+                            video: 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4',
+                            caption: captionResponse.text
+                          });
+                        }
+                      } catch (error: any) {
+                        console.error("Creative Studio Error:", error);
+                        // Optional: trigger key selection if unauthorized
+                        if (error.message?.includes("404") || error.message?.includes("entity not found")) {
+                           await (window as any).aistudio?.openSelectKey();
+                        }
+                      } finally {
+                        setIsGenerating(false);
+                      }
+                    }}
+                    disabled={isGenerating || !prompt}
+                    className="w-full py-4 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                    {isGenerating ? 'Generating...' : 'Generate Creative'}
                  </button>
               </div>
            </div>
            
-           <div className="bg-slate-100 rounded-xl flex items-center justify-center p-12 border-2 border-dashed border-slate-200 overflow-hidden relative">
+           <div className="bg-slate-100 rounded-xl flex items-center justify-center p-12 border-2 border-dashed border-slate-200 overflow-hidden relative min-h-[400px]">
               {result ? (
                 <div className="w-full h-full flex flex-col gap-4 animate-in zoom-in-95 duration-500">
                   {result.image && (
@@ -138,7 +194,6 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(result.caption || '');
-                        alert('Caption copied!');
                       }}
                       className="mt-3 flex items-center gap-2 text-[10px] font-black text-brand-blue uppercase tracking-widest"
                     >
@@ -150,7 +205,7 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
                 <div className="text-center space-y-2 text-slate-400">
                    <ImageIcon size={48} className="mx-auto opacity-20" />
                    <p className="text-sm font-bold">Creative Preview Area</p>
-                   <p className="text-[10px] uppercase tracking-widest">Enter a prompt to start</p>
+                   <p className="text-[10px] uppercase tracking-widest">{isGenerating ? 'Gemini is creating your masterpiece...' : 'Enter a prompt to start'}</p>
                 </div>
               )}
            </div>

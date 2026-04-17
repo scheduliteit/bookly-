@@ -11,6 +11,7 @@ import Pricing from './components/Pricing';
 import PublicBookingPage from './components/PublicBookingPage';
 import Settings from './components/Settings';
 import ClientCRM from './components/ClientCRM';
+import AdminPanel from './components/AdminPanel';
 import AddAppointmentModal from './components/AddAppointmentModal';
 import Onboarding from './components/Onboarding';
 import Login from './components/Login';
@@ -284,6 +285,8 @@ const App: React.FC = () => {
                 return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
               case 'ai-assistant':
                 return <AIAssistant appointments={appointments} clients={clients} />;
+              case 'management':
+                return <AdminPanel />;
               case 'subscription':
                 return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} />;
               case 'settings':
@@ -316,6 +319,7 @@ const App: React.FC = () => {
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
+        user={user}
         subscriptionPlan={subscriptionPlan} 
         connectedApps={connectedApps}
         onLogout={handleLogout}

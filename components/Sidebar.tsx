@@ -1,18 +1,22 @@
 
 import React from 'react';
-import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus } from 'lucide-react';
+import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
+import { User } from '../types';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  user?: User | null;
   subscriptionPlan?: 'basic' | 'premium';
   connectedApps: string[];
   onLogout?: () => void;
   onAddClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, connectedApps, onAddClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick }) => {
+  const isAdmin = user?.email === 'scheduliteit@gmail.com';
+
   const menuItems = [
     { id: 'dashboard', label: 'Event Types', icon: LinkIcon },
     { id: 'calendar', label: 'Scheduled Events', icon: Calendar },
@@ -20,6 +24,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
     { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
     { id: 'clients', label: 'Contacts', icon: Users },
   ];
+
+  if (isAdmin) {
+    menuItems.push({ id: 'management', label: 'Management', icon: ShieldCheck });
+  }
 
   return (
     <div className="hidden md:flex w-64 bg-white border-r border-[#eaebed] h-full flex-col shrink-0 relative z-50">
@@ -94,8 +102,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, co
               {onLogout ? 'S' : 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-black text-brand-dark truncate">scheduliteit@gmail.com</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Premium Plan</p>
+              <p className="text-sm font-black text-brand-dark truncate">{user?.email || 'User Account'}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.subscriptionPlan === 'premium' ? 'Premium Plan' : 'Free Plan'}</p>
             </div>
           </div>
           <button 
