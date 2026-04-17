@@ -44,7 +44,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           <p className="text-sm text-slate-500">View and manage your meetings.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200">
+          <button 
+            onClick={() => alert('Exporting calendar data...')}
+            className="px-4 py-2 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200"
+          >
             Export
           </button>
         </div>
@@ -93,7 +96,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                 </div>
                 
                 <div className="flex items-center gap-4 mt-4 md:mt-0">
-                   <button className="px-4 py-2 border border-slate-200 rounded-full text-xs font-bold text-brand-blue hover:bg-brand-blue/5 transition-all">
+                   <button 
+                     onClick={() => alert(`Details for ${apt.clientName}: ${apt.service} at ${apt.time}`)}
+                     className="px-4 py-2 border border-slate-200 rounded-full text-xs font-bold text-brand-blue hover:bg-brand-blue/5 transition-all"
+                   >
                      Details
                    </button>
                    <div className="relative group/menu">
@@ -120,7 +126,12 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
             <p className="text-sm font-bold text-brand-dark">Troubleshooting Availability?</p>
             <p className="text-xs text-slate-500">If you're not seeing times you expect, check your Working Hours and Calendar Sync settings.</p>
          </div>
-         <button className="text-brand-blue text-xs font-bold hover:underline">Troubleshoot</button>
+          <button 
+            onClick={() => setActiveTab?.('ai-assistant')}
+            className="text-brand-blue text-xs font-bold hover:underline"
+          >
+            Troubleshoot
+          </button>
       </div>
     </div>
   );

@@ -183,7 +183,12 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
            </div>
         </div>
         <div className="flex gap-4">
-           <button className="px-6 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md">Add to Calendar</button>
+           <button 
+            onClick={() => alert('Download .ics file coming soon!')}
+            className="px-6 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md"
+           >
+            Add to Calendar
+           </button>
            <button 
             onClick={() => onBack ? onBack() : window.location.href = '/'} 
             className="px-6 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all"
@@ -445,11 +450,11 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                   </div>
                </div>
                
-               <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                    By confirming this booking, you agree to our <span className="text-brand-blue font-bold cursor-pointer">Terms of Service</span> and <span className="text-brand-blue font-bold cursor-pointer">Privacy Policy</span>. Your data is handled securely via EasyBookly.
-                  </p>
-               </div>
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                   <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                     By confirming this booking, you agree to our <span onClick={() => alert('Terms of Service')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Terms of Service</span> and <span onClick={() => alert('Privacy Policy')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Privacy Policy</span>. Your data is handled securely via EasyBookly.
+                   </p>
+                </div>
 
                <button 
                 onClick={handleBook}

@@ -249,7 +249,10 @@ const Settings: React.FC<SettingsProps> = ({
                  <p className="text-xs text-slate-500">Active Schedule: Global Standard</p>
                </div>
              </div>
-             <button className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50">
+             <button 
+               onClick={() => alert('Global schedule settings coming soon!')}
+               className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50"
+             >
                Edit
              </button>
           </div>
@@ -265,10 +268,18 @@ const Settings: React.FC<SettingsProps> = ({
                      {item.hours}
                   </div>
                   {item.active && (
-                    <div className="flex items-center gap-4">
-                       <Plus size={16} className="text-slate-400 cursor-pointer hover:text-brand-blue" />
-                       <Trash2 size={16} className="text-slate-400 cursor-pointer hover:text-rose-600" />
-                    </div>
+                     <div className="flex items-center gap-4">
+                        <Plus 
+                          size={16} 
+                          onClick={() => alert('Add hours segment')}
+                          className="text-slate-400 cursor-pointer hover:text-brand-blue" 
+                        />
+                        <Trash2 
+                          size={16} 
+                          onClick={() => alert('Remove hours segment')}
+                          className="text-slate-400 cursor-pointer hover:text-rose-600" 
+                        />
+                     </div>
                   )}
                </div>
              ))}
