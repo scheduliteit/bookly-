@@ -22,6 +22,7 @@ export interface User {
   onboardingCompleted: boolean;
   connectedApps?: string[];
   subscriptionPlan?: 'basic' | 'premium';
+  role?: 'admin' | 'user';
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';

@@ -63,7 +63,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription'].includes(hash)) {
+      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription', 'management'].includes(hash)) {
         setActiveTab(hash);
       }
     };
@@ -344,6 +344,14 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-6">
+            {(user?.email === 'scheduliteit@gmail.com' || user?.role === 'admin') && (
+              <button 
+                onClick={() => setActiveTab('management')}
+                className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-brand-dark text-white rounded-lg text-xs font-bold hover:shadow-md transition-all animate-pulse"
+              >
+                <ShieldCheck size={14} /> Master Admin
+              </button>
+            )}
             <div 
               onClick={() => setActiveTab('ai-assistant')}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 cursor-pointer transition-colors"

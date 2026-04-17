@@ -15,7 +15,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick }) => {
-  const isAdmin = user?.email === 'scheduliteit@gmail.com';
+  const isAdmin = user?.email === 'scheduliteit@gmail.com' || user?.role === 'admin';
 
   const menuItems = [
     { id: 'dashboard', label: 'Event Types', icon: LinkIcon },
