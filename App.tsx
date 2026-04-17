@@ -13,6 +13,7 @@ import Settings from './components/Settings';
 import ClientCRM from './components/ClientCRM';
 import AdminPanel from './components/AdminPanel';
 import AddAppointmentModal from './components/AddAppointmentModal';
+import MobileMenu from './components/MobileMenu';
 import Onboarding from './components/Onboarding';
 import Login from './components/Login';
 import Logo from './components/Logo';
@@ -20,7 +21,7 @@ import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
-import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight } from 'lucide-react';
+import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
@@ -380,7 +382,13 @@ const App: React.FC = () => {
             </div>
           )}
           <div className="flex items-center gap-6 flex-1">
-             <div className="md:hidden">
+             <div className="md:hidden flex items-center gap-3">
+               <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="w-10 h-10 bg-brand-blue/5 text-brand-blue rounded-xl flex items-center justify-center active:scale-95 transition-all border border-brand-blue/10"
+               >
+                 <LayoutGrid size={20} strokeWidth={2.5} />
+               </button>
                <Logo size="sm" showText={false} />
              </div>
              <div className="relative w-full max-w-sm hidden md:block">
@@ -442,6 +450,16 @@ const App: React.FC = () => {
 
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </main>
+
+      <MobileMenu 
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        onLogout={handleLogout}
+        onAddClick={() => setShowAddModal(true)}
+      />
 
       {showAddModal && user && (
         <AddAppointmentModal 

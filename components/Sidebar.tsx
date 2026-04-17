@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { motion } from 'motion/react';
 import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
@@ -35,19 +36,33 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
         <Logo size="md" className="cursor-pointer" onClick={() => setActiveTab('dashboard')} />
       </div>
       
-      <nav className="flex-1 px-4 pt-8 space-y-1">
-        <div className="pb-4">
+      <motion.nav 
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
+        className="flex-1 px-4 pt-8 space-y-1"
+      >
+        <motion.div variants={{ hidden: { y: -20, opacity: 0 }, visible: { y: 0, opacity: 1 } }} className="pb-4">
            <button 
              onClick={onAddClick}
              className="w-full flex items-center gap-3 px-4 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md hover:bg-blue-700 transition-all mb-8"
            >
               <Plus size={18} strokeWidth={3} /> Create
            </button>
-        </div>
+        </motion.div>
 
         {menuItems.map((item) => (
-          <button
+          <motion.button
             key={item.id}
+            variants={{ hidden: { y: -20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
             onClick={() => setActiveTab(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm ${
               activeTab === item.id
@@ -57,12 +72,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
           >
             <item.icon size={18} strokeWidth={2.5} className={`${activeTab === item.id ? 'text-brand-blue' : 'text-slate-400'}`} />
             {item.label}
-          </button>
+          </motion.button>
         ))}
 
         {/* Early Access Info */}
         {!isAdmin && (
-          <div className="mt-6 px-4 py-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10 mx-1">
+          <motion.div variants={{ hidden: { y: -20, opacity: 0 }, visible: { y: 0, opacity: 1 } }} className="mt-6 px-4 py-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10 mx-1">
              <div className="flex items-center gap-2 mb-2">
                 <Sparkles size={12} className="text-brand-blue" />
                 <span className="text-[9px] font-black text-brand-blue uppercase tracking-widest">Early Access Active</span>
@@ -70,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
              <p className="text-[10px] font-bold text-slate-500 leading-tight italic">
                Enjoy global premium features free during our beta phase.
              </p>
-          </div>
+          </motion.div>
         )}
 
         {/* Global Sync Status */}
@@ -95,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
             </div>
           </div>
         )}
-      </nav>
+      </motion.nav>
 
       <div className="p-6 space-y-1 border-t border-slate-50">
         <button 
