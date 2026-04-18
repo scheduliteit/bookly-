@@ -43,6 +43,8 @@ const App: React.FC = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [showPricingGate, setShowPricingGate] = useState(false);
   const [authMode, setAuthMode] = useState<'register' | 'login'>('login');
+  const [registrationEmail, setRegistrationEmail] = useState<string | undefined>(undefined);
+  const [pendingPlan, setPendingPlan] = useState<'basic' | 'premium' | undefined>(undefined);
   const [isPublicView, setIsPublicView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
@@ -106,6 +108,14 @@ const App: React.FC = () => {
             setSubscriptionPlan(userData.subscriptionPlan);
           } else {
             console.log("New user detected, creating profile...");
+            
+            // Apply pending plan if it exists
+            const initialPlan = pendingPlan;
+            if (initialPlan) {
+              setSubscriptionPlan(initialPlan);
+              setPendingPlan(undefined);
+            }
+
             // New user
             const newUser: User = {
               id: firebaseUser.uid,
@@ -115,7 +125,8 @@ const App: React.FC = () => {
               businessCategory: 'Consulting',
               services: [],
               currency: 'USD',
-              createdAt: new Date().toISOString(), // Start trial now
+              subscriptionPlan: initialPlan,
+              createdAt: new Date().toISOString(),
               workingHours: {
                 monday: { start: '09:00', end: '17:00', active: true },
                 tuesday: { start: '09:00', end: '17:00', active: true },
@@ -158,14 +169,27 @@ const App: React.FC = () => {
     const checkPayment = async () => {
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session_id');
-      if (sessionId && user && !user.subscriptionPlan) {
+      
+      if (sessionId) {
         setIsVerifyingPayment(true);
         try {
           const res = await fetch(`/api/payments/verify-subscription?sessionId=${sessionId}`);
           const data = await res.json();
+          
           if (data.success) {
-            updateUserSettings({ subscriptionPlan: data.plan });
-            showToast("Subscription activated!", "success");
+            if (data.needsAccount) {
+              // Paid as guest, now prompt registration
+              setRegistrationEmail(data.email);
+              setPendingPlan(data.plan);
+              setAuthMode('register');
+              setShowPricingGate(false);
+              setShowLanding(false);
+              showToast("Payment verified! Please create your account to continue.", "success");
+            } else if (user && !user.subscriptionPlan) {
+              // Paid as logged in user
+              updateUserSettings({ subscriptionPlan: data.plan });
+              showToast("Subscription activated!", "success");
+            }
             // Clean URL
             window.history.replaceState({}, '', '/');
           }
@@ -177,7 +201,7 @@ const App: React.FC = () => {
       }
     };
     checkPayment();
-  }, [user?.id, user?.subscriptionPlan]);
+  }, [user?.id, user?.subscriptionPlan, pendingPlan]);
 
   useEffect(() => {
     if (user && user.onboardingCompleted) {
@@ -306,7 +330,7 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <Login key={authMode} onLogin={handleLogin} initialMode={authMode} />;
+    return <Login key={authMode} onLogin={handleLogin} initialMode={authMode} preFillEmail={registrationEmail} />;
   }
 
   // Force subscription plan selection before onboarding or dashboard

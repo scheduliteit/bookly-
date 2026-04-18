@@ -7,10 +7,11 @@ import Logo from './Logo';
 interface LoginProps {
   onLogin: (email: string, uid: string, displayName: string | null) => void;
   initialMode?: 'register' | 'login';
+  preFillEmail?: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login' }) => {
-  const [email, setEmail] = useState('');
+const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEmail }) => {
+  const [email, setEmail] = useState(preFillEmail || '');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
   const [isLoading, setIsLoading] = useState(false);

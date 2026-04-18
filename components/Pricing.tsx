@@ -28,33 +28,24 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
   };
 
   const handleFinalizePayment = async () => {
-    if (!showCheckout || !user) return;
+    if (!showCheckout) return;
     setIsProcessing(showCheckout.plan);
     
-  const isFreeMode = false; // "Now requiring payments"
-    
-    if (!isFreeMode) {
-      try {
-        const { url } = await paymentService.createSubscriptionCheckout({
-          plan: showCheckout.plan,
-          billingCycle: billingCycle,
-          userId: user.id,
-          email: user.email,
-          successUrl: `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/#subscription`
-        });
-        window.location.href = url;
-      } catch (err: any) {
-        alert("Payment integration error: " + err.message);
-        setIsProcessing(null);
-      }
-      return;
+    // Stripe handle
+    try {
+      const { url } = await paymentService.createSubscriptionCheckout({
+        plan: showCheckout.plan,
+        billingCycle: billingCycle,
+        userId: user?.id,
+        email: user?.email,
+        successUrl: `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/#subscription`
+      });
+      window.location.href = url;
+    } catch (err: any) {
+      alert("Payment integration error: " + err.message);
+      setIsProcessing(null);
     }
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    onPlanChange(showCheckout.plan as 'basic' | 'premium');
-    setShowCheckout(null);
-    setIsProcessing(null);
   };
 
   const monthlyStarter = 13;

@@ -56,7 +56,7 @@ export const paymentService = {
     return res.json();
   },
 
-  async createSubscriptionCheckout(data: { plan: string, billingCycle: 'monthly' | 'annual', userId: string, email: string, successUrl: string, cancelUrl: string }): Promise<{ url: string }> {
+  async createSubscriptionCheckout(data: { plan: string, billingCycle: 'monthly' | 'annual', userId?: string, email?: string, successUrl: string, cancelUrl: string }): Promise<{ url: string }> {
     const res = await fetch('/api/payments/create-subscription-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

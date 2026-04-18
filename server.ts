@@ -418,11 +418,11 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
         quantity: 1,
       }],
       mode: 'subscription',
-      customer_email: email,
-      client_reference_id: userId,
+      customer_email: email || undefined,
+      client_reference_id: userId || undefined,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { userId, plan }
+      metadata: { userId: userId || '', plan }
     });
     
     res.json({ id: session.id, url: session.url });
@@ -504,12 +504,22 @@ app.get('/api/payments/verify-subscription', async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId as string);
     if (session.payment_status === 'paid') {
       const { userId, plan } = session.metadata || {};
+      const customerEmail = session.customer_details?.email;
+
       if (userId && plan) {
         await updateDoc(doc(db, 'users', userId), { 
           subscriptionPlan: plan,
           updatedAt: new Date().toISOString()
         });
         return res.json({ success: true, plan });
+      } else if (plan && customerEmail) {
+        // Guest checkout success
+        return res.json({ 
+          success: true, 
+          plan, 
+          email: customerEmail, 
+          needsAccount: true 
+        });
       }
     }
     res.json({ success: false });
