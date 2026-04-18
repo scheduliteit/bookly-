@@ -10,11 +10,13 @@ import MarketingStudio from './components/MarketingStudio';
 import Pricing from './components/Pricing';
 import PublicBookingPage from './components/PublicBookingPage';
 import Settings from './components/Settings';
+import Earnings from './components/Earnings';
 import ClientCRM from './components/ClientCRM';
 import AdminPanel from './components/AdminPanel';
 import AddAppointmentModal from './components/AddAppointmentModal';
 import MobileMenu from './components/MobileMenu';
 import Onboarding from './components/Onboarding';
+import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Logo from './components/Logo';
 import { Appointment, Client, User, Service } from './types';
@@ -38,6 +40,7 @@ const App: React.FC = () => {
   const [isPublicRoute] = useState(() => !!publicUserId);
   const [user, setUser] = useState<User | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
   const [isPublicView, setIsPublicView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
@@ -247,6 +250,10 @@ const App: React.FC = () => {
     );
   }
 
+  if (showLanding && !user) {
+    return <LandingPage onStart={() => setShowLanding(false)} onLogin={() => setShowLanding(false)} />;
+  }
+
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
@@ -333,6 +340,8 @@ const App: React.FC = () => {
                 return <AIAssistant appointments={appointments} clients={clients} />;
               case 'management':
                 return <AdminPanel />;
+              case 'earnings':
+                return <Earnings appointments={appointments} currency={currency} businessName={businessName} />;
               case 'subscription':
                 return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} user={user!} />;
               case 'settings':

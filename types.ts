@@ -1,4 +1,6 @@
 
+export type Currency = 'ILS' | 'USD' | 'EUR' | 'GBP';
+
 export interface User {
   id: string;
   email: string;
@@ -6,7 +8,7 @@ export interface User {
   businessName: string;
   businessCategory?: string;
   services: Service[];
-  currency: 'ILS' | 'USD' | 'EUR' | 'GBP';
+  currency: Currency;
   workingHours: {
     [key: string]: {
       start: string;

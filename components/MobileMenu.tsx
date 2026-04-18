@@ -3,7 +3,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Calendar, Users, Settings, Sparkles, Zap, 
-  Link as LinkIcon, LogOut, Plus, ShieldCheck, X 
+  Link as LinkIcon, LogOut, Plus, ShieldCheck, X, CreditCard, Activity
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -24,9 +24,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
 
   const menuItems = [
     { id: 'dashboard', label: 'Event Types', icon: LinkIcon },
+    { id: 'earnings', label: 'Earnings', icon: Activity },
     { id: 'calendar', label: 'Scheduled Events', icon: Calendar },
     { id: 'marketing', label: 'Workflows', icon: Zap },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
+    { id: 'subscription', label: 'Billing & Plan', icon: CreditCard },
     { id: 'clients', label: 'Contacts', icon: Users },
   ];
 
