@@ -267,7 +267,7 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} initialMode={authMode} />;
+    return <Login key={authMode} onLogin={handleLogin} initialMode={authMode} />;
   }
 
   if (!user?.onboardingCompleted && user) {
