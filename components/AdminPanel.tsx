@@ -13,12 +13,19 @@ import {
   BarChart, Bar, Cell
 } from 'recharts';
 
+import { paymentService, MerchantStats } from '../services/paymentService';
+
 type AdminTab = 'overview' | 'users' | 'system' | 'settings';
 
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [merchantState, setMerchantState] = React.useState<MerchantStats | null>(null);
+
+  React.useEffect(() => {
+    paymentService.getMerchantStats().then(setMerchantState);
+  }, []);
 
   // Mock Data for Charts
   const revenueData = [
@@ -142,17 +149,27 @@ const AdminPanel: React.FC = () => {
               
               <div className="space-y-6 flex-1">
                  {[
-                   { label: 'API Latency', value: '42ms', icon: Zap },
-                   { label: 'DB Connections', value: '1,492', icon: Database },
-                   { label: 'Success Rate', value: '99.98%', icon: CheckCircle2 },
-                   { label: 'Global Traffic', value: '8.4k req/s', icon: Globe },
+                   { label: 'API Latency', value: '42ms', icon: Zap, status: 'Healthy' },
+                   { label: 'DB Connections', value: '1,492', icon: Database, status: 'Healthy' },
+                   { label: 'Success Rate', value: '99.98%', icon: CheckCircle2, status: 'Healthy' },
+                   { 
+                     label: 'Payment Gateway', 
+                     value: merchantState?.isGatewayConnected ? (merchantState.clearerName || 'Connected') : 'Disconnected', 
+                     icon: CreditCard,
+                     status: merchantState?.isGatewayConnected ? 'Connected' : 'Action Required'
+                   },
                  ].map((item, i) => (
                    <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
                       <div className="flex items-center gap-3">
                          <div className="text-white/40"><item.icon size={18} /></div>
                          <span className="text-xs font-bold text-white/60 tracking-wider uppercase">{item.label}</span>
                       </div>
-                      <span className="text-sm font-black text-emerald-400">{item.value}</span>
+                      <div className="text-right">
+                         <p className={`text-sm font-black ${item.status === 'Connected' || item.status === 'Healthy' ? 'text-emerald-400' : 'text-rose-400'}`}>{item.value}</p>
+                         {item.label === 'Payment Gateway' && !merchantState?.isGatewayConnected && (
+                           <p className="text-[8px] font-bold text-rose-400/60 uppercase tracking-tighter mt-0.5 animate-pulse">Missing API Key</p>
+                         )}
+                      </div>
                    </div>
                  ))}
               </div>

@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                 <span className="text-[9px] font-black text-brand-blue uppercase tracking-widest">Early Access Active</span>
              </div>
              <p className="text-[10px] font-bold text-slate-500 leading-tight italic">
-               Enjoy global premium features free during our beta phase.
+               Enjoy global premium AI and Full White-labeling free during our beta phase. (Value: $11/mo)
              </p>
           </motion.div>
         )}

@@ -102,7 +102,7 @@ const ViralHypePanel: React.FC<ViralHypePanelProps> = ({ onExplore }) => {
                   </div>
                   <div className="space-y-3">
                     <ul className="space-y-1.5 mb-4">
-                      {['Infinite Gemini AI Intelligence', 'Unlimited Custom Event Types', 'Full Brand White-labeling'].map(f => (
+                      {['Infinite Gemini AI Intelligence', 'Unlimited Custom Event Types', 'Full Brand White-labeling (No Ads)'].map(f => (
                         <li key={f} className="text-[10px] font-bold text-white uppercase flex items-center gap-2">
                             <CheckCircle size={12} className="text-emerald-400" /> {f}
                         </li>

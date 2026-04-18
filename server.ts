@@ -288,7 +288,11 @@ let merchantStats = {
 };
 
 app.get('/api/payments/stats', (req, res) => {
-  res.json(merchantStats);
+  res.json({
+    ...merchantStats,
+    isGatewayConnected: !!(process.env.STRIPE_SECRET_KEY || process.env.PAYME_SELLER_KEY),
+    clearerName: process.env.PAYME_SELLER_KEY ? 'PayMe (Israel)' : (process.env.STRIPE_SECRET_KEY ? 'Stripe' : undefined)
+  });
 });
 
 app.post('/api/payments/connect', (req, res) => {
@@ -347,10 +351,10 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           seller_key: PAYME_SELLER_KEY,
-          amount: amount * 100, // PayMe expects cents/agorot
-          currency: currency === 'ILS' ? 'ILS' : 'USD',
+          amount: Math.round(amount * 100), // PayMe expects cents/agorot
+          currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
           product_name: serviceName,
-          sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback`,
+          sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback?appointmentId=${appointmentId}`,
           sale_return_url: successUrl,
           sale_cancel_url: cancelUrl,
           language: 'he', // Default to Hebrew for Israeli market
@@ -372,11 +376,15 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
 
 app.post('/api/payments/payme-callback', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const appointmentId = req.query.appointmentId as string;
   // PayMe sends a POST request when payment is completed
-  const { payme_sale_id, status, appointmentId } = req.body;
-  if (status === 'success' && appointmentId) {
+  const { payme_sale_id, status, payme_status } = req.body;
+  const isSuccess = status === 'success' || payme_status === 'success' || req.body.sale_status === 'success';
+
+  if (isSuccess && appointmentId) {
     try {
       await updateDoc(doc(db, 'appointments', appointmentId), { status: 'confirmed' });
+      console.log(`[SERVER] Appointment ${appointmentId} confirmed via PayMe callback`);
     } catch (error) {
       console.error('Failed to update appointment status after payment:', error);
     }
