@@ -135,7 +135,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login' }) => {
               {isRegistering ? 'Create your account' : 'Welcome back'}
             </h2>
             <p className="text-slate-500 font-medium">
-              {isRegistering ? 'Start your 14-day free trial today.' : 'Log in to manage your business.'}
+              {isRegistering ? 'Activate your professional business engine.' : 'Log in to manage your business.'}
             </p>
           </div>
 
@@ -210,7 +210,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login' }) => {
               onClick={() => setIsRegistering(!isRegistering)}
               className="text-brand-blue font-black hover:underline"
             >
-              {isRegistering ? 'Log in' : 'Create one for free'}
+              {isRegistering ? 'Log in' : 'Create account'}
             </button>
           </p>
 

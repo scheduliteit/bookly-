@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
+  const [showPricingGate, setShowPricingGate] = useState(false);
   const [authMode, setAuthMode] = useState<'register' | 'login'>('login');
   const [isPublicView, setIsPublicView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -102,7 +103,7 @@ const App: React.FC = () => {
             setConnectedApps(userData.connectedApps || []);
             setLegalData(userData.legalData || legalData);
             setCurrency(userData.currency || 'USD');
-            setSubscriptionPlan(userData.subscriptionPlan || 'basic');
+            setSubscriptionPlan(userData.subscriptionPlan);
           } else {
             console.log("New user detected, creating profile...");
             // New user
@@ -280,16 +281,28 @@ const App: React.FC = () => {
   if (showLanding && !user) {
     return (
       <LandingPage 
-        onStart={(mode) => { 
-          if (mode) setAuthMode(mode);
+        onStart={() => { 
+          setShowPricingGate(true);
           setShowLanding(false); 
         }} 
         onLogin={() => {
           setAuthMode('login');
+          setShowPricingGate(false);
           setShowLanding(false);
         }} 
       />
     );
+  }
+
+  if (!user && showPricingGate) {
+     return (
+       <Pricing 
+         user={null} 
+         currentPlan={undefined} 
+         onPlanChange={() => {}} 
+         onAuthRequired={() => setShowPricingGate(false)} 
+       />
+     );
   }
 
   if (!user) {

@@ -9,21 +9,26 @@ import { auth } from '../firebase';
 interface PricingProps {
   currentPlan: 'basic' | 'premium' | undefined;
   onPlanChange: (plan: 'basic' | 'premium') => void;
-  user: User;
+  user: User | null;
+  onAuthRequired?: () => void;
 }
 
-const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) => {
+const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAuthRequired }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState<{plan: string, price: number, name: string} | null>(null);
 
   const handleInitiateUpgrade = async (planId: 'basic' | 'premium', price: number, name: string) => {
     if (planId === currentPlan) return;
+    if (!user) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
     setShowCheckout({ plan: planId, price, name });
   };
 
   const handleFinalizePayment = async () => {
-    if (!showCheckout) return;
+    if (!showCheckout || !user) return;
     setIsProcessing(showCheckout.plan);
     
   const isFreeMode = false; // "Now requiring payments"
@@ -104,16 +109,27 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
         <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between border-b border-slate-100">
            <Logo size="md" />
            <div className="flex items-center gap-6">
-              <div className="hidden sm:block text-right">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Authenticated as</p>
-                 <p className="text-xs font-bold text-slate-600 truncate max-w-[150px]">{user.email}</p>
-              </div>
-              <button 
-                onClick={() => auth.signOut()}
-                className="px-6 py-2.5 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
-              >
-                Sign Out
-              </button>
+              {user && (
+                <div className="hidden sm:block text-right">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Authenticated as</p>
+                   <p className="text-xs font-bold text-slate-600 truncate max-w-[150px]">{user.email}</p>
+                </div>
+              )}
+              {user ? (
+                <button 
+                  onClick={() => auth.signOut()}
+                  className="px-6 py-2.5 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <button 
+                  onClick={onAuthRequired}
+                  className="px-6 py-2.5 bg-brand-blue text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-dark transition-all"
+                >
+                  Login
+                </button>
+              )}
            </div>
         </div>
       )}

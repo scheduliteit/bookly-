@@ -82,10 +82,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
               className="flex flex-col sm:flex-row items-center gap-6 pt-6"
             >
               <button 
-                onClick={() => onStart('register')}
+                onClick={() => onStart()}
                 className="w-full sm:w-auto px-12 py-6 bg-brand-blue text-white rounded-[32px] font-black text-xl shadow-2xl shadow-brand-blue/30 hover:bg-brand-dark transition-all transform hover:-translate-y-1 flex items-center justify-center gap-4"
               >
-                Launch Your Business <ArrowRight size={24} />
+                Access Your Dashboard <ArrowRight size={24} />
               </button>
               <button 
                 onClick={() => setShowMagic(true)}
@@ -195,10 +195,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                  ))}
               </div>
               <button 
-                onClick={() => onStart('register')}
+                onClick={() => onStart()}
                 className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
               >
-                Unlock AI Concierge
+                Secure Your Membership
               </button>
            </div>
            
@@ -273,7 +273,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                      </div>
                    ))}
                 </div>
-                <button onClick={() => onStart('register')} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">Start Building</button>
+                <button onClick={() => onStart()} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">Get Started</button>
              </div>
 
              {/* Pro */}
@@ -299,7 +299,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                      </div>
                    ))}
                 </div>
-                <button onClick={() => onStart('register')} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">Get Full Access</button>
+                <button onClick={() => onStart()} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">Upgrade Now</button>
              </div>
           </div>
         </div>
@@ -314,7 +314,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                Dont let another meeting slip through the cracks. Join the disruption and start booking sessions with global precision today.
             </p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-6 pt-10">
-               <button onClick={() => onStart('register')} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">Claim Your Desk</button>
+               <button onClick={() => onStart()} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">Begin Today</button>
             </div>
             
             <div className="pt-24 grid grid-cols-1 md:grid-cols-4 gap-10 text-left border-t border-white/5">
@@ -405,7 +405,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                    </div>
 
                    <div className="pt-8">
-                     <button onClick={() => { setShowMagic(false); onStart('register'); }} className="px-10 py-5 bg-brand-blue text-white rounded-full font-black uppercase tracking-widest text-sm shadow-xl shadow-brand-blue/20 hover:scale-105 transition-all">Start Your Free Era</button>
+                     <button onClick={() => { setShowMagic(false); onStart(); }} className="px-10 py-5 bg-brand-blue text-white rounded-full font-black uppercase tracking-widest text-sm shadow-xl shadow-brand-blue/20 hover:scale-105 transition-all">Start Your Pro Era</button>
                    </div>
                 </div>
 
