@@ -30,6 +30,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
       try {
         const { url } = await paymentService.createSubscriptionCheckout({
           plan: showCheckout.plan,
+          billingCycle: billingCycle,
           userId: user.id,
           email: user.email,
           successUrl: `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`,
@@ -49,10 +50,10 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
     setIsProcessing(null);
   };
 
-  const monthlyStarter = 11;
-  const annualStarter = 7.4; // $89 / 12
-  const monthlyElite = 22;
-  const annualElite = 14.9; // $179 / 12
+  const monthlyStarter = 13;
+  const annualStarter = 7.5; // $90 / 12
+  const monthlyElite = 25;
+  const annualElite = 15; // $180 / 12
 
   const isFreeMode = true; // "all free for now"
 
@@ -110,7 +111,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
         <div className="flex flex-col items-center gap-6 pt-8">
           <div className="flex items-center gap-5 p-1.5 bg-slate-100 rounded-[20px] border border-slate-200 w-fit shadow-inner">
             <button onClick={() => setBillingCycle('monthly')} className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all ${billingCycle === 'monthly' ? 'bg-white text-brand-blue shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Monthly</button>
-            <button onClick={() => setBillingCycle('annual')} className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'annual' ? 'bg-white text-brand-blue shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Annual <span className="bg-emerald-500 text-white text-[9px] px-2 py-0.5 rounded-full">Save 42%</span></button>
+            <button onClick={() => setBillingCycle('annual')} className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'annual' ? 'bg-white text-brand-blue shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Annual <span className="bg-emerald-500 text-white text-[9px] px-2 py-0.5 rounded-full">Save 45%</span></button>
           </div>
         </div>
       </div>
@@ -131,7 +132,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
                   <span className="text-6xl font-black text-slate-900 tracking-tighter">${plan.price}</span>
                   {isFreeMode && (
                     <span className="text-xl font-bold text-slate-300 line-through decoration-brand-blue/30 Decoration-2">
-                      ${billingCycle === 'annual' ? plan.id === 'basic' ? '89/yr' : '179/yr' : plan.id === 'basic' ? '11' : '22'}
+                      ${billingCycle === 'annual' ? plan.id === 'basic' ? '90/yr' : '180/yr' : plan.id === 'basic' ? '13' : '25'}
                     </span>
                   )}
                   <span className="text-slate-400 font-bold text-xl">/mo</span>

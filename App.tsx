@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
+  const [authMode, setAuthMode] = useState<'register' | 'login'>('login');
   const [isPublicView, setIsPublicView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
@@ -251,11 +252,22 @@ const App: React.FC = () => {
   }
 
   if (showLanding && !user) {
-    return <LandingPage onStart={() => setShowLanding(false)} onLogin={() => setShowLanding(false)} />;
+    return (
+      <LandingPage 
+        onStart={(mode) => { 
+          if (mode) setAuthMode(mode);
+          setShowLanding(false); 
+        }} 
+        onLogin={() => {
+          setAuthMode('login');
+          setShowLanding(false);
+        }} 
+      />
+    );
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} initialMode={authMode} />;
   }
 
   if (!user?.onboardingCompleted && user) {

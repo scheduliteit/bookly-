@@ -1,18 +1,26 @@
 
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, ShieldCheck, Sparkles, Globe, ArrowRight, Play, Check, 
-  Crown, Rocket, Star, Heart, Activity, DollarSign, Timer, CreditCard
+  Crown, Rocket, Star, Heart, Activity, DollarSign, Timer, CreditCard, X, Users
 } from 'lucide-react';
 import Logo from './Logo';
 
 interface LandingPageProps {
-  onStart: () => void;
+  onStart: (mode?: 'register' | 'login') => void;
   onLogin: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
+  const [showMagic, setShowMagic] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+
+  const monthlyStarter = 13;
+  const annualStarter = 7.5; // $90 / 12
+  const monthlyElite = 25;
+  const annualElite = 15; // $180 / 12
+
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-brand-blue/10 selection:text-brand-blue overflow-x-hidden">
       
@@ -27,7 +35,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
           </div>
           <div className="flex items-center gap-4">
             <button onClick={onLogin} className="hidden sm:block text-sm font-black text-slate-900 uppercase tracking-widest px-6 py-2 hover:bg-slate-50 rounded-full transition-all">Login</button>
-            <button onClick={onStart} className="px-8 py-3 bg-brand-blue text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all active:scale-95">Get Started</button>
+            <button onClick={() => onStart('register')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all active:scale-95">Get Started</button>
           </div>
         </div>
       </nav>
@@ -74,12 +82,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
               className="flex flex-col sm:flex-row items-center gap-6 pt-6"
             >
               <button 
-                onClick={onStart}
+                onClick={() => onStart('register')}
                 className="w-full sm:w-auto px-12 py-6 bg-brand-blue text-white rounded-[32px] font-black text-xl shadow-2xl shadow-brand-blue/30 hover:bg-brand-dark transition-all transform hover:-translate-y-1 flex items-center justify-center gap-4"
               >
                 Launch Your Business <ArrowRight size={24} />
               </button>
-              <button className="flex items-center gap-4 text-brand-dark font-black uppercase tracking-widest text-sm hover:scale-105 transition-all p-4">
+              <button 
+                onClick={() => setShowMagic(true)}
+                className="flex items-center gap-4 text-brand-dark font-black uppercase tracking-widest text-sm hover:scale-105 transition-all p-4"
+              >
                 <div className="w-14 h-14 bg-brand-dark rounded-full flex items-center justify-center text-white"><Play size={20} fill="currentColor" /></div>
                 Watch the Magic
               </button>
@@ -184,7 +195,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                  ))}
               </div>
               <button 
-                onClick={onStart}
+                onClick={() => onStart('register')}
                 className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
               >
                 Unlock AI Concierge
@@ -219,9 +230,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
       {/* Pricing / Value Deck */}
       <section id="pricing" className="py-32 px-6 bg-slate-50/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-24 max-w-3xl mx-auto space-y-6">
+          <div className="text-center mb-16 max-w-3xl mx-auto space-y-6">
               <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">Invest in your <span className="text-brand-blue underline decoration-slate-200">Scale.</span></h2>
               <p className="text-xl text-slate-500 font-medium">Simple, high-impact pricing. No hidden fees. No ad-based plans.</p>
+              
+              <div className="flex flex-col items-center gap-6 pt-8">
+                <div className="flex items-center gap-5 p-1.5 bg-white rounded-[20px] border border-slate-200 w-fit shadow-sm">
+                  <button 
+                    onClick={() => setBillingCycle('monthly')} 
+                    className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all ${billingCycle === 'monthly' ? 'bg-brand-blue text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Monthly
+                  </button>
+                  <button 
+                    onClick={() => setBillingCycle('annual')} 
+                    className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'annual' ? 'bg-brand-blue text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Annual <span className={`text-[10px] px-2 py-0.5 rounded-full ${billingCycle === 'annual' ? 'bg-white/20 text-white' : 'bg-emerald-500 text-white'}`}>Save 45%</span>
+                  </button>
+                </div>
+              </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto">
@@ -233,7 +261,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                   <h3 className="text-3xl font-black text-brand-dark">Essentials</h3>
                 </div>
                 <div className="flex items-baseline gap-2 mb-10">
-                  <span className="text-6xl font-black text-brand-dark tracking-tighter">$11</span>
+                  <span className="text-6xl font-black text-brand-dark tracking-tighter">
+                    ${billingCycle === 'annual' ? annualStarter : monthlyStarter}
+                  </span>
                   <span className="text-xl font-bold text-slate-400">/mo</span>
                 </div>
                 <div className="flex-1 space-y-6 mb-12">
@@ -243,7 +273,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                      </div>
                    ))}
                 </div>
-                <button onClick={onStart} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">Start Building</button>
+                <button onClick={() => onStart('register')} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">Start Building</button>
              </div>
 
              {/* Pro */}
@@ -257,7 +287,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                   <h3 className="text-3xl font-black text-white">Professional</h3>
                 </div>
                 <div className="flex items-baseline gap-2 mb-10">
-                  <span className="text-6xl font-black text-white tracking-tighter text-shadow-xl">$22</span>
+                  <span className="text-6xl font-black text-white tracking-tighter text-shadow-xl">
+                    ${billingCycle === 'annual' ? annualElite : monthlyElite}
+                  </span>
                   <span className="text-xl font-bold text-white/60">/mo</span>
                 </div>
                 <div className="flex-1 space-y-6 mb-12">
@@ -267,7 +299,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                      </div>
                    ))}
                 </div>
-                <button onClick={onStart} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">Get Full Access</button>
+                <button onClick={() => onStart('register')} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">Get Full Access</button>
              </div>
           </div>
         </div>
@@ -282,7 +314,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                Dont let another meeting slip through the cracks. Join the disruption and start booking sessions with global precision today.
             </p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-6 pt-10">
-               <button onClick={onStart} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">Claim Your Desk</button>
+               <button onClick={() => onStart('register')} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">Claim Your Desk</button>
             </div>
             
             <div className="pt-24 grid grid-cols-1 md:grid-cols-4 gap-10 text-left border-t border-white/5">
@@ -311,6 +343,82 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
             <p className="pt-20 text-[10px] font-black text-white/10 uppercase tracking-[0.5em]">© 2024 EasyBookly Global. All rights reserved.</p>
         </div>
       </section>
+
+      {/* Magic Modal */}
+      <AnimatePresence>
+        {showMagic && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10">
+             <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               onClick={() => setShowMagic(false)}
+               className="absolute inset-0 bg-brand-dark/90 backdrop-blur-2xl"
+             />
+             <motion.div 
+               initial={{ opacity: 0, scale: 0.9, y: 20 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.9, y: 20 }}
+               className="relative w-full max-w-5xl bg-slate-900 rounded-[40px] border border-white/10 shadow-3xl overflow-hidden aspect-video group"
+             >
+                {/* Close Button */}
+                <button 
+                  onClick={() => setShowMagic(false)}
+                  className="absolute top-8 right-8 z-50 w-12 h-12 bg-white/10 hover:bg-white text-white hover:text-brand-dark rounded-full flex items-center justify-center transition-all backdrop-blur-md"
+                >
+                  <X size={24} />
+                </button>
+
+                {/* Simulated AI Interface - "The Magic" */}
+                <div className="absolute inset-0 flex flex-col p-12 md:p-20 items-center justify-center text-center space-y-12">
+                   <div className="relative">
+                      <div className="absolute inset-0 bg-brand-blue blur-[100px] opacity-20 animate-pulse scale-150" />
+                      <div className="w-24 h-24 bg-brand-blue rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-brand-blue/30 relative z-10">
+                        <Sparkles size={48} />
+                      </div>
+                   </div>
+                   
+                   <div className="max-w-2xl space-y-6">
+                      <h3 className="text-4xl md:text-5xl font-black text-white leading-tight">Observe the <span className="text-brand-blue">Automation Engine.</span></h3>
+                      <p className="text-lg md:text-xl text-white/50 font-medium">EasyBookly isn't just a UI—it's a symphony of AI agents, payment hooks, and CRM logic working in perfect unison to make you money while you sleep.</p>
+                   </div>
+
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl">
+                      {[
+                        { label: 'AI Concierge', status: 'Processing...', icon: Sparkles },
+                        { label: 'PayMe Payout', status: 'Verified', icon: Zap },
+                        { label: 'CRM Sync', status: 'Success', icon: Users },
+                        { label: 'Calendar', status: 'Optimized', icon: Timer }
+                      ].map((item, i) => (
+                        <motion.div 
+                          key={i}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 + (i * 0.1) }}
+                          className="bg-white/5 border border-white/5 p-6 rounded-3xl text-left"
+                        >
+                           <item.icon size={20} className="text-brand-blue mb-4" />
+                           <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{item.label}</p>
+                           <p className="text-xs font-bold text-white mt-1">{item.status}</p>
+                        </motion.div>
+                      ))}
+                   </div>
+
+                   <div className="pt-8">
+                     <button onClick={() => { setShowMagic(false); onStart('register'); }} className="px-10 py-5 bg-brand-blue text-white rounded-full font-black uppercase tracking-widest text-sm shadow-xl shadow-brand-blue/20 hover:scale-105 transition-all">Start Your Free Era</button>
+                   </div>
+                </div>
+
+                {/* Abstract scanning line */}
+                <motion.div 
+                  animate={{ y: ['0%', '1000%'] }} 
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  className="absolute top-0 left-0 right-0 h-1 bg-brand-blue/20 blur-sm pointer-events-none" 
+                />
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

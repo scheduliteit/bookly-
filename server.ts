@@ -393,16 +393,19 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 });
 
 app.post('/api/payments/create-subscription-checkout', async (req, res) => {
-  const { plan, userId, email, successUrl, cancelUrl } = req.body;
+  const { plan, billingCycle, userId, email, successUrl, cancelUrl } = req.body;
   
   if (!stripe) {
     return res.status(400).json({ error: 'Stripe is not configured in environment.' });
   }
 
   try {
-    const priceId = plan === 'premium' 
-      ? process.env.STRIPE_PREMIUM_PRICE_ID 
-      : process.env.STRIPE_BASIC_PRICE_ID;
+    let priceId;
+    if (plan === 'premium') {
+      priceId = billingCycle === 'annual' ? process.env.STRIPE_PREMIUM_ANNUAL_PRICE_ID : process.env.STRIPE_PREMIUM_PRICE_ID;
+    } else {
+      priceId = billingCycle === 'annual' ? process.env.STRIPE_BASIC_ANNUAL_PRICE_ID : process.env.STRIPE_BASIC_PRICE_ID;
+    }
 
     if (!priceId) {
       throw new Error(`Price ID not found for plan: ${plan}. Please set it in .env.`);
