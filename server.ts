@@ -495,6 +495,30 @@ app.get('/api/payments/cancel', (req, res) => {
   `);
 });
 
+app.get('/api/payments/verify-subscription', async (req, res) => {
+  const { sessionId } = req.query;
+  if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId as string);
+    if (session.payment_status === 'paid') {
+      const { userId, plan } = session.metadata || {};
+      if (userId && plan) {
+        await updateDoc(doc(db, 'users', userId), { 
+          subscriptionPlan: plan,
+          updatedAt: new Date().toISOString()
+        });
+        return res.json({ success: true, plan });
+      }
+    }
+    res.json({ success: false });
+  } catch (error: any) {
+    console.error('Verify error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('[SERVER UNCAUGHT ERROR]', err);

@@ -53,10 +53,11 @@ const App: React.FC = () => {
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('ILS');
   const [businessName, setBusinessName] = useState('');
   const [businessCategory, setBusinessCategory] = useState('Consulting');
-  const [subscriptionPlan, setSubscriptionPlan] = useState<'basic' | 'premium'>('basic');
+  const [subscriptionPlan, setSubscriptionPlan] = useState<'basic' | 'premium' | undefined>(undefined);
   const [connectedApps, setConnectedApps] = useState<string[]>([]);
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [legalData, setLegalData] = useState({
@@ -153,6 +154,31 @@ const App: React.FC = () => {
 
   // Sync Data
   useEffect(() => {
+    const checkPayment = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+      if (sessionId && user && !user.subscriptionPlan) {
+        setIsVerifyingPayment(true);
+        try {
+          const res = await fetch(`/api/payments/verify-subscription?sessionId=${sessionId}`);
+          const data = await res.json();
+          if (data.success) {
+            updateUserSettings({ subscriptionPlan: data.plan });
+            showToast("Subscription activated!", "success");
+            // Clean URL
+            window.history.replaceState({}, '', '/');
+          }
+        } catch (err) {
+          console.error("Verification failed", err);
+        } finally {
+          setIsVerifyingPayment(false);
+        }
+      }
+    };
+    checkPayment();
+  }, [user?.id, user?.subscriptionPlan]);
+
+  useEffect(() => {
     if (user && user.onboardingCompleted) {
       const unsubApts = api.appointments.list(setAppointments);
       const unsubClients = api.clients.list(setClients);
@@ -216,7 +242,7 @@ const App: React.FC = () => {
   const trialDays = getTrialDaysRemaining();
   const isTrialExpired = false; // "all free for now"
 
-  if (isInitializing || !isAuthReady) {
+  if (isInitializing || !isAuthReady || isVerifyingPayment) {
     return (
       <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-6 p-6 text-center">
          <div className="animate-bounce mb-4">
@@ -268,6 +294,11 @@ const App: React.FC = () => {
 
   if (!user) {
     return <Login key={authMode} onLogin={handleLogin} initialMode={authMode} />;
+  }
+
+  // Force subscription plan selection before onboarding or dashboard
+  if (!user.subscriptionPlan) {
+    return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} user={user} />;
   }
 
   if (!user?.onboardingCompleted && user) {

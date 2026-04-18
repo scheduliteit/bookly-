@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { Check, Shield, Rocket, Sparkles, Star, Loader2, Crown, Zap, Lock, ShieldCheck, CreditCard, ArrowRight, SmartphoneNfc, FileText, Globe } from 'lucide-react';
 import { paymentService } from '../services/paymentService';
 import { User } from '../types';
+import Logo from './Logo';
+import { auth } from '../firebase';
 
 interface PricingProps {
-  currentPlan: 'basic' | 'premium';
+  currentPlan: 'basic' | 'premium' | undefined;
   onPlanChange: (plan: 'basic' | 'premium') => void;
   user: User;
 }
@@ -24,7 +26,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
     if (!showCheckout) return;
     setIsProcessing(showCheckout.plan);
     
-  const isFreeMode = true; // "all free for now"
+  const isFreeMode = false; // "Now requiring payments"
     
     if (!isFreeMode) {
       try {
@@ -55,7 +57,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
   const monthlyElite = 25;
   const annualElite = 15; // $180 / 12
 
-  const isFreeMode = true; // "all free for now"
+  const isFreeMode = false; // "Now requiring payments"
 
   const plans = [
     {
@@ -96,9 +98,36 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
   ];
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-6 animate-in fade-in duration-1000 pb-32">
-      <div className="text-center mb-20 space-y-6">
-        <div className="inline-flex items-center gap-2 px-5 py-2 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-brand-blue/10">
+    <div className="min-h-screen bg-[#fcfcfc] overflow-y-auto">
+      {/* Gate Header */}
+      {!currentPlan && (
+        <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between border-b border-slate-100">
+           <Logo size="md" />
+           <div className="flex items-center gap-6">
+              <div className="hidden sm:block text-right">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Authenticated as</p>
+                 <p className="text-xs font-bold text-slate-600 truncate max-w-[150px]">{user.email}</p>
+              </div>
+              <button 
+                onClick={() => auth.signOut()}
+                className="px-6 py-2.5 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+              >
+                Sign Out
+              </button>
+           </div>
+        </div>
+      )}
+
+      <div className="max-w-6xl mx-auto py-12 px-6 animate-in fade-in duration-1000 pb-32">
+        <div className="text-center mb-20 space-y-6">
+           {!currentPlan && (
+             <div className="mb-8 flex justify-center">
+                <div className="px-4 py-2 bg-amber-50 text-amber-600 rounded-full border border-amber-100 text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                   <Lock size={12} /> Membership Required to Access Dashboard
+                </div>
+             </div>
+           )}
+           <div className="inline-flex items-center gap-2 px-5 py-2 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-brand-blue/10">
           <Sparkles size={12} className="animate-pulse" /> Global Scheduling Power
         </div>
         <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">
@@ -212,6 +241,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user }) =>
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };
