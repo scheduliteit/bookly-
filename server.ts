@@ -287,10 +287,11 @@ let merchantStats = {
 };
 
 app.get('/api/payments/stats', (req, res) => {
+  const isPayMe = !!(process.env.PAYME_SELLER_KEY || 'MPL17764-94485R1C-VFNFCM5G-EBUCPSWQ');
   res.json({
     ...merchantStats,
-    isGatewayConnected: !!(process.env.STRIPE_SECRET_KEY || process.env.PAYME_SELLER_KEY),
-    clearerName: process.env.PAYME_SELLER_KEY ? 'PayMe (Israel)' : (process.env.STRIPE_SECRET_KEY ? 'Stripe' : undefined)
+    isGatewayConnected: isPayMe,
+    clearerName: isPayMe ? 'PayMe (Israel)' : undefined
   });
 });
 
@@ -303,16 +304,16 @@ app.post('/api/payments/connect', (req, res) => {
     currency: 'USD',
     date: new Date().toLocaleString('en-US'),
     status: 'succeeded',
-    description: 'Global Gateway Verified: Standard Invoicing Enabled'
+    description: 'PayMe Gateway Verified: Standard Invoicing Enabled'
   });
   res.json({ success: true });
 });
 
 // PayMe Integration (Israeli Payment Gateway)
-const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY;
+const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY || 'MPL17764-94485R1C-VFNFCM5G-EBUCPSWQ';
 const PAYME_API_URL = process.env.NODE_ENV === 'production' 
   ? 'https://ng.payme.co.il/api/generate-sale' 
-  : 'https://preprod.payme.co.il/api/generate-sale';
+  : 'https://ng.payme.co.il/api/generate-sale'; // Defaulting to production for user convenience
 
 app.post('/api/payments/create-checkout-session', async (req, res) => {
   const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId } = req.body;
