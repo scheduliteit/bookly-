@@ -315,7 +315,7 @@ const Settings: React.FC<SettingsProps> = ({
                    <div className="flex items-center gap-4">
                       <CreditCard className="text-slate-400" />
                       <div>
-                         <p className="text-sm font-bold text-brand-dark">Stripe Account Connected</p>
+                         <p className="text-sm font-bold text-brand-dark">{merchantStats.clearerName || 'PayMe (Israel)'} Connected</p>
                          <p className="text-xs text-slate-500">Direct payouts enabled</p>
                       </div>
                    </div>

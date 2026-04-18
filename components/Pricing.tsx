@@ -38,7 +38,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
         billingCycle: billingCycle,
         userId: user?.id,
         email: user?.email,
-        successUrl: `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`,
+        successUrl: `${window.location.origin}/`,
         cancelUrl: `${window.location.origin}/#subscription`
       });
       window.location.href = url;
@@ -203,7 +203,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
                   <div>
                     <h3 className="text-2xl font-black text-slate-900">Checkout</h3>
                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1 mt-1">
-                       <Globe size={10} /> Secure Global Payment
+                       <ShieldCheck size={10} /> Secure Israeli Payment
                     </p>
                   </div>
                   <button onClick={() => setShowCheckout(null)} className="p-2 hover:bg-slate-100 rounded-full">✕</button>
@@ -223,11 +223,11 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
                    <div className="grid grid-cols-2 gap-4">
                       <button className="flex flex-col items-center justify-center p-4 bg-brand-blue/5 border-2 border-brand-blue rounded-2xl gap-2">
                          <CreditCard size={24} className="text-brand-blue" />
-                         <span className="text-[10px] font-black uppercase text-brand-blue">Stripe / Card</span>
+                         <span className="text-[10px] font-black uppercase text-brand-blue">PayMe / Card</span>
                       </button>
                       <button className="flex flex-col items-center justify-center p-4 bg-slate-50 border-2 border-transparent rounded-2xl gap-2">
-                         <Globe size={24} className="text-slate-400" />
-                         <span className="text-[10px] font-black uppercase text-slate-400">PayPal</span>
+                         <Shield size={24} className="text-slate-400" />
+                         <span className="text-[10px] font-black uppercase text-slate-400">Secure Pin</span>
                       </button>
                    </div>
 

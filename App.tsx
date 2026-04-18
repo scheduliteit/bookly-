@@ -168,12 +168,14 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkPayment = async () => {
       const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get('session_id');
+      const paymeSaleId = params.get('payme_sale_id');
+      const status = params.get('status');
+      const paymeStatus = params.get('payme_status');
       
-      if (sessionId) {
+      if (paymeSaleId || status || paymeStatus) {
         setIsVerifyingPayment(true);
         try {
-          const res = await fetch(`/api/payments/verify-subscription?sessionId=${sessionId}`);
+          const res = await fetch(`/api/payments/verify-subscription${window.location.search}`);
           const data = await res.json();
           
           if (data.success) {

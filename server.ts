@@ -7,7 +7,6 @@ import path from 'path';
 import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
-import Stripe from 'stripe';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
@@ -309,8 +308,6 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
-
 // PayMe Integration (Israeli Payment Gateway)
 const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY;
 const PAYME_API_URL = process.env.NODE_ENV === 'production' 
@@ -320,58 +317,34 @@ const PAYME_API_URL = process.env.NODE_ENV === 'production'
 app.post('/api/payments/create-checkout-session', async (req, res) => {
   const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId } = req.body;
 
-  // 1. Try Stripe if configured
-  if (stripe) {
-    try {
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [{
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: { name: serviceName },
-            unit_amount: amount * 100,
-          },
-          quantity: 1,
-        }],
-        mode: 'payment',
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-      });
-      return res.json({ id: session.id, url: session.url });
-    } catch (error: any) {
-      console.error('Stripe Error:', error.message);
-    }
+  if (!PAYME_SELLER_KEY) {
+    return res.status(400).json({ error: 'PayMe is not configured in environment.' });
   }
 
-  // 2. Try PayMe (Israel) if configured
-  if (PAYME_SELLER_KEY) {
-    try {
-      const response = await fetch(PAYME_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          seller_key: PAYME_SELLER_KEY,
-          amount: Math.round(amount * 100), // PayMe expects cents/agorot
-          currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
-          product_name: serviceName,
-          sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback?appointmentId=${appointmentId}`,
-          sale_return_url: successUrl,
-          sale_cancel_url: cancelUrl,
-          language: 'he', // Default to Hebrew for Israeli market
-        }),
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        return res.json({ url: data.sale_url });
-      }
-      throw new Error(data.msg || 'PayMe sale generation failed');
-    } catch (error: any) {
-      console.error('PayMe Error:', error.message);
-      return res.status(500).json({ error: 'Payment gateway error' });
+  try {
+    const response = await fetch(PAYME_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seller_key: PAYME_SELLER_KEY,
+        amount: Math.round(amount * 100), 
+        currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
+        product_name: serviceName,
+        sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback?appointmentId=${appointmentId}`,
+        sale_return_url: successUrl,
+        sale_cancel_url: cancelUrl,
+        language: 'he',
+      }),
+    });
+    const data = await response.json();
+    if (data.status === 'success') {
+      return res.json({ url: data.sale_url });
     }
+    throw new Error(data.msg || 'PayMe sale generation failed');
+  } catch (error: any) {
+    console.error('PayMe Error:', error.message);
+    return res.status(500).json({ error: 'Payment gateway error: ' + error.message });
   }
-
-  res.status(400).json({ error: 'No payment gateway configured' });
 });
 
 app.post('/api/payments/payme-callback', async (req, res) => {
@@ -395,39 +368,42 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 app.post('/api/payments/create-subscription-checkout', async (req, res) => {
   const { plan, billingCycle, userId, email, successUrl, cancelUrl } = req.body;
   
-  if (!stripe) {
-    return res.status(400).json({ error: 'Stripe is not configured in environment.' });
+  if (!PAYME_SELLER_KEY) {
+    return res.status(400).json({ error: 'PayMe is not configured in environment.' });
   }
 
   try {
-    let priceId;
-    if (plan === 'premium') {
-      priceId = billingCycle === 'annual' ? process.env.STRIPE_PREMIUM_ANNUAL_PRICE_ID : process.env.STRIPE_PREMIUM_PRICE_ID;
-    } else {
-      priceId = billingCycle === 'annual' ? process.env.STRIPE_BASIC_ANNUAL_PRICE_ID : process.env.STRIPE_BASIC_PRICE_ID;
-    }
+    const amount = plan === 'premium' 
+      ? (billingCycle === 'annual' ? 180 : 25) 
+      : (billingCycle === 'annual' ? 90 : 13);
 
-    if (!priceId) {
-      throw new Error(`Price ID not found for plan: ${plan}. Please set it in .env.`);
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price: priceId,
-        quantity: 1,
-      }],
-      mode: 'subscription',
-      customer_email: email || undefined,
-      client_reference_id: userId || undefined,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: { userId: userId || '', plan }
+    // PayMe Subscription Logic
+    const response = await fetch(PAYME_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seller_key: PAYME_SELLER_KEY,
+        amount: Math.round(amount * 100),
+        currency: 'USD',
+        product_name: `EasyBookly ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription (${billingCycle})`,
+        sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/verify-subscription?userId=${userId || ''}&plan=${plan}`,
+        sale_return_url: successUrl,
+        sale_cancel_url: cancelUrl,
+        sale_type: 2, // Recursive/Subscription
+        sub_iteration_type: billingCycle === 'annual' ? 2 : 1, // 1 for month, 2 for year
+        sub_iteration_number: 1,
+        sub_amount: Math.round(amount * 100),
+        language: 'en',
+      }),
     });
-    
-    res.json({ id: session.id, url: session.url });
+
+    const data = await response.json();
+    if (data.status === 'success') {
+      return res.json({ url: data.sale_url });
+    }
+    throw new Error(data.msg || 'PayMe subscription generation failed');
   } catch (error: any) {
-    console.error('[SERVER] Subscription Error:', error.message);
+    console.error('[SERVER] PayMe Subscription Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -496,28 +472,26 @@ app.get('/api/payments/cancel', (req, res) => {
 });
 
 app.get('/api/payments/verify-subscription', async (req, res) => {
-  const { sessionId } = req.query;
-  if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
+  const { userId, plan, payme_sale_id, status, payme_status } = req.query as any;
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
 
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId as string);
-    if (session.payment_status === 'paid') {
-      const { userId, plan } = session.metadata || {};
-      const customerEmail = session.customer_details?.email;
+  // Note: PayMe verify can also be triggered via return url redirect with query params
+  const isSuccess = status === 'success' || payme_status === 'success' || req.query.sale_status === 'success';
 
+  try {
+    if (isSuccess) {
       if (userId && plan) {
         await updateDoc(doc(db, 'users', userId), { 
           subscriptionPlan: plan,
           updatedAt: new Date().toISOString()
         });
         return res.json({ success: true, plan });
-      } else if (plan && customerEmail) {
-        // Guest checkout success
+      } else if (plan) {
+        // Guest checkout success - email might be returned in query, but if not we can use a redirect with email if we passed it in generate-sale
         return res.json({ 
           success: true, 
           plan, 
-          email: customerEmail, 
+          email: req.query.email || '', 
           needsAccount: true 
         });
       }
