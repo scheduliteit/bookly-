@@ -323,9 +323,14 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
   }
 
   try {
+    console.log(`[SERVER] Initiating PayMe request to: ${PAYME_API_URL}`);
     const response = await fetch(PAYME_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'EasyBookly-Scheduler/1.0',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({
         seller_key: PAYME_SELLER_KEY,
         amount: Math.round(amount * 100), 
@@ -337,14 +342,28 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
         language: 'he',
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[SERVER] PayMe Gateway returned ${response.status}:`, errorText);
+      return res.status(response.status).json({ 
+        error: `PayMe Gateway Error (${response.status})`, 
+        details: errorText 
+      });
+    }
+
     const data = await response.json();
     if (data.status === 'success') {
       return res.json({ url: data.sale_url });
     }
     throw new Error(data.msg || 'PayMe sale generation failed');
   } catch (error: any) {
-    console.error('PayMe Error:', error.message);
-    return res.status(500).json({ error: 'Payment gateway error: ' + error.message });
+    console.error('[SERVER] PayMe Fetch Fatal Error:', error);
+    return res.status(500).json({ 
+      error: 'Payment gateway connection failed (fetch failed)', 
+      details: error.message,
+      hint: 'This could be a temporary network issue with the Israeli gateway or a TLS/DNS conflict.'
+    });
   }
 });
 
@@ -378,10 +397,15 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
       ? (billingCycle === 'annual' ? 180 : 25) 
       : (billingCycle === 'annual' ? 90 : 13);
 
+    console.log(`[SERVER] Initiating PayMe Subscription request to: ${PAYME_API_URL}`);
     // PayMe Subscription Logic
     const response = await fetch(PAYME_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'EasyBookly-Scheduler/1.0',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({
         seller_key: PAYME_SELLER_KEY,
         amount: Math.round(amount * 100),
@@ -398,14 +422,27 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[SERVER] PayMe Subscription Gateway returned ${response.status}:`, errorText);
+      return res.status(response.status).json({ 
+        error: `PayMe Subscription Error (${response.status})`, 
+        details: errorText 
+      });
+    }
+
     const data = await response.json();
     if (data.status === 'success') {
       return res.json({ url: data.sale_url });
     }
     throw new Error(data.msg || 'PayMe subscription generation failed');
   } catch (error: any) {
-    console.error('[SERVER] PayMe Subscription Error:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('[SERVER] PayMe Subscription Fatal Error:', error);
+    res.status(500).json({ 
+      error: 'Subscription gateway connection failed (fetch failed)', 
+      details: error.message,
+      hint: 'This could be a network issue with PayMe or an account configuration mismatch.'
+    });
   }
 });
 
