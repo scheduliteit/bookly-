@@ -31,9 +31,9 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
     if (!showCheckout) return;
     setIsProcessing(showCheckout.plan);
     
-    // Stripe handle
+    // PayMe handle
     try {
-      const { url } = await paymentService.createSubscriptionCheckout({
+      const result = await paymentService.createSubscriptionCheckout({
         plan: showCheckout.plan,
         billingCycle: billingCycle,
         userId: user?.id,
@@ -41,9 +41,15 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
         successUrl: `${window.location.origin}/`,
         cancelUrl: `${window.location.origin}/#subscription`
       });
-      window.location.href = url;
+      console.log("[PRICING] Checkout result:", result);
+      window.location.href = result.url;
     } catch (err: any) {
-      alert("Payment integration error: " + err.message);
+      console.error("[PRICING] Checkout Error:", err);
+      // Detailed error alert
+      const message = err.message || "Unknown error";
+      const details = err.details ? `\n\nDetails: ${err.details}` : "";
+      const hint = err.hint ? `\n\nHint: ${err.hint}` : "";
+      alert(`Payment integration failed:\n${message}${details}${hint}`);
       setIsProcessing(null);
     }
   };

@@ -50,8 +50,11 @@ export const paymentService = {
       body: JSON.stringify(data)
     });
     if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to create checkout session');
+      const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+      const error: any = new Error(errorData.error || 'Failed to create checkout session');
+      error.details = errorData.details;
+      error.hint = errorData.hint;
+      throw error;
     }
     return res.json();
   },
@@ -63,8 +66,11 @@ export const paymentService = {
       body: JSON.stringify(data)
     });
     if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to create subscription session');
+      const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+      const error: any = new Error(errorData.error || 'Failed to create subscription session');
+      error.details = errorData.details;
+      error.hint = errorData.hint;
+      throw error;
     }
     return res.json();
   }
