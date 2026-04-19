@@ -7,6 +7,7 @@ import path from 'path';
 import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
+import axios from 'axios';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
@@ -323,46 +324,49 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
   }
 
   try {
-    console.log(`[SERVER] Initiating PayMe request to: ${PAYME_API_URL}`);
-    const response = await fetch(PAYME_API_URL, {
-      method: 'POST',
+    console.log(`[SERVER] Initiating PayMe axios request to: ${PAYME_API_URL}`);
+    const response = await axios.post(PAYME_API_URL, {
+      seller_key: PAYME_SELLER_KEY,
+      amount: Math.round(amount * 100), 
+      currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
+      product_name: serviceName,
+      sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback?appointmentId=${appointmentId}`,
+      sale_return_url: successUrl,
+      sale_cancel_url: cancelUrl,
+      language: 'he',
+    }, {
       headers: { 
         'Content-Type': 'application/json',
         'User-Agent': 'EasyBookly-Scheduler/1.0',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        seller_key: PAYME_SELLER_KEY,
-        amount: Math.round(amount * 100), 
-        currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
-        product_name: serviceName,
-        sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback?appointmentId=${appointmentId}`,
-        sale_return_url: successUrl,
-        sale_cancel_url: cancelUrl,
-        language: 'he',
-      }),
+      timeout: 10000 // 10 second timeout
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[SERVER] PayMe Gateway returned ${response.status}:`, errorText);
-      return res.status(response.status).json({ 
-        error: `PayMe Gateway Error (${response.status})`, 
-        details: errorText 
-      });
-    }
-
-    const data = await response.json();
+    const data = response.data;
     if (data.status === 'success') {
       return res.json({ url: data.sale_url });
     }
     throw new Error(data.msg || 'PayMe sale generation failed');
   } catch (error: any) {
-    console.error('[SERVER] PayMe Fetch Fatal Error:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('[SERVER] PayMe Axios Error:', {
+        code: error.code,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      return res.status(error.response?.status || 500).json({ 
+        error: `Payment gateway connection failed: ${error.code || 'UNKNOWN'}`, 
+        details: error.message,
+        payload: error.response?.data,
+        hint: 'This is a network-level issue communicating with PayMe. Possible causes: DNS failure, timeout, or blocked IP.'
+      });
+    }
+    console.error('[SERVER] PayMe Fatal Error:', error);
     return res.status(500).json({ 
-      error: 'Payment gateway connection failed (fetch failed)', 
-      details: error.message,
-      hint: 'This could be a temporary network issue with the Israeli gateway or a TLS/DNS conflict.'
+      error: 'Internal processing error', 
+      details: error.message 
     });
   }
 });
@@ -397,51 +401,54 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
       ? (billingCycle === 'annual' ? 180 : 25) 
       : (billingCycle === 'annual' ? 90 : 13);
 
-    console.log(`[SERVER] Initiating PayMe Subscription request to: ${PAYME_API_URL}`);
-    // PayMe Subscription Logic
-    const response = await fetch(PAYME_API_URL, {
-      method: 'POST',
+    console.log(`[SERVER] Initiating PayMe Subscription axios request to: ${PAYME_API_URL}`);
+    
+    const response = await axios.post(PAYME_API_URL, {
+      seller_key: PAYME_SELLER_KEY,
+      amount: Math.round(amount * 100),
+      currency: 'USD',
+      product_name: `EasyBookly ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription (${billingCycle})`,
+      sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/verify-subscription?userId=${userId || ''}&plan=${plan}`,
+      sale_return_url: successUrl,
+      sale_cancel_url: cancelUrl,
+      sale_type: 2, // Recursive/Subscription
+      sub_iteration_type: billingCycle === 'annual' ? 2 : 1, // 1 for month, 2 for year
+      sub_iteration_number: 1,
+      sub_amount: Math.round(amount * 100),
+      language: 'en',
+    }, {
       headers: { 
         'Content-Type': 'application/json',
         'User-Agent': 'EasyBookly-Scheduler/1.0',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        seller_key: PAYME_SELLER_KEY,
-        amount: Math.round(amount * 100),
-        currency: 'USD',
-        product_name: `EasyBookly ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription (${billingCycle})`,
-        sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/verify-subscription?userId=${userId || ''}&plan=${plan}`,
-        sale_return_url: successUrl,
-        sale_cancel_url: cancelUrl,
-        sale_type: 2, // Recursive/Subscription
-        sub_iteration_type: billingCycle === 'annual' ? 2 : 1, // 1 for month, 2 for year
-        sub_iteration_number: 1,
-        sub_amount: Math.round(amount * 100),
-        language: 'en',
-      }),
+      timeout: 10000
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[SERVER] PayMe Subscription Gateway returned ${response.status}:`, errorText);
-      return res.status(response.status).json({ 
-        error: `PayMe Subscription Error (${response.status})`, 
-        details: errorText 
-      });
-    }
-
-    const data = await response.json();
+    const data = response.data;
     if (data.status === 'success') {
       return res.json({ url: data.sale_url });
     }
     throw new Error(data.msg || 'PayMe subscription generation failed');
   } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      console.error('[SERVER] PayMe Subscription Axios Error:', {
+        code: error.code,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      return res.status(error.response?.status || 500).json({ 
+        error: `Subscription gateway connection failed: ${error.code || 'UNKNOWN'}`, 
+        details: error.message,
+        payload: error.response?.data,
+        hint: 'Check your PayMe Seller Key or network connectivity. Subscriptions (sale_type: 2) may require additional permission in your PayMe dashboard.'
+      });
+    }
     console.error('[SERVER] PayMe Subscription Fatal Error:', error);
     res.status(500).json({ 
-      error: 'Subscription gateway connection failed (fetch failed)', 
-      details: error.message,
-      hint: 'This could be a network issue with PayMe or an account configuration mismatch.'
+      error: 'Internal subscription processing error', 
+      details: error.message 
     });
   }
 });
