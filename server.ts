@@ -312,9 +312,7 @@ app.post('/api/payments/connect', (req, res) => {
 
 // PayMe Integration (Israeli Payment Gateway)
 const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY || 'MPL17764-94485R1C-VFNFCM5G-EBUCPSWQ';
-const PAYME_API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://ng.payme.co.il/api/generate-sale' 
-  : 'https://ng.payme.co.il/api/generate-sale'; // Defaulting to production for user convenience
+const PAYME_API_URL = process.env.PAYME_API_URL || 'https://payme.co.il/api/generate-sale';
 
 app.post('/api/payments/create-checkout-session', async (req, res) => {
   const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId } = req.body;
