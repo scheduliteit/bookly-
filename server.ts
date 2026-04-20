@@ -459,7 +459,7 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway)
+// PayMe Integration (Israeli Payment Gateway) - v2.0.1 (Paid.ai Migration)
 // Security Fix #2: No hardcoded fallback
 const getPayMeSellerKey = () => {
     const key = process.env.PAYME_SELLER_KEY || process.env.payme_seller_key || process.env.PAYME_SELLER_ID;
