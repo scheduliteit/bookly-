@@ -88,6 +88,10 @@ const requireAuth = async (req: any, res: any, next: any) => {
 };
 
 app.use((req, res, next) => {
+  if (req.url.startsWith('/api/payments')) {
+    const log = `[${new Date().toISOString()}] ${req.method} ${req.url} - Body: ${JSON.stringify(req.body)}\n`;
+    fs.appendFileSync(path.join(process.cwd(), 'payment-debug.log'), log);
+  }
   console.log(`[SERVER] Request: ${req.method} ${req.url}`);
   next();
 });
@@ -458,25 +462,41 @@ app.post('/api/payments/connect', (req, res) => {
 
 // PayMe Integration (Israeli Payment Gateway)
 // Security Fix #2: No hardcoded fallback
-const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY;
-const PAYME_API_URL = 'https://payme.co.il/api/generate-sale';
+const getPayMeSellerKey = () => {
+    const key = process.env.PAYME_SELLER_KEY || process.env.payme_seller_key || process.env.PAYME_SELLER_ID;
+    if (key && key.length > 5 && !key.includes('your_payme')) return key;
+    return null;
+};
+const PAYME_API_URL = 'https://ng.payme.co.il/api/generate-sale';
 // For Security Fix #4: HMAC verification
-const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET;
+const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET || process.env.payme_webhook_secret;
 
 app.post('/api/payments/create-checkout-session', async (req: any, res: any) => {
-  const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId } = req.body;
+  const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId, clientEmail, clientPhone } = req.body;
+  const sellerKey = getPayMeSellerKey();
 
-  if (!PAYME_SELLER_KEY) {
-    return res.status(503).json({ error: 'PayMe is not configured in environment.' });
+  if (!sellerKey) {
+    const foundKeys = Object.keys(process.env).filter(k => k.toLowerCase().includes('payme'));
+    // Robust detection: Netlify sets CONTEXT or NETLIFY=true
+    const isProd = !!process.env.NETLIFY || !!process.env.CONTEXT || process.env.NODE_ENV === 'production';
+    
+    console.error(`[PAYME] Config Error. Key present: ${!!process.env.PAYME_SELLER_KEY}, Found Keys: ${foundKeys.join(',')}`);
+    return res.status(503).json({ 
+      error: 'PayMe is not configured in your environment.',
+      details: `[V2.1] The server cannot find PAYME_SELLER_KEY. ${isProd ? 'Since you are on a live site (Netlify), you MUST add this key to your Site Settings -> Environment Variables (NOT the Team settings).' : 'Please add it to the Secrets menu in AI Studio.'}`,
+      hint: foundKeys.length > 0 ? `We found these similar keys: [${foundKeys.join(', ')}]. Check if you meant to use one of these.` : 'No keys starting with "PAYME" were found. Did you forget to redeploy after adding the secret?'
+    });
   }
 
   try {
     console.log(`[SERVER] Initiating PayMe axios request to: ${PAYME_API_URL}`);
     const response = await axios.post(PAYME_API_URL, {
-      seller_key: PAYME_SELLER_KEY,
+      seller_key: sellerKey,
       amount: Math.round(amount * 100), 
       currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
       product_name: serviceName,
+      buyer_email: clientEmail,
+      buyer_phone: clientPhone,
       sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/payme-callback?appointmentId=${appointmentId}`,
       sale_return_url: successUrl,
       sale_cancel_url: cancelUrl,
@@ -491,15 +511,15 @@ app.post('/api/payments/create-checkout-session', async (req: any, res: any) => 
     });
 
     const data = response.data;
-    if (data.status === 'success') {
+    if (data.status === 'success' || data.status_code === 0) {
       return res.json({ url: data.sale_url });
     }
     
     console.error('[SERVER] PayMe API returned failure:', data);
     return res.status(400).json({ 
       error: 'PayMe Payment Failed', 
-      details: data.msg || 'Gateway rejected the sale generation.',
-      errorCode: data.error_code,
+      details: data.msg || data.status_error_details || 'Gateway rejected the sale generation.',
+      errorCode: data.error_code || data.status_code,
       status: data.status,
       hint: 'This usually means your PayMe Seller Key is invalid, or your account does not have permission for the selected currency/sale type.'
     });
@@ -530,6 +550,7 @@ app.post('/api/payments/payme-callback', async (req, res) => {
   // Security Fix #4: HMAC verification and independent confirmation
   const signature = req.headers['x-payme-signature'];
   const rawBody = JSON.stringify(req.body);
+  const sellerKey = getPayMeSellerKey();
 
   if (PAYME_WEBHOOK_SECRET && signature) {
     const expected = crypto.createHmac('sha256', PAYME_WEBHOOK_SECRET).update(rawBody).digest('hex');
@@ -541,16 +562,19 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const appointmentId = req.query.appointmentId as string;
-  const { payme_sale_id, status } = req.body;
+  const { payme_sale_id } = req.body;
 
   // Independent confirmation (Security Fix #4)
   try {
-    const doubleCheck = await axios.post('https://payme.co.il/api/get-sales', {
-      seller_key: PAYME_SELLER_KEY,
+    const doubleCheck = await axios.post('https://ng.payme.co.il/api/get-sales', {
+      seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
     
-    if (doubleCheck.data.status !== 'success' || doubleCheck.data.sale_status !== 'success') {
+    const isSuccess = (doubleCheck.data.status === 'success' || doubleCheck.data.status_code === 0) && 
+                      (doubleCheck.data.sale_status === 'success' || doubleCheck.data.sale_status === 'paid');
+
+    if (!isSuccess) {
       return res.status(400).send('Sale not confirmed');
     }
   } catch (err) {
@@ -571,12 +595,19 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 
 app.post('/api/payments/create-subscription-checkout', async (req, res) => {
   const { plan, billingCycle, userId, email, successUrl, cancelUrl } = req.body;
+  const sellerKey = getPayMeSellerKey();
   
-  if (!PAYME_SELLER_KEY) {
-    return res.status(400).json({ error: 'PayMe is not configured in environment.' });
-  }
+  if (!sellerKey) {
+    const foundKeys = Object.keys(process.env).filter(k => k.toLowerCase().includes('payme'));
+    const isProd = !!process.env.NETLIFY || !!process.env.CONTEXT || process.env.NODE_ENV === 'production';
 
-  console.log(`[SUBSCRIPTION] Key prefix: ${PAYME_SELLER_KEY.substring(0, 5)}...`);
+    console.error(`[PAYME-SUB] Config Error. Key present: ${!!process.env.PAYME_SELLER_KEY}, Found Keys: ${foundKeys.join(',')}`);
+    return res.status(400).json({ 
+      error: 'PayMe is not configured in your environment.',
+      details: `[V2.1] The server cannot find PAYME_SELLER_KEY in production. ${isProd ? 'Since you are on a live site (Netlify), you MUST add this key to your Site Settings -> Environment Variables (NOT the Team settings).' : 'Please add it to the Secrets menu in AI Studio.'}`,
+      hint: foundKeys.length > 0 ? `We found these similar keys: [${foundKeys.join(', ')}]. Check if you meant to use one of these.` : 'No keys starting with "PAYME" were found. Did you forget to redeploy after adding the secret?'
+    });
+  }
 
   try {
     const amount = plan === 'premium' 
@@ -597,10 +628,11 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
     });
     
     const response = await axios.post(PAYME_API_URL, {
-      seller_key: PAYME_SELLER_KEY,
+      seller_key: sellerKey,
       amount: Math.round(amount * 100),
       currency: 'USD',
       product_name: `EasyBookly ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription (${billingCycle})`,
+      buyer_email: email,
       sale_callback_url: callbackUrl,
       sale_return_url: successUrl,
       sale_cancel_url: cancelUrl,
@@ -619,15 +651,15 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
     });
 
     const data = response.data;
-    if (data.status === 'success') {
+    if (data.status === 'success' || data.status_code === 0) {
       return res.json({ url: data.sale_url });
     }
     
     console.error('[SERVER] PayMe Subscription API returned failure:', data);
     return res.status(400).json({ 
       error: 'PayMe Subscription Failed', 
-      details: data.msg || 'Gateway rejected the subscription creation.',
-      errorCode: data.error_code,
+      details: data.msg || data.status_error_details || 'Gateway rejected the subscription creation.',
+      errorCode: data.error_code || data.status_code,
       status: data.status,
       hint: 'Subscriptions (sale_type: 2) often require manual approval in your PayMe dashboard. Ensure your Seller Key supports recurring payments.'
     });
@@ -706,30 +738,35 @@ app.get('/api/payments/cancel', (req, res) => {
   `);
 });
 
-app.get('/api/payments/verify-subscription', requireAuth, async (req: any, res: any) => {
-  const { plan, payme_sale_id } = req.query as any;
+app.get('/api/payments/verify-subscription', async (req: any, res: any) => {
+  const { plan, payme_sale_id, userId } = req.query as any;
+  const sellerKey = getPayMeSellerKey();
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  const userId = req.user.uid;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId in verification' });
+  }
 
   // Security Fix #5: Independent sale-status endpoint confirmation
   try {
-    const check = await axios.post('https://payme.co.il/api/get-sales', {
-      seller_key: PAYME_SELLER_KEY,
+    const check = await axios.post('https://ng.payme.co.il/api/get-sales', {
+      seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
 
-    if (check.data.status === 'success' && check.data.sale_status === 'success') {
+    if ((check.data.status === 'success' || check.data.status_code === 0) && (check.data.sale_status === 'success' || check.data.sale_status === 'paid')) {
       await updateDoc(doc(db, 'users', userId), { 
         subscriptionPlan: plan,
         updatedAt: new Date().toISOString()
       });
-      return res.json({ success: true, plan });
+      // Redirect to a success page or the app
+      return res.redirect('/?subscription=success');
     }
     
-    res.json({ success: false, error: 'Sale not confirmed by gateway' });
+    res.redirect('/?subscription=failed&error=gateway_rejected');
   } catch (error: any) {
     console.error('Verify error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.redirect('/?subscription=failed&error=' + encodeURIComponent(error.message));
   }
 });
 
