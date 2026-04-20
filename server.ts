@@ -459,7 +459,7 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway) - v2.2.0 (Self-Healing Domain System)
+// PayMe Integration (Israeli Payment Gateway) - v2.2.1 (Build Fix)
 // V2.2 Strategy: Smart DNS Fallback
 // If one domain fails with ENOTFOUND, try the next instantly.
 const PAYME_DOMAINS = [
@@ -496,6 +496,13 @@ async function callPaidAPI(endpoint: string, payload: any, timeout = 10000) {
   }
   throw lastError;
 }
+
+// Security Fix #2: No hardcoded fallback
+const getPayMeSellerKey = () => {
+    const key = process.env.PAYME_SELLER_KEY || process.env.payme_seller_key || process.env.PAYME_SELLER_ID;
+    if (key && key.length > 5 && !key.includes('your_payme')) return key;
+    return null;
+};
 
 // For Security Fix #4: HMAC verification
 const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET || process.env.payme_webhook_secret;
@@ -661,16 +668,8 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
       sub_iteration_number: 1,
       sub_amount: Math.round(amount * 100),
       language: 'en',
-    }, {
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'EasyBookly-Scheduler/1.0',
-        'Accept': 'application/json'
-      },
-      timeout: 10000
     });
 
-    const data = response.data;
     if (data.status === 'success' || data.status_code === 0) {
       return res.json({ url: data.sale_url });
     }
