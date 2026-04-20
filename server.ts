@@ -466,7 +466,7 @@ const getPayMeSellerKey = () => {
     if (key && key.length > 5 && !key.includes('your_payme')) return key;
     return null;
 };
-const PAYME_API_URL = 'https://ngapi.payme.io/api/generate-sale';
+const PAYME_API_URL = 'https://api.paid.ai/api/generate-sale';
 // For Security Fix #4: HMAC verification
 const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET || process.env.payme_webhook_secret;
 
@@ -565,7 +565,7 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 
   // Independent confirmation (Security Fix #4)
   try {
-    const doubleCheck = await axios.post('https://ngapi.payme.io/api/get-sales', {
+    const doubleCheck = await axios.post('https://api.paid.ai/api/get-sales', {
       seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
@@ -752,7 +752,7 @@ app.get('/api/payments/verify-subscription', async (req: any, res: any) => {
 
   // Security Fix #5: Independent sale-status endpoint confirmation
   try {
-    const check = await axios.post('https://ngapi.payme.io/api/get-sales', {
+    const check = await axios.post('https://api.paid.ai/api/get-sales', {
       seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
