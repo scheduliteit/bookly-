@@ -459,14 +459,44 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway) - v2.0.2 (Israeli Domain Fix)
-// Security Fix #2: No hardcoded fallback
-const getPayMeSellerKey = () => {
-    const key = process.env.PAYME_SELLER_KEY || process.env.payme_seller_key || process.env.PAYME_SELLER_ID;
-    if (key && key.length > 5 && !key.includes('your_payme')) return key;
-    return null;
-};
-const PAYME_API_URL = 'https://ngapi.payme.co.il/api/generate-sale';
+// PayMe Integration (Israeli Payment Gateway) - v2.2.0 (Self-Healing Domain System)
+// V2.2 Strategy: Smart DNS Fallback
+// If one domain fails with ENOTFOUND, try the next instantly.
+const PAYME_DOMAINS = [
+  'https://ngapi.payme.co.il', // Primary Israeli
+  'https://api.paid.ai',       // New Branding
+  'https://ngapi.payme.io',    // Legacy Global
+  'https://api.payme.io'       // Standard Global
+];
+
+async function callPaidAPI(endpoint: string, payload: any, timeout = 10000) {
+  let lastError: any = null;
+  for (const base of PAYME_DOMAINS) {
+    const fullUrl = `${base}${endpoint}`;
+    try {
+      console.log(`[PAYME] Attempting request to: ${fullUrl}`);
+      const response = await axios.post(fullUrl, payload, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'User-Agent': 'EasyBookly-Scheduler/2.2',
+          'Accept': 'application/json'
+        },
+        timeout
+      });
+      console.log(`[PAYME] SUCCESS on endpoint: ${base}`);
+      return response.data;
+    } catch (err: any) {
+      lastError = err;
+      if (err.code === 'ENOTFOUND') {
+        console.warn(`[PAYME] DNS lookup failed for ${base}. Trying fallback...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
+
 // For Security Fix #4: HMAC verification
 const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET || process.env.payme_webhook_secret;
 
@@ -488,8 +518,7 @@ app.post('/api/payments/create-checkout-session', async (req: any, res: any) => 
   }
 
   try {
-    console.log(`[SERVER] Initiating PayMe axios request to: ${PAYME_API_URL}`);
-    const response = await axios.post(PAYME_API_URL, {
+    const data = await callPaidAPI('/api/generate-sale', {
       seller_key: sellerKey,
       amount: Math.round(amount * 100), 
       currency: currency === 'ILS' ? 'ILS' : (currency === 'EUR' ? 'EUR' : (currency === 'GBP' ? 'GBP' : 'USD')),
@@ -500,16 +529,8 @@ app.post('/api/payments/create-checkout-session', async (req: any, res: any) => 
       sale_return_url: successUrl,
       sale_cancel_url: cancelUrl,
       language: 'he',
-    }, {
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'EasyBookly-Scheduler/1.0',
-        'Accept': 'application/json'
-      },
-      timeout: 10000 // 10 second timeout
     });
 
-    const data = response.data;
     if (data.status === 'success' || data.status_code === 0) {
       return res.json({ url: data.sale_url });
     }
@@ -534,7 +555,7 @@ app.post('/api/payments/create-checkout-session', async (req: any, res: any) => 
         error: `Payment gateway connection failed: ${error.code || 'UNKNOWN'}`, 
         details: error.message,
         payload: error.response?.data,
-        hint: 'This is a network-level issue communicating with PayMe. Possible causes: DNS failure, timeout, or blocked IP.'
+        hint: 'The server automatically tried 4 different fallback domains and they all failed DNS resolution. Check your network or dashboard.'
       });
     }
     console.error('[SERVER] PayMe Fatal Error:', error);
@@ -565,13 +586,13 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 
   // Independent confirmation (Security Fix #4)
   try {
-    const doubleCheck = await axios.post('https://ngapi.payme.co.il/api/get-sales', {
+    const data = await callPaidAPI('/api/get-sales', {
       seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
     
-    const isSuccess = (doubleCheck.data.status === 'success' || doubleCheck.data.status_code === 0) && 
-                      (doubleCheck.data.sale_status === 'success' || doubleCheck.data.sale_status === 'paid');
+    const isSuccess = (data.status === 'success' || data.status_code === 0) && 
+                      (data.sale_status === 'success' || data.sale_status === 'paid');
 
     if (!isSuccess) {
       return res.status(400).send('Sale not confirmed');
@@ -626,7 +647,7 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
       callback: callbackUrl
     });
     
-    const response = await axios.post(PAYME_API_URL, {
+    const data = await callPaidAPI('/api/generate-sale', {
       seller_key: sellerKey,
       amount: Math.round(amount * 100),
       currency: 'USD',
@@ -752,12 +773,12 @@ app.get('/api/payments/verify-subscription', async (req: any, res: any) => {
 
   // Security Fix #5: Independent sale-status endpoint confirmation
   try {
-    const check = await axios.post('https://ngapi.payme.co.il/api/get-sales', {
+    const data = await callPaidAPI('/api/get-sales', {
       seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
 
-    if ((check.data.status === 'success' || check.data.status_code === 0) && (check.data.sale_status === 'success' || check.data.sale_status === 'paid')) {
+    if ((data.status === 'success' || data.status_code === 0) && (data.sale_status === 'success' || data.sale_status === 'paid')) {
       await updateDoc(doc(db, 'users', userId), { 
         subscriptionPlan: plan,
         updatedAt: new Date().toISOString()
