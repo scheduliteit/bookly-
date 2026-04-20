@@ -459,14 +459,14 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway) - v2.0.1 (Paid.ai Migration)
+// PayMe Integration (Israeli Payment Gateway) - v2.0.2 (Israeli Domain Fix)
 // Security Fix #2: No hardcoded fallback
 const getPayMeSellerKey = () => {
     const key = process.env.PAYME_SELLER_KEY || process.env.payme_seller_key || process.env.PAYME_SELLER_ID;
     if (key && key.length > 5 && !key.includes('your_payme')) return key;
     return null;
 };
-const PAYME_API_URL = 'https://api.paid.ai/api/generate-sale';
+const PAYME_API_URL = 'https://ngapi.payme.co.il/api/generate-sale';
 // For Security Fix #4: HMAC verification
 const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET || process.env.payme_webhook_secret;
 
@@ -565,7 +565,7 @@ app.post('/api/payments/payme-callback', async (req, res) => {
 
   // Independent confirmation (Security Fix #4)
   try {
-    const doubleCheck = await axios.post('https://api.paid.ai/api/get-sales', {
+    const doubleCheck = await axios.post('https://ngapi.payme.co.il/api/get-sales', {
       seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
@@ -752,7 +752,7 @@ app.get('/api/payments/verify-subscription', async (req: any, res: any) => {
 
   // Security Fix #5: Independent sale-status endpoint confirmation
   try {
-    const check = await axios.post('https://api.paid.ai/api/get-sales', {
+    const check = await axios.post('https://ngapi.payme.co.il/api/get-sales', {
       seller_key: sellerKey,
       payme_sale_id: payme_sale_id
     });
