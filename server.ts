@@ -89,8 +89,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
 
 app.use((req, res, next) => {
   if (req.url.startsWith('/api/payments')) {
-    const log = `[${new Date().toISOString()}] ${req.method} ${req.url} - Body: ${JSON.stringify(req.body)}\n`;
-    fs.appendFileSync(path.join(process.cwd(), 'payment-debug.log'), log);
+    console.log(`[PAYMENT-DEBUG] ${req.method} ${req.url} - Body:`, JSON.stringify(req.body));
   }
   console.log(`[SERVER] Request: ${req.method} ${req.url}`);
   next();
@@ -743,6 +742,10 @@ app.get('/api/payments/verify-subscription', async (req: any, res: any) => {
   const sellerKey = getPayMeSellerKey();
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   
+  if (!sellerKey) {
+    return res.redirect('/?subscription=failed&error=config_error_missing_seller_key');
+  }
+
   if (!userId) {
     return res.status(400).json({ error: 'Missing userId in verification' });
   }
