@@ -20,7 +20,7 @@ interface MobileMenuProps {
 const MobileMenu: React.FC<MobileMenuProps> = ({ 
   isOpen, onClose, activeTab, setActiveTab, user, onLogout, onAddClick 
 }) => {
-  const isAdmin = user?.email === 'scheduliteit@gmail.com' || user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
 
   const menuItems = [
     { id: 'dashboard', label: 'Event Types', icon: LinkIcon },

@@ -76,7 +76,7 @@
         "reminderTimestamp": { "type": "string" }
       },
       "required": ["id", "userId", "clientId", "date", "time"]
-    }
+    },
     "PublicProfile": {
       "title": "PublicProfile",
       "description": "Publicly visible business information",

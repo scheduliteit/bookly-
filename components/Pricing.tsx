@@ -11,24 +11,29 @@ interface PricingProps {
   onPlanChange: (plan: 'basic' | 'premium') => void;
   user: User | null;
   onAuthRequired?: () => void;
+  onBack?: () => void;
 }
 
-const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAuthRequired }) => {
+const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAuthRequired, onBack }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState<{plan: string, price: number, name: string} | null>(null);
+  const [guestEmail, setGuestEmail] = useState('');
 
   const handleInitiateUpgrade = async (planId: 'basic' | 'premium', price: number, name: string) => {
     if (planId === currentPlan) return;
-    if (!user) {
-      if (onAuthRequired) onAuthRequired();
-      return;
-    }
     setShowCheckout({ plan: planId, price, name });
   };
 
   const handleFinalizePayment = async () => {
     if (!showCheckout) return;
+    
+    // If guest, required email
+    if (!user && !guestEmail) {
+      alert("Please provide an email for your receipt and account creation.");
+      return;
+    }
+
     setIsProcessing(showCheckout.plan);
     
     // PayMe handle
@@ -37,7 +42,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
         plan: showCheckout.plan,
         billingCycle: billingCycle,
         userId: user?.id,
-        email: user?.email,
+        email: user?.email || guestEmail,
         successUrl: `${window.location.origin}/`,
         cancelUrl: `${window.location.origin}/#subscription`
       });
@@ -48,8 +53,9 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
       // Detailed error alert
       const message = err.message || "Unknown error";
       const details = err.details ? `\n\nDetails: ${err.details}` : "";
+      const code = err.errorCode ? `\n\nError Code: ${err.errorCode}` : "";
       const hint = err.hint ? `\n\nHint: ${err.hint}` : "";
-      alert(`Payment integration failed:\n${message}${details}${hint}`);
+      alert(`⚠️ GATEWAY ALERT [V2]:\n${message}${details}${code}${hint}`);
       setIsProcessing(null);
     }
   };
@@ -104,7 +110,17 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
       {/* Gate Header */}
       {!currentPlan && (
         <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between border-b border-slate-100">
-           <Logo size="md" />
+           <div className="flex items-center gap-4">
+             {onBack && (
+               <button 
+                onClick={onBack}
+                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"
+               >
+                 <ArrowRight className="rotate-180" size={20} />
+               </button>
+             )}
+             <Logo size="md" />
+           </div>
            <div className="flex items-center gap-6">
               {user && (
                 <div className="hidden sm:block text-right">
@@ -144,10 +160,17 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
           <Sparkles size={12} className="animate-pulse" /> Global Scheduling Power
         </div>
         <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">
-          Free for <span className="text-brand-blue">Early Adopters.</span>
+          {isFreeMode ? (
+            <>Free for <span className="text-brand-blue">Early Adopters.</span></>
+          ) : (
+            <>Simple, Transparent <span className="text-brand-blue">Pricing [V2]</span></>
+          )}
         </h2>
         <p className="text-slate-500 max-w-2xl mx-auto font-medium text-xl leading-relaxed">
-          We're finalizing our payment gateways. Enjoy full access to all features for free during our early access phase.
+          {isFreeMode 
+            ? "We're finalizing our payment gateways. Enjoy full access to all features for free during our early access phase."
+            : "Choose the plan that fits your business stage. No hidden fees, cancel anytime."
+          }
         </p>
 
         <div className="flex flex-col items-center gap-6 pt-8">
@@ -215,6 +238,22 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
                   <button onClick={() => setShowCheckout(null)} className="p-2 hover:bg-slate-100 rounded-full">✕</button>
                 </div>
                 <div className="space-y-6">
+                   {!user && (
+                     <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Email</label>
+                       <div className="relative">
+                         <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                         <input 
+                            type="email" 
+                            placeholder="email@example.com"
+                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all"
+                            value={guestEmail}
+                            onChange={(e) => setGuestEmail(e.target.value)}
+                         />
+                       </div>
+                       <p className="text-[9px] text-slate-400 font-medium ml-1">You will create your account using this email after payment.</p>
+                     </div>
+                   )}
                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
                       <div className="flex justify-between items-center mb-2">
                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{showCheckout.name}</span>

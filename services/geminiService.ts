@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
+import { auth } from "../firebase";
 import { Appointment, Client } from "../types";
 
 export interface GroundingLink {
@@ -8,29 +8,32 @@ export interface GroundingLink {
 }
 
 export class GeminiAssistant {
-  private getAI() {
-    // Try to get from process.env first (injected by Vite)
-    let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  private async fetchAI(endpoint: string, body: any) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Authentication required");
     
-    // If missing, check if we can get it from window.aistudio (for Veo/Gemini 2.5/3 models)
-    if (!apiKey || apiKey === '' || apiKey === 'undefined') {
-       // In AI Studio Build, the key might be available via process.env.API_KEY if selected via popup
-       // But if we are here, it's likely missing.
-       throw new Error("API Key is missing. Please ensure GEMINI_API_KEY is set in your environment or selected via the key selection dialog.");
+    const idToken = await user.getIdToken();
+    const response = await fetch(`/api/ai/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${idToken}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || "AI Service failure");
     }
-    
-    return new GoogleGenAI({ apiKey });
+
+    return await response.json();
   }
 
   async answerClientQuestion(question: string, serviceName: string, businessName: string) {
     try {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `You are the High-Performance Virtual Concierge for ${businessName}. A client is inquiring about the "${serviceName}" experience: "${question}". 
-        Answer with extreme professionalism, warmth, and a touch of luxury. Aim to make them feel heard and excited to book. 2-3 sentences.`,
-      });
-      return response.text;
+      const data = await this.fetchAI('answer-question', { question, serviceName, businessName });
+      return data.answer;
     } catch (error) {
       console.error("Gemini Error:", error);
       return "I'm here to ensure your experience is seamless. Please feel free to book a session and we can discuss all your questions in detail.";
@@ -39,62 +42,24 @@ export class GeminiAssistant {
 
   async getStrategicGrowthAdvice(appointments: Appointment[]) {
     try {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `You are a world-class SaaS Strategy Consultant. Analyze these appointments: ${JSON.stringify(appointments)}. 
-        Provide one "Proactive Strategy" for the business owner to increase revenue or efficiency this week. 
-        Focus on trends you see in the data (e.g., busiest days, popular services). 1 sentence.`,
-      });
-      return response.text;
+      const data = await this.fetchAI('growth-advice', { appointments });
+      return data.advice;
     } catch (error) {
       return "Focus on high-value client retention this week.";
     }
   }
 
   async analyzeSchedule(appointments: Appointment[], clients: Client[], query: string) {
-    const context = `You are the EasyBookly Strategic Operations Master. Your goal is business growth.
-    Business Data Context: ${appointments.length} total bookings.
-    Schedule Data: ${JSON.stringify(appointments)}.
-    Current Date: ${new Date().toISOString().split('T')[0]}.
-    When answering, don't just give facts—give proactive suggestions on how to improve the schedule.`;
-
-    let latLng = { latitude: 32.0853, longitude: 34.7818 }; 
     try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-      latLng = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-    } catch (e) { /* ignore */ }
+      // Get location for grounding
+      let latLng = { latitude: 32.0853, longitude: 34.7818 }; 
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+        latLng = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      } catch (e) { /* ignore */ }
 
-    try {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ parts: [{ text: context }, { text: query }] }],
-        config: {
-          tools: [
-            { googleSearch: {} },
-            { googleMaps: {} }
-          ],
-          toolConfig: {
-            retrievalConfig: { latLng }
-          },
-          temperature: 0.2,
-        }
-      });
-
-      const groundingLinks: GroundingLink[] = [];
-      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-      chunks.forEach((chunk: any) => {
-        if (chunk.web) groundingLinks.push({ uri: chunk.web.uri, title: chunk.web.title });
-        if (chunk.maps) groundingLinks.push({ uri: chunk.maps.uri, title: chunk.maps.title });
-      });
-
-      let text = response.text || "";
-      if (text.length < 5) {
-         text = "Based on your schedule, operations are proceeding as planned.";
-      }
-
-      return { text, links: groundingLinks };
+      const data = await this.fetchAI('analyze-schedule', { appointments, query, latLng });
+      return { text: data.analysis, links: data.links || [] };
     } catch (error) {
       console.error("Gemini Error:", error);
       return { text: "Strategic core temporarily offline.", links: [] };
@@ -103,17 +68,8 @@ export class GeminiAssistant {
 
   async generateMeetingBrief(appointment: Appointment) {
     try {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: `Analyze this appointment and generate a strategic briefing. 
-        Client: ${appointment.clientName}
-        Service: ${appointment.service}
-        Note: ${appointment.status} session.
-        Provide: 1. Client Psychology (What they really want), 2. Three Strategic Questions to Ask, 3. Success Metric for this meeting. 
-        Format as clear sections. Keep it concise and professional.`,
-      });
-      return response.text;
+      const data = await this.fetchAI('meeting-brief', { appointment });
+      return data.brief;
     } catch (error) {
       console.error("Gemini Error:", error);
       return "Briefing unavailable. Focus on active listening and strategic alignment.";
@@ -122,12 +78,8 @@ export class GeminiAssistant {
 
   async draftReminder(appointment: Appointment, businessName: string) {
     try {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: { parts: [{ text: `Draft a friendly, professional one-sentence appointment reminder for ${appointment.clientName} for their ${appointment.service} session at ${businessName} on ${appointment.date} at ${appointment.time}.` }] },
-      });
-      return response.text;
+      const data = await this.fetchAI('draft-reminder', { appointment, businessName });
+      return data.draft;
     } catch (error) {
       console.error("Gemini Error:", error);
       return `Friendly reminder of your ${appointment.service} session at ${businessName}.`;
@@ -136,12 +88,8 @@ export class GeminiAssistant {
 
   async getSummary(appointments: Appointment[]) {
     try {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Summarize business performance for these appointments: ${JSON.stringify(appointments)}. 2 sentences max. Highlight if revenue is high.`,
-      });
-      return response.text;
+      const data = await this.fetchAI('summary', { appointments });
+      return data.summary;
     } catch (error) {
       console.error("Gemini Error:", error);
       return "Operations are steady.";

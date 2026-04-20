@@ -1,6 +1,6 @@
 
-// Sync ID: 2026-03-18-T17:21:00Z
-import React, { useState, useEffect } from 'react';
+// Sync ID: 2026-03-20-T10:00:00Z
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
@@ -68,6 +68,13 @@ const App: React.FC = () => {
     termsOfService: "By booking an appointment, you agree to show up at the scheduled time. Cancellations must be made 24 hours in advance for a full refund.",
     gdprStrict: true
   });
+
+  // Security Fix #8: useRefs for stale-closure hazards
+  const pendingPlanRef = useRef(pendingPlan);
+  const legalDataRef = useRef(legalData);
+
+  useEffect(() => { pendingPlanRef.current = pendingPlan; }, [pendingPlan]);
+  useEffect(() => { legalDataRef.current = legalData; }, [legalData]);
 
   // Hash Change Listener for navigation
   useEffect(() => {
@@ -164,7 +171,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Sync Data
+  // Sync Data (Security Fix #5 & #8)
   useEffect(() => {
     const checkPayment = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -172,27 +179,19 @@ const App: React.FC = () => {
       const status = params.get('status');
       const paymeStatus = params.get('payme_status');
       
-      if (paymeSaleId || status || paymeStatus) {
+      // Fix: only run if we have a sale ID AND a current user (Security Fix #5)
+      if (paymeSaleId && auth.currentUser) {
         setIsVerifyingPayment(true);
         try {
-          const res = await fetch(`/api/payments/verify-subscription${window.location.search}`);
+          const idToken = await auth.currentUser.getIdToken();
+          const res = await fetch(`/api/payments/verify-subscription${window.location.search}`, {
+            headers: { 'Authorization': `Bearer ${idToken}` }
+          });
           const data = await res.json();
           
           if (data.success) {
-            if (data.needsAccount) {
-              // Paid as guest, now prompt registration
-              setRegistrationEmail(data.email);
-              setPendingPlan(data.plan);
-              setAuthMode('register');
-              setShowPricingGate(false);
-              setShowLanding(false);
-              showToast("Payment verified! Please create your account to continue.", "success");
-            } else if (user && !user.subscriptionPlan) {
-              // Paid as logged in user
-              updateUserSettings({ subscriptionPlan: data.plan });
-              showToast("Subscription activated!", "success");
-            }
-            // Clean URL
+            updateUserSettings({ subscriptionPlan: data.plan });
+            showToast("Subscription activated!", "success");
             window.history.replaceState({}, '', '/');
           }
         } catch (err) {
@@ -203,7 +202,7 @@ const App: React.FC = () => {
       }
     };
     checkPayment();
-  }, [user?.id, user?.subscriptionPlan, pendingPlan]);
+  }, [user?.id]); // Only refire when user identity changes
 
   useEffect(() => {
     if (user && user.onboardingCompleted) {
@@ -241,7 +240,8 @@ const App: React.FC = () => {
   };
 
   const handleLogin = async (email: string, uid: string, displayName: string | null) => {
-    // Handled by onAuthStateChanged
+    // Security Fix #7: State sync is driven by onAuthStateChanged in the effect above.
+    // This is explicitly a no-op to avoid double-triggers.
   };
 
   const handleLogout = async () => {
@@ -304,17 +304,17 @@ const App: React.FC = () => {
     );
   }
 
-  if (showLanding && !user) {
+  if (showLanding) {
     return (
       <LandingPage 
+        isLoggedIn={!!user}
         onStart={() => { 
-          setShowPricingGate(true);
+          if (!user) setShowPricingGate(true);
           setShowLanding(false); 
         }} 
         onLogin={() => {
-          setAuthMode('login');
-          setShowPricingGate(false);
           setShowLanding(false);
+          if (!user) setAuthMode('login');
         }} 
       />
     );
@@ -327,6 +327,10 @@ const App: React.FC = () => {
          currentPlan={undefined} 
          onPlanChange={() => {}} 
          onAuthRequired={() => setShowPricingGate(false)} 
+         onBack={() => {
+           setShowPricingGate(false);
+           setShowLanding(true);
+         }}
        />
      );
   }
@@ -337,7 +341,14 @@ const App: React.FC = () => {
 
   // Force subscription plan selection before onboarding or dashboard
   if (!user.subscriptionPlan) {
-    return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} user={user} />;
+    return (
+      <Pricing 
+        currentPlan={subscriptionPlan} 
+        onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} 
+        user={user} 
+        onBack={() => setShowLanding(true)}
+      />
+    );
   }
 
   if (!user?.onboardingCompleted && user) {
@@ -495,7 +506,7 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-6">
-            {(user?.email === 'scheduliteit@gmail.com' || user?.role === 'admin') && (
+            {(user?.role === 'admin') && (
               <button 
                 onClick={() => setActiveTab('management')}
                 className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-brand-dark text-white rounded-lg text-xs font-bold hover:shadow-md transition-all animate-pulse"

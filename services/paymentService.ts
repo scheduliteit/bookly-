@@ -1,4 +1,6 @@
 
+import { auth } from "../firebase";
+
 export interface Transaction {
   id: string;
   type: 'subscription' | 'payout' | 'booking';
@@ -19,59 +21,63 @@ export interface MerchantStats {
   history: Transaction[];
 }
 
+const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+  const user = auth.currentUser;
+  const idToken = user ? await user.getIdToken() : null;
+  
+  const headers = {
+    ...options.headers as any,
+    ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
+    'Content-Type': 'application/json'
+  };
+
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+    const error: any = new Error(errorData.error || `HTTP error! status: ${res.status}`);
+    error.details = errorData.details;
+    error.hint = errorData.hint;
+    error.errorCode = errorData.errorCode;
+    error.status = errorData.status;
+    throw error;
+  }
+  return res.json();
+};
+
 export const paymentService = {
   getMerchantStats: async (): Promise<MerchantStats> => {
-    const res = await fetch('/api/payments/stats');
-    return res.json();
+    return fetchWithAuth('/api/payments/stats');
   },
 
   async connectLocalGateway(): Promise<boolean> {
-    const res = await fetch('/api/payments/connect', { method: 'POST' });
-    return res.ok;
-  },
-
-  async processIncomingPayment(amount: number, description: string): Promise<void> {
-    await fetch('/api/payments/process', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, description })
-    });
+    try {
+      await fetchWithAuth('/api/payments/connect', { method: 'POST' });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   async triggerPayout(): Promise<boolean> {
-    const res = await fetch('/api/payments/payout', { method: 'POST' });
-    return res.ok;
+    try {
+      await fetchWithAuth('/api/payments/payout', { method: 'POST' });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   async createCheckoutSession(data: { serviceName: string, amount: number, currency: string, successUrl: string, cancelUrl: string, appointmentId: string }): Promise<{ url: string }> {
-    const res = await fetch('/api/payments/create-checkout-session', {
+    return fetchWithAuth('/api/payments/create-checkout-session', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
-      const error: any = new Error(errorData.error || 'Failed to create checkout session');
-      error.details = errorData.details;
-      error.hint = errorData.hint;
-      throw error;
-    }
-    return res.json();
   },
 
   async createSubscriptionCheckout(data: { plan: string, billingCycle: 'monthly' | 'annual', userId?: string, email?: string, successUrl: string, cancelUrl: string }): Promise<{ url: string }> {
-    const res = await fetch('/api/payments/create-subscription-checkout', {
+    return fetchWithAuth('/api/payments/create-subscription-checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
-      const error: any = new Error(errorData.error || 'Failed to create subscription session');
-      error.details = errorData.details;
-      error.hint = errorData.hint;
-      throw error;
-    }
-    return res.json();
   }
 };

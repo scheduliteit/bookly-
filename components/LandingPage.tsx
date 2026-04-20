@@ -10,9 +10,10 @@ import Logo from './Logo';
 interface LandingPageProps {
   onStart: (mode?: 'register' | 'login') => void;
   onLogin: () => void;
+  isLoggedIn: boolean;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn }) => {
   const [showMagic, setShowMagic] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
 
@@ -34,8 +35,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
             ))}
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={onLogin} className="hidden sm:block text-sm font-black text-slate-900 uppercase tracking-widest px-6 py-2 hover:bg-slate-50 rounded-full transition-all">Login</button>
-            <button onClick={() => onStart('register')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all active:scale-95">Get Started</button>
+            <button onClick={onLogin} className="hidden sm:block text-sm font-black text-slate-900 uppercase tracking-widest px-6 py-2 hover:bg-slate-50 rounded-full transition-all">
+              {isLoggedIn ? 'Dashboard' : 'Login'}
+            </button>
+            <button onClick={() => onStart('register')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all active:scale-95">
+              {isLoggedIn ? 'Dashboard' : 'Get Started'}
+            </button>
           </div>
         </div>
       </nav>
@@ -85,7 +90,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                 onClick={() => onStart()}
                 className="w-full sm:w-auto px-12 py-6 bg-brand-blue text-white rounded-[32px] font-black text-xl shadow-2xl shadow-brand-blue/30 hover:bg-brand-dark transition-all transform hover:-translate-y-1 flex items-center justify-center gap-4"
               >
-                Access Your Dashboard <ArrowRight size={24} />
+                {isLoggedIn ? 'Access Your Dashboard' : 'Access Your Dashboard'} <ArrowRight size={24} />
               </button>
               <button 
                 onClick={() => setShowMagic(true)}
@@ -273,7 +278,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                      </div>
                    ))}
                 </div>
-                <button onClick={() => onStart()} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">Get Started</button>
+                <button onClick={() => onStart()} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">
+                  {isLoggedIn ? 'Dashboard' : 'Get Started'}
+                </button>
              </div>
 
              {/* Pro */}
@@ -299,7 +306,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                      </div>
                    ))}
                 </div>
-                <button onClick={() => onStart()} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">Upgrade Now</button>
+                <button onClick={() => onStart()} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">
+                  {isLoggedIn ? 'Upgrade Now' : 'Join as Pro'}
+                </button>
              </div>
           </div>
         </div>

@@ -4,15 +4,37 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
 import axios from 'axios';
+import rateLimit from 'express-rate-limit';
+import admin from 'firebase-admin';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 
 dotenv.config();
+
+// Firebase Admin Initialization (Security Fix #6)
+let adminApp: admin.app.App | null = null;
+try {
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON 
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+    : null;
+
+  if (serviceAccount) {
+    adminApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('[SERVER] Firebase Admin initialized');
+  } else {
+    console.warn('[SERVER] FIREBASE_SERVICE_ACCOUNT_JSON missing. Protected routes will fail.');
+  }
+} catch (error) {
+  console.error('[SERVER] Admin Init Failed:', error);
+}
 
 console.log('[SERVER] Starting with NODE_ENV:', process.env.NODE_ENV);
 console.log('[SERVER] NETLIFY env:', process.env.NETLIFY);
@@ -33,8 +55,37 @@ try {
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
-app.use(express.json());
+// Security Fix #11: Restricted CORS
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || true;
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
+// Security Fix #13: JSON Body Limit
+app.use(express.json({ limit: '100kb' }));
+
+// Auth Middleware (Security Fix #6)
+const requireAuth = async (req: any, res: any, next: any) => {
+  if (!adminApp) {
+    return res.status(503).json({ error: 'Auth system offline (Missing Service Account)' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    console.error('[AUTH] Token verification failed:', error);
+    res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  }
+};
 
 app.use((req, res, next) => {
   console.log(`[SERVER] Request: ${req.method} ${req.url}`);
@@ -45,11 +96,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// API Routes with Firestore
-app.get('/api/appointments', async (req, res) => {
+// API Routes with Firestore - Protected (Security Fix #6)
+app.get('/api/appointments', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  const userId = req.headers['x-user-id'] as string;
-  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  const userId = req.user.uid;
   
   try {
     const q = query(collection(db, 'appointments'), where('userId', '==', userId));
@@ -61,10 +111,9 @@ app.get('/api/appointments', async (req, res) => {
   }
 });
 
-app.post('/api/appointments', async (req, res) => {
+app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  const userId = req.headers['x-user-id'] as string;
-  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  const userId = req.user.uid;
   
   try {
     const docRef = await addDoc(collection(db, 'appointments'), { ...req.body, userId });
@@ -74,31 +123,44 @@ app.post('/api/appointments', async (req, res) => {
   }
 });
 
-app.delete('/api/appointments/:id', async (req, res) => {
+app.delete('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
+
   try {
-    await deleteDoc(doc(db, 'appointments', req.params.id));
+    const docRef = doc(db, 'appointments', req.params.id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
+    if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+
+    await deleteDoc(docRef);
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.put('/api/appointments/:id', async (req, res) => {
+app.put('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  const userId = req.headers['x-user-id'] as string;
+  const userId = req.user.uid;
   try {
-    await updateDoc(doc(db, 'appointments', req.params.id), { ...req.body, userId });
+    const docRef = doc(db, 'appointments', req.params.id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
+    if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+
+    await updateDoc(docRef, { ...req.body, userId });
     res.json({ ...req.body, id: req.params.id, userId });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/clients', async (req, res) => {
+app.get('/api/clients', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  const userId = req.headers['x-user-id'] as string;
-  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  const userId = req.user.uid;
   
   try {
     const q = query(collection(db, 'clients'), where('userId', '==', userId));
@@ -110,10 +172,17 @@ app.get('/api/clients', async (req, res) => {
   }
 });
 
-app.delete('/api/clients/:id', async (req, res) => {
+app.delete('/api/clients/:id', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
   try {
-    await deleteDoc(doc(db, 'clients', req.params.id));
+    const docRef = doc(db, 'clients', req.params.id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
+    if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+
+    await deleteDoc(docRef);
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -125,17 +194,92 @@ app.get('/api/availability', (req, res) => {
   res.json(["09:00", "10:00", "11:00", "12:00", "13:30", "14:30", "15:30", "16:30"]);
 });
 
-app.get('/api/public/profile/:userId', async (req, res) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  try {
-    const docSnap = await getDoc(doc(db, 'public_profiles', req.params.userId));
-    if (docSnap.exists()) {
-      res.json(docSnap.data());
-    } else {
-      res.status(404).json({ error: 'Profile not found' });
+// Gemini AI Proxy (Security Fix #3)
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  keyGenerator: (req: any) => req.user?.uid || req.ip,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+const callGemini = async (prompt: string, model: string = 'gemini-2.0-flash') => {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
+
+  const response = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      contents: [{ parts: [{ text: prompt }] }]
     }
+  );
+  return response.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+};
+
+app.post('/api/ai/answer-question', requireAuth, aiLimiter, async (req: any, res: any) => {
+  const { question, serviceName, businessName } = req.body;
+  try {
+    const prompt = `You are the High-Performance Virtual Concierge for ${businessName}. A client is inquiring about the "${serviceName}" experience: "${question}". Answer with extreme professionalism, warmth, and a touch of luxury. 2-3 sentences.`;
+    const answer = await callGemini(prompt);
+    res.json({ answer });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'AI Error' });
+  }
+});
+
+app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: any) => {
+  const { appointments } = req.body;
+  try {
+    const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time }));
+    const prompt = `Consultant advice for: ${JSON.stringify(sanitized)}. One brief pro-tip.`;
+    const advice = await callGemini(prompt);
+    res.json({ advice });
+  } catch (error: any) {
+    res.status(500).json({ error: 'AI Error' });
+  }
+});
+
+app.post('/api/ai/analyze-schedule', requireAuth, aiLimiter, async (req: any, res: any) => {
+  const { appointments, query } = req.body;
+  try {
+    const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time, status: a.status }));
+    const prompt = `Analyze: ${JSON.stringify(sanitized)}. Query: ${query}`;
+    const analysis = await callGemini(prompt);
+    res.json({ analysis });
+  } catch (error: any) {
+    res.status(500).json({ error: 'AI Error' });
+  }
+});
+
+app.post('/api/ai/meeting-brief', requireAuth, aiLimiter, async (req: any, res: any) => {
+  const { appointment } = req.body;
+  try {
+    const prompt = `Briefing for ${appointment.clientName} regarding ${appointment.service}.`;
+    const brief = await callGemini(prompt, 'gemini-2.0-flash');
+    res.json({ brief });
+  } catch (error: any) {
+    res.status(500).json({ error: 'AI Error' });
+  }
+});
+
+app.post('/api/ai/draft-reminder', requireAuth, aiLimiter, async (req: any, res: any) => {
+  const { appointment, businessName } = req.body;
+  try {
+    const prompt = `Draft reminder for ${appointment.clientName} at ${businessName}. One sentence.`;
+    const draft = await callGemini(prompt);
+    res.json({ draft });
+  } catch (error: any) {
+    res.status(500).json({ error: 'AI Error' });
+  }
+});
+
+app.post('/api/ai/summary', requireAuth, aiLimiter, async (req: any, res: any) => {
+  const { appointments } = req.body;
+  try {
+    const prompt = `Summarize: ${JSON.stringify(appointments)}. 2 sentences max.`;
+    const summary = await callGemini(prompt);
+    res.json({ summary });
+  } catch (error: any) {
+    res.status(500).json({ error: 'AI Error' });
   }
 });
 
@@ -279,16 +423,18 @@ app.post('/api/notify', async (req, res) => {
 });
 
 // Payment Endpoints
+// Security Fix #merchantStats leaking: Stubbing out or properly moving to Firestore
+// For now, we'll keep it simple as the PDF suggested it was stubbed out.
 let merchantStats = {
-  grossEarnings: 1250,
-  netEarnings: 1180,
-  pendingPayout: 450,
+  grossEarnings: 0,
+  netEarnings: 0,
+  pendingPayout: 0,
   isGatewayConnected: false,
   history: [] as any[]
 };
 
-app.get('/api/payments/stats', (req, res) => {
-  const isPayMe = !!(process.env.PAYME_SELLER_KEY || 'MPL17764-94485R1C-VFNFCM5G-EBUCPSWQ');
+app.get('/api/payments/stats', requireAuth, (req: any, res: any) => {
+  const isPayMe = !!process.env.PAYME_SELLER_KEY;
   res.json({
     ...merchantStats,
     isGatewayConnected: isPayMe,
@@ -311,14 +457,17 @@ app.post('/api/payments/connect', (req, res) => {
 });
 
 // PayMe Integration (Israeli Payment Gateway)
-const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY || 'MPL17764-94485R1C-VFNFCM5G-EBUCPSWQ';
-const PAYME_API_URL = process.env.PAYME_API_URL || 'https://payme.co.il/api/generate-sale';
+// Security Fix #2: No hardcoded fallback
+const PAYME_SELLER_KEY = process.env.PAYME_SELLER_KEY;
+const PAYME_API_URL = 'https://payme.co.il/api/generate-sale';
+// For Security Fix #4: HMAC verification
+const PAYME_WEBHOOK_SECRET = process.env.PAYME_WEBHOOK_SECRET;
 
-app.post('/api/payments/create-checkout-session', async (req, res) => {
+app.post('/api/payments/create-checkout-session', async (req: any, res: any) => {
   const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId } = req.body;
 
   if (!PAYME_SELLER_KEY) {
-    return res.status(400).json({ error: 'PayMe is not configured in environment.' });
+    return res.status(503).json({ error: 'PayMe is not configured in environment.' });
   }
 
   try {
@@ -345,7 +494,15 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
     if (data.status === 'success') {
       return res.json({ url: data.sale_url });
     }
-    throw new Error(data.msg || 'PayMe sale generation failed');
+    
+    console.error('[SERVER] PayMe API returned failure:', data);
+    return res.status(400).json({ 
+      error: 'PayMe Payment Failed', 
+      details: data.msg || 'Gateway rejected the sale generation.',
+      errorCode: data.error_code,
+      status: data.status,
+      hint: 'This usually means your PayMe Seller Key is invalid, or your account does not have permission for the selected currency/sale type.'
+    });
   } catch (error: any) {
     if (axios.isAxiosError(error)) {
       console.error('[SERVER] PayMe Axios Error:', {
@@ -370,13 +527,38 @@ app.post('/api/payments/create-checkout-session', async (req, res) => {
 });
 
 app.post('/api/payments/payme-callback', async (req, res) => {
+  // Security Fix #4: HMAC verification and independent confirmation
+  const signature = req.headers['x-payme-signature'];
+  const rawBody = JSON.stringify(req.body);
+
+  if (PAYME_WEBHOOK_SECRET && signature) {
+    const expected = crypto.createHmac('sha256', PAYME_WEBHOOK_SECRET).update(rawBody).digest('hex');
+    if (!crypto.timingSafeEqual(Buffer.from(signature as string), Buffer.from(expected))) {
+      console.warn('[PAYMENTS] Webhook signature mismatch');
+      return res.status(401).send('Invalid signature');
+    }
+  }
+
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const appointmentId = req.query.appointmentId as string;
-  // PayMe sends a POST request when payment is completed
-  const { payme_sale_id, status, payme_status } = req.body;
-  const isSuccess = status === 'success' || payme_status === 'success' || req.body.sale_status === 'success';
+  const { payme_sale_id, status } = req.body;
 
-  if (isSuccess && appointmentId) {
+  // Independent confirmation (Security Fix #4)
+  try {
+    const doubleCheck = await axios.post('https://payme.co.il/api/get-sales', {
+      seller_key: PAYME_SELLER_KEY,
+      payme_sale_id: payme_sale_id
+    });
+    
+    if (doubleCheck.data.status !== 'success' || doubleCheck.data.sale_status !== 'success') {
+      return res.status(400).send('Sale not confirmed');
+    }
+  } catch (err) {
+    console.error('[PAYMENTS] Confirmation failed:', err);
+    return res.status(500).send('Confirmation error');
+  }
+
+  if (appointmentId) {
     try {
       await updateDoc(doc(db, 'appointments', appointmentId), { status: 'confirmed' });
       console.log(`[SERVER] Appointment ${appointmentId} confirmed via PayMe callback`);
@@ -394,19 +576,32 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
     return res.status(400).json({ error: 'PayMe is not configured in environment.' });
   }
 
+  console.log(`[SUBSCRIPTION] Key prefix: ${PAYME_SELLER_KEY.substring(0, 5)}...`);
+
   try {
     const amount = plan === 'premium' 
       ? (billingCycle === 'annual' ? 180 : 25) 
       : (billingCycle === 'annual' ? 90 : 13);
 
-    console.log(`[SERVER] Initiating PayMe Subscription axios request to: ${PAYME_API_URL}`);
+    const amountStr = Math.round(amount * 100).toString();
+    const subAmountStr = amountStr;
+    const protocol = 'https'; // Force https for external gateway callbacks
+    const callbackBase = `${protocol}://${req.get('host')}`;
+    const callbackUrl = `${callbackBase}/api/payments/verify-subscription?userId=${userId || ''}&plan=${plan}`;
+
+    console.log(`[SERVER] PAYME REQUEST BUILD:`, {
+      amount: amountStr,
+      currency: 'USD',
+      sale_type: 2,
+      callback: callbackUrl
+    });
     
     const response = await axios.post(PAYME_API_URL, {
       seller_key: PAYME_SELLER_KEY,
       amount: Math.round(amount * 100),
       currency: 'USD',
       product_name: `EasyBookly ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription (${billingCycle})`,
-      sale_callback_url: `${req.protocol}://${req.get('host')}/api/payments/verify-subscription?userId=${userId || ''}&plan=${plan}`,
+      sale_callback_url: callbackUrl,
       sale_return_url: successUrl,
       sale_cancel_url: cancelUrl,
       sale_type: 2, // Recursive/Subscription
@@ -427,7 +622,15 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
     if (data.status === 'success') {
       return res.json({ url: data.sale_url });
     }
-    throw new Error(data.msg || 'PayMe subscription generation failed');
+    
+    console.error('[SERVER] PayMe Subscription API returned failure:', data);
+    return res.status(400).json({ 
+      error: 'PayMe Subscription Failed', 
+      details: data.msg || 'Gateway rejected the subscription creation.',
+      errorCode: data.error_code,
+      status: data.status,
+      hint: 'Subscriptions (sale_type: 2) often require manual approval in your PayMe dashboard. Ensure your Seller Key supports recurring payments.'
+    });
   } catch (error: any) {
     if (axios.isAxiosError(error)) {
       console.error('[SERVER] PayMe Subscription Axios Error:', {
@@ -445,13 +648,13 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
     }
     console.error('[SERVER] PayMe Subscription Fatal Error:', error);
     res.status(500).json({ 
-      error: 'Internal subscription processing error', 
+      error: 'PayMe Integration Error [V2]', 
       details: error.message 
     });
   }
 });
 
-app.post('/api/payments/payout', (req, res) => {
+app.post('/api/payments/payout', requireAuth, (req: any, res: any) => {
   if (merchantStats.pendingPayout <= 0) return res.status(400).json({ error: 'No funds' });
   
   const amountToPay = merchantStats.pendingPayout;
@@ -470,17 +673,6 @@ app.post('/api/payments/payout', (req, res) => {
 });
 
 app.get('/api/payments/success', async (req, res) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
-  const { sessionId, appointmentId } = req.query;
-  
-  if (appointmentId) {
-    try {
-      await updateDoc(doc(db, 'appointments', appointmentId as string), { status: 'confirmed' });
-    } catch (error) {
-      console.error('Failed to update appointment status on success:', error);
-    }
-  }
-  
   res.send(`
     <html>
       <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #fcfcfc;">
@@ -489,7 +681,7 @@ app.get('/api/payments/success', async (req, res) => {
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           </div>
           <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 900;">Payment Successful!</h1>
-          <p style="color: #64748b; margin-bottom: 32px;">Your appointment is now confirmed.</p>
+          <p style="color: #64748b; margin-bottom: 32px;">Your payment has been received and your booking is being processed.</p>
           <button onclick="window.location.href='/'" style="background: #006bff; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; cursor: pointer;">Back to Home</button>
         </div>
       </body>
@@ -514,32 +706,27 @@ app.get('/api/payments/cancel', (req, res) => {
   `);
 });
 
-app.get('/api/payments/verify-subscription', async (req, res) => {
-  const { userId, plan, payme_sale_id, status, payme_status } = req.query as any;
+app.get('/api/payments/verify-subscription', requireAuth, async (req: any, res: any) => {
+  const { plan, payme_sale_id } = req.query as any;
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
 
-  // Note: PayMe verify can also be triggered via return url redirect with query params
-  const isSuccess = status === 'success' || payme_status === 'success' || req.query.sale_status === 'success';
-
+  // Security Fix #5: Independent sale-status endpoint confirmation
   try {
-    if (isSuccess) {
-      if (userId && plan) {
-        await updateDoc(doc(db, 'users', userId), { 
-          subscriptionPlan: plan,
-          updatedAt: new Date().toISOString()
-        });
-        return res.json({ success: true, plan });
-      } else if (plan) {
-        // Guest checkout success - email might be returned in query, but if not we can use a redirect with email if we passed it in generate-sale
-        return res.json({ 
-          success: true, 
-          plan, 
-          email: req.query.email || '', 
-          needsAccount: true 
-        });
-      }
+    const check = await axios.post('https://payme.co.il/api/get-sales', {
+      seller_key: PAYME_SELLER_KEY,
+      payme_sale_id: payme_sale_id
+    });
+
+    if (check.data.status === 'success' && check.data.sale_status === 'success') {
+      await updateDoc(doc(db, 'users', userId), { 
+        subscriptionPlan: plan,
+        updatedAt: new Date().toISOString()
+      });
+      return res.json({ success: true, plan });
     }
-    res.json({ success: false });
+    
+    res.json({ success: false, error: 'Sale not confirmed by gateway' });
   } catch (error: any) {
     console.error('Verify error:', error.message);
     res.status(500).json({ error: error.message });
