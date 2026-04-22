@@ -26,6 +26,7 @@ export interface User {
   subscriptionPlan?: 'basic' | 'premium';
   role?: 'admin' | 'user';
   createdAt?: string; // ISO string for trial tracking
+  timezone?: string;
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';
@@ -67,6 +68,8 @@ export interface Appointment {
   reminderTimestamp?: string;
   locationType?: LocationType;
   meetingLink?: string;
+  clientTimezone?: string;
+  businessTimezone?: string;
 }
 
 export interface BusinessStats {

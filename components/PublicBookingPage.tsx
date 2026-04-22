@@ -11,6 +11,7 @@ import PaymentErrorModal from '@/components/PaymentErrorModal';
 interface PublicBookingPageProps {
   userId?: string;
   businessName?: string;
+  businessTimezone?: string;
   services?: Service[];
   legalData?: { privacyPolicy: string; termsOfService: string; gdprStrict: boolean };
   currency?: 'ILS' | 'USD' | 'EUR' | 'GBP';
@@ -21,6 +22,7 @@ interface PublicBookingPageProps {
 const PublicBookingPage: React.FC<PublicBookingPageProps> = ({ 
   userId: propUserId,
   businessName: initialBusinessName, 
+  businessTimezone: initialBusinessTimezone,
   services: initialServices, 
   legalData: initialLegalData, 
   currency: initialCurrency, 
@@ -29,6 +31,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 }) => {
   const [userId, setUserId] = useState(propUserId || 'default');
   const [businessName, setBusinessName] = useState(initialBusinessName || '');
+  const [businessTimezone, setBusinessTimezone] = useState(initialBusinessTimezone || 'UTC');
   const [services, setServices] = useState<Service[]>(initialServices || []);
   const [legalData, setLegalData] = useState(initialLegalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
   const [currency, setCurrency] = useState<'ILS' | 'USD' | 'EUR' | 'GBP'>(initialCurrency || 'USD');
@@ -54,6 +57,24 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
 
+  const formatInTimezone = (timeStr: string, dateStr: string, targetTz: string) => {
+    try {
+      const d = new Date(`${dateStr}T${timeStr}:00`);
+      const invDate = new Date(d.toLocaleString('en-US', { timeZone: businessTimezone }));
+      const diff = invDate.getTime() - d.getTime();
+      const actualBusinessDate = new Date(d.getTime() - diff);
+      
+      return actualBusinessDate.toLocaleTimeString('en-US', {
+        timeZone: targetTz,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch(e) {
+      return timeStr;
+    }
+  };
+
   useEffect(() => {
     if (!initialBusinessName && userId !== 'default') {
       const fetchProfile = async () => {
@@ -64,6 +85,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
             setServices(data.services);
             setLegalData(data.legalData);
             setCurrency(data.currency);
+            setBusinessTimezone(data.timezone || 'UTC');
           }
         } catch (err) {
           console.error("Failed to fetch public profile", err);
@@ -115,6 +137,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         price: selectedService.price,
         locationType: locationType,
         meetingLink: meetingLink,
+        clientTimezone: timezone,
+        businessTimezone: businessTimezone,
       });
 
       const isFreeMode = true; // Hardcoded for 'Free for Early Adopters' strategy
@@ -191,9 +215,16 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                  <Calendar size={16} className="text-slate-400" />
                  {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
               </div>
-              <div className="flex items-center gap-3 text-sm text-slate-600">
-                 <Clock size={16} className="text-slate-400" />
-                 {selectedTime}, {selectedService?.duration} min
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                   <Clock size={16} className="text-slate-400" />
+                   {formatInTimezone(selectedTime, selectedDate, timezone)}, {selectedService?.duration} min
+                </div>
+                {businessTimezone !== timezone && (
+                  <div className="ml-7 text-[10px] text-slate-400 font-medium">
+                    ({selectedTime} {businessTimezone} - Business Time)
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-600">
                  <Globe2 size={16} className="text-slate-400" />
@@ -432,24 +463,34 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                     <div className="w-full lg:w-56 space-y-3 animate-in fade-in zoom-in-95">
                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
                        <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2 custom-scroll">
-                          {['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'].map(time => (
-                            <div key={time} className="flex flex-col gap-2">
-                               <button 
-                                onClick={() => { setSelectedTime(time); }}
-                                className={`w-full py-4 border-2 font-black rounded-2xl text-sm transition-all ${selectedTime === time ? 'bg-slate-800 text-white border-slate-800 scale-[0.98]' : 'border-brand-blue/30 text-brand-blue hover:border-brand-blue'}`}
-                               >
-                                  {time}
-                               </button>
-                               {selectedTime === time && (
-                                 <button 
-                                  onClick={() => setStep(3)}
-                                  className="w-full py-4 bg-brand-blue text-white font-black rounded-2xl text-sm shadow-xl shadow-brand-blue/20 animate-in slide-in-from-top-2"
-                                 >
-                                   Confirm Time
-                                 </button>
-                               )}
-                            </div>
-                          ))}
+                          {(availableSlots.length > 0 ? availableSlots : ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']).map(time => {
+                             const clientTime = formatInTimezone(time, selectedDate, timezone);
+                             const isDifferentTz = businessTimezone !== timezone;
+                             return (
+                               <div key={time} className="flex flex-col gap-2">
+                                  <button 
+                                   onClick={() => { setSelectedTime(time); }}
+                                   className={`w-full py-4 px-4 border-2 font-black rounded-2xl text-left transition-all flex justify-between items-center ${selectedTime === time ? 'bg-slate-800 text-white border-slate-800 scale-[0.98]' : 'border-brand-blue/30 text-brand-blue hover:border-brand-blue'}`}
+                                  >
+                                     <div className="flex flex-col text-left">
+                                        <span className="text-sm">{clientTime}</span>
+                                        {isDifferentTz && (
+                                          <span className="text-[10px] opacity-60 font-medium">({time} Business Local)</span>
+                                        )}
+                                     </div>
+                                     {selectedTime === time && <Check size={16} />}
+                                  </button>
+                                  {selectedTime === time && (
+                                    <button 
+                                     onClick={() => setStep(3)}
+                                     className="w-full py-4 bg-brand-blue text-white font-black rounded-2xl text-sm shadow-xl shadow-brand-blue/20 animate-in slide-in-from-top-2"
+                                    >
+                                      Confirm Time
+                                    </button>
+                                  )}
+                               </div>
+                             );
+                          })}
                        </div>
                     </div>
                   )}

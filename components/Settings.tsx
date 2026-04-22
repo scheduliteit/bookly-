@@ -15,6 +15,8 @@ interface SettingsProps {
   onUpdateLegalData: (data: any) => void;
   currency: 'ILS' | 'USD' | 'EUR' | 'GBP';
   onUpdateCurrency: (cur: 'ILS' | 'USD' | 'EUR' | 'GBP') => void;
+  timezone: string;
+  onUpdateTimezone: (tz: string) => void;
   initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal';
 }
 
@@ -29,6 +31,8 @@ const Settings: React.FC<SettingsProps> = ({
   onUpdateLegalData,
   currency,
   onUpdateCurrency,
+  timezone,
+  onUpdateTimezone,
   initialTab
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>(initialTab || 'profile');
@@ -439,6 +443,21 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Business Timezone</label>
+                <div className="flex gap-4">
+                  <select 
+                    className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all"
+                    value={timezone}
+                    onChange={(e) => onUpdateTimezone(e.target.value)}
+                  >
+                    {['UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Jerusalem', 'Asia/Tokyo', 'Australia/Sydney'].map(tz => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                    {/* Add more if needed, but these are good defaults */}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-4">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Business Name</label>
                 <input 
                   type="text" 
