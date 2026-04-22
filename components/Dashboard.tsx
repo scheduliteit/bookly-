@@ -6,6 +6,8 @@ import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
 import ViralHypePanel from './ViralHypePanel';
+import MobileInstallGuide from './MobileInstallGuide';
+import { AnimatePresence } from 'motion/react';
 
 interface DashboardProps {
   user: User;
@@ -19,9 +21,10 @@ interface DashboardProps {
   onOpenPublicView: () => void;
   onAddEventType?: () => void;
   setActiveTab?: (tab: string) => void;
+  onOpenMobileGuide?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView, onAddEventType, setActiveTab }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState("Analyzing your business performance...");
   const [isAdviceLoading, setIsAdviceLoading] = useState(false);
@@ -79,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
           <p className="text-slate-500 font-medium mt-2">Here's what's happening with your business today.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => setActiveTab?.('settings')} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-full font-bold text-sm hover:bg-slate-200 transition-all flex items-center gap-2">
+          <button onClick={onOpenMobileGuide} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-full font-bold text-sm hover:bg-slate-200 transition-all flex items-center gap-2">
             <Smartphone size={16} /> Mobile App
           </button>
           <button onClick={onOpenPublicView} className="px-6 py-2.5 text-brand-blue border-2 border-brand-blue/10 rounded-full font-bold text-sm hover:bg-brand-blue/5 transition-all flex items-center gap-2">

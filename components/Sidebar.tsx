@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
 
@@ -13,9 +13,10 @@ interface SidebarProps {
   connectedApps: string[];
   onLogout?: () => void;
   onAddClick?: () => void;
+  onOpenMobileGuide?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick, onOpenMobileGuide }) => {
   const isAdmin = user?.role === 'admin';
   const [isRolledDown, setIsRolledDown] = useState(true);
 
@@ -93,6 +94,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                   {item.label}
                 </motion.button>
               ))}
+
+              <motion.button
+                variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
+                onClick={onOpenMobileGuide}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm text-brand-blue bg-brand-blue/5 hover:bg-brand-blue/10 border border-brand-blue/10 mt-4"
+              >
+                <Smartphone size={18} strokeWidth={2.5} />
+                Install Mobile App
+              </motion.button>
 
               {/* Early Access Info */}
               {!isAdmin && (

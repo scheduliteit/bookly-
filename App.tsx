@@ -1,6 +1,6 @@
 
 // Sync ID: 2026-03-20-T10:00:00Z
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
@@ -19,6 +19,7 @@ import Onboarding from './components/Onboarding';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Logo from './components/Logo';
+import MobileInstallGuide from './components/MobileInstallGuide';
 import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showMobileGuide, setShowMobileGuide] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -228,7 +230,7 @@ const App: React.FC = () => {
     }
   }, [user?.id, user?.onboardingCompleted]);
 
-  const fetchExternalEvents = useCallback(async () => {
+  const fetchExternalEvents = React.useCallback(async () => {
     if (!user || connectedApps.length === 0) {
       setExternalEvents([]);
       return;
@@ -465,7 +467,7 @@ const App: React.FC = () => {
           {(() => {
             switch (activeTab) {
               case 'dashboard':
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} />;
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} />;
               case 'calendar':
                 return (
                   <AppointmentCalendar 
@@ -529,6 +531,7 @@ const App: React.FC = () => {
         connectedApps={connectedApps}
         onLogout={handleLogout}
         onAddClick={() => setShowAddModal(true)}
+        onOpenMobileGuide={() => setShowMobileGuide(true)}
       />
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 bg-white border-b border-[#eaebed] flex items-center justify-between px-8 shrink-0 z-20">
@@ -629,6 +632,12 @@ const App: React.FC = () => {
           userId={user.id}
         />
       )}
+
+      <AnimatePresence>
+        {showMobileGuide && (
+          <MobileInstallGuide onClose={() => setShowMobileGuide(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
