@@ -5,8 +5,8 @@ import { api } from '../services/api';
 import { Service } from '../types';
 import Logo from './Logo';
 import { geminiAssistant } from '../services/geminiService';
-import { paymentService } from '../services/paymentService';
-import PaymentErrorModal from './PaymentErrorModal';
+import { paymentService } from '@/services/paymentService';
+import PaymentErrorModal from '@/components/PaymentErrorModal';
 
 interface PublicBookingPageProps {
   userId?: string;

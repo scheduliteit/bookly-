@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { Check, Shield, Rocket, Sparkles, Star, Loader2, Crown, Zap, Lock, ShieldCheck, CreditCard, ArrowRight, SmartphoneNfc, FileText, Globe } from 'lucide-react';
-import { paymentService } from '../services/paymentService';
-import PaymentErrorModal from './PaymentErrorModal';
-import { User } from '../types';
+import { paymentService } from '@/services/paymentService';
+import PaymentErrorModal from '@/components/PaymentErrorModal';
+import { User } from '@/types';
 import Logo from './Logo';
 import { auth } from '../firebase';
 
