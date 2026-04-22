@@ -468,8 +468,8 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway) - v2.6.0 (Ultimate Nuclear Bypass)
-// V2.6 Strategy: IP-Direct DNS-over-HTTPS Bypass
+// PayMe Integration (Israeli Payment Gateway) - v2.7.0 (Ultimate Redundancy)
+// V2.7 Strategy: Multi-Provider DoH + Global Health Diagnostics
 const PAYME_DOMAINS = [
   'https://ngapi.payme.co.il', // Primary Israeli
   'https://api.payme.co.il',   // Standard Israeli
@@ -481,69 +481,94 @@ const PAYME_DOMAINS = [
   'https://api.payme.sale'     // Alternative Global
 ];
 
-// Resolves a hostname using Google's DNS-over-HTTPS via DIRECT IP (8.8.8.8)
-// This works even if the server cannot resolve 'dns.google' itself.
+// Ultra-Resilient DoH Resolver with Multi-Provider Fallback
 async function resolveViaDoH(hostname: string): Promise<string | null> {
-  try {
-    console.log(`[DOH] Nuclear Resolve: ${hostname} via https://8.8.8.8/resolve...`);
-    // Note: We use the IP 8.8.8.8 directly. We must handle the certificate since the URL contains an IP.
-    const res = await axios.get(`https://8.8.8.8/resolve?name=${hostname}&type=A`, { 
-      timeout: 5000,
-      headers: { 'Host': 'dns.google' }, // Required for SNI/Valid cert
-      httpsAgent: new https.Agent({ 
-        family: 4, 
-        servername: 'dns.google', // Validate against dns.google cert
-        rejectUnauthorized: false // Fallback if serverless has root CA issues
-      })
-    });
-    const ip = res.data?.Answer?.find((a: any) => a.type === 1)?.data;
-    if (ip) {
-      console.log(`[DOH] NUCLEAR MATCH! ${hostname} -> ${ip}`);
-      return ip;
+  const providers = [
+    // Method 1: Google via IP (Current Best)
+    { 
+      name: 'Google-IP', 
+      url: `https://8.8.8.8/resolve?name=${hostname}&type=A`,
+      headers: { 'Host': 'dns.google' },
+      agentParams: { servername: 'dns.google' }
+    },
+    // Method 2: Cloudflare via IP (Anycast)
+    { 
+      name: 'Cloudflare-IP', 
+      url: `https://1.1.1.1/dns-query?name=${hostname}&type=A`,
+      headers: { 'Host': 'cloudflare-dns.com', 'Accept': 'application/dns-json' },
+      agentParams: { servername: 'cloudflare-dns.com' }
+    },
+    // Method 3: Google via Hostname (Standard)
+    { 
+      name: 'Google-Host', 
+      url: `https://dns.google/resolve?name=${hostname}&type=A`,
+      headers: {},
+      agentParams: {}
     }
-    return null;
-  } catch (e: any) {
-    console.error(`[DOH] Critical Failure for ${hostname}:`, e.message);
-    return null;
+  ];
+
+  for (const provider of providers) {
+    try {
+      console.log(`[DOH] Attempting ${provider.name} for ${hostname}...`);
+      const res = await axios.get(provider.url, { 
+        timeout: 4000,
+        headers: provider.headers,
+        httpsAgent: new https.Agent({ 
+          family: 4, 
+          rejectUnauthorized: false,
+          ...provider.agentParams 
+        })
+      });
+      
+      // Google/Cloudflare both support this JSON structure
+      const ip = res.data?.Answer?.find((a: any) => a.type === 1)?.data;
+      if (ip) {
+        console.log(`[DOH] ${provider.name} SUCCESS: ${hostname} -> ${ip}`);
+        return ip;
+      }
+    } catch (e: any) {
+      console.warn(`[DOH] ${provider.name} failed: ${e.message}`);
+    }
   }
+  return null;
 }
 
 const ipv4Agent = new https.Agent({ family: 4 });
 
-async function callPaidAPI(endpoint: string, payload: any, timeout = 20000) {
+async function callPaidAPI(endpoint: string, payload: any, timeout = 15000) {
   let errors: string[] = [];
   
   for (const base of PAYME_DOMAINS) {
     const urlObj = new URL(base);
     const hostname = urlObj.hostname;
     
-    // Attempt 1: Standard IPv4 Force
+    // Attempt 1: Standard
     try {
-      console.log(`[PAYME] Attempting (v2.6) request to: ${base}${endpoint}`);
+      console.log(`[PAYME] v2.7 request to: ${base}${endpoint}`);
       const response = await axios.post(`${base}${endpoint}`, payload, {
         headers: { 
           'Content-Type': 'application/json',
-          'User-Agent': 'EasyBookly-Scheduler/2.6.0',
+          'User-Agent': 'EasyBookly-Scheduler/2.7.0',
           'Accept': 'application/json'
         },
         httpsAgent: ipv4Agent,
         timeout
       });
-      console.log(`[PAYME] SUCCESS on ${hostname}`);
       return response.data;
     } catch (err: any) {
-      console.warn(`[PAYME] Standard fail on ${hostname}: ${err.code || 'ERR'}`);
+      const standardCode = err.code || 'ERR';
+      console.warn(`[PAYME] Fail on ${hostname}: ${standardCode}`);
       
-      // If it's a DNS error, try the ULTIMATE NUCLEAR OPTION
-      if (err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN') {
+      // Trigger bypass on DNS failure
+      if (standardCode === 'ENOTFOUND' || standardCode === 'EAI_AGAIN' || standardCode === 'ECONNREFUSED') {
         const ip = await resolveViaDoH(hostname);
         if (ip) {
           try {
-            console.log(`[PAYME] ULTIMATE BYPASS: Sending to ${ip} for ${hostname}`);
+            console.log(`[PAYME] BYPASS: Sending to ${ip} for ${hostname}`);
             const response = await axios.post(`https://${ip}${endpoint}`, payload, {
               headers: { 
                 'Content-Type': 'application/json',
-                'User-Agent': 'EasyBookly-Scheduler/2.6.0-Ultimate',
+                'User-Agent': 'EasyBookly-Scheduler/2.7.0-Bypass',
                 'Accept': 'application/json',
                 'Host': hostname 
               },
@@ -552,24 +577,22 @@ async function callPaidAPI(endpoint: string, payload: any, timeout = 20000) {
                 servername: hostname,
                 rejectUnauthorized: false 
               }),
-              timeout
+              timeout: timeout + 5000
             });
-            console.log(`[PAYME] ULTIMATE SUCCESS on ${hostname} via ${ip}`);
             return response.data;
           } catch (nucErr: any) {
-            console.error(`[PAYME] Ultimate failed for ${hostname} (IP ${ip}):`, nucErr.message);
-            errors.push(`${hostname}: Ultimate Bypass Fail (${nucErr.message})`);
+            errors.push(`${hostname}: Bypass Fail (${nucErr.message})`);
           }
         } else {
-          errors.push(`${hostname}: DoH resolution failed even via IP 8.8.8.8`);
+          errors.push(`${hostname}: DNS resolution failed (tried 3 DoH methods)`);
         }
       } else {
-        errors.push(`${hostname}: ${err.code || 'ERR'} (${err.message})`);
+        errors.push(`${hostname}: ${standardCode} (${err.message})`);
       }
     }
   }
   
-  const finalError = new Error(`Total DNS Blockade: ${errors.join(' | ')}`);
+  const finalError = new Error(`Connection Blocked: ${errors.join(' | ')}`);
   (finalError as any).allErrors = errors;
   throw finalError;
 }
@@ -892,6 +915,40 @@ app.post('/api/payments/resync', async (req: any, res: any) => {
 
 app.get('/api/payments/connectivity-check', async (req, res) => {
   const results: any[] = [];
+  const health: any = {};
+  
+  // Health Test 1: Baseline Internet (HTTPS)
+  try {
+    const start = Date.now();
+    await axios.get('https://api.github.com/zen', { timeout: 3000 });
+    health.github = `REACHABLE (${Date.now() - start}ms)`;
+  } catch (e: any) {
+    health.github = `FAILED: ${e.code || 'ERR'} (${e.message})`;
+  }
+
+  // Health Test 2: Standard DNS Check
+  try {
+    const start = Date.now();
+    await axios.get('https://google.com', { timeout: 3000 });
+    health.google_dns = `REACHABLE (${Date.now() - start}ms)`;
+  } catch (e: any) {
+    health.google_dns = `FAILED: ${e.code || 'ERR'} (${e.message})`;
+  }
+
+  // Health Test 3: Raw IP Access (Egress test)
+  try {
+    const start = Date.now();
+    // Test hit Google DNS via IP
+    await axios.get('https://8.8.8.8/resolve?name=google.com&type=A', { 
+      timeout: 3000, 
+      headers: { Host: 'dns.google' },
+      httpsAgent: new https.Agent({ servername: 'dns.google', rejectUnauthorized: false })
+    });
+    health.raw_ip_https = `REACHABLE (${Date.now() - start}ms)`;
+  } catch (e: any) {
+    health.raw_ip_https = `FAILED: ${e.code || 'ERR'} (${e.message})`;
+  }
+
   for (const base of PAYME_DOMAINS) {
     const start = Date.now();
     const hostname = new URL(base).hostname;
@@ -899,29 +956,32 @@ app.get('/api/payments/connectivity-check', async (req, res) => {
     // Test 1: Standard
     let standardResult = 'UNREACHABLE';
     try {
-      await axios.get(base, { httpsAgent: ipv4Agent, timeout: 4000 });
+      await axios.get(base, { httpsAgent: ipv4Agent, timeout: 3000 });
       standardResult = 'REACHABLE';
     } catch (e: any) {
       standardResult = `FAILED (${e.code || 'ERR'})`;
     }
 
-    // Test 2: DoH
+    // Test 2: DoH (Multi-Provider resolution)
     const ip = await resolveViaDoH(hostname);
     
     results.push({ 
       domain: base, 
       standard: standardResult, 
-      doh_ip: ip || 'FAILED',
+      doh_ip: ip || 'FAILED (ALL METHODS)',
       latency: `${Date.now() - start}ms`
     });
   }
   res.json({
     timestamp: new Date().toISOString(),
+    version: '2.7.0',
     environment: {
       netlify: !!process.env.NETLIFY,
       node: process.version,
-      platform: process.platform
+      platform: process.platform,
+      arch: process.arch
     },
+    global_health: health,
     results
   });
 });
