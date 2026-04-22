@@ -5,6 +5,9 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import dns from 'dns';
+import https from 'https';
+import { promisify } from 'util';
 import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
@@ -459,29 +462,35 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway) - v2.3.2 (Detailed Diagnosis)
-// V2.3 Strategy: Super DNS Fallback with Full Tracing
+// PayMe Integration (Israeli Payment Gateway) - v2.4.0 (IPv4 Force Strategy)
+// V2.4 Strategy: Force IPv4 + Super Fallout
 const PAYME_DOMAINS = [
   'https://ngapi.payme.co.il', // Primary Israeli
   'https://api.payme.co.il',   // Standard Israeli
+  'https://secure.payme.co.il',// Secure Israeli
   'https://api.paid.ai',       // New Branding
   'https://api.paid.co.il',    // Rebranded Israeli
   'https://ngapi.payme.io',    // Legacy Global
-  'https://api.payme.io'       // Standard Global
+  'https://api.payme.io',      // Standard Global
+  'https://api.payme.sale'     // Alternative Global
 ];
 
-async function callPaidAPI(endpoint: string, payload: any, timeout = 12000) {
+// Force IPv4 to bypass broken IPv6 DNS lookup on some serverless environments (Netlify/Lambda)
+const ipv4Agent = new https.Agent({ family: 4 });
+
+async function callPaidAPI(endpoint: string, payload: any, timeout = 15000) {
   let errors: string[] = [];
   for (const base of PAYME_DOMAINS) {
     const fullUrl = `${base}${endpoint}`;
     try {
-      console.log(`[PAYME] Attempting request to: ${fullUrl}`);
+      console.log(`[PAYME] Attempting (v2.4 IPv4) request to: ${fullUrl}`);
       const response = await axios.post(fullUrl, payload, {
         headers: { 
           'Content-Type': 'application/json',
-          'User-Agent': 'EasyBookly-Scheduler/2.3.2',
+          'User-Agent': 'EasyBookly-Scheduler/2.4.0',
           'Accept': 'application/json'
         },
+        httpsAgent: ipv4Agent, // Force IPv4
         timeout
       });
       console.log(`[PAYME] SUCCESS on endpoint: ${base}`);
@@ -489,17 +498,13 @@ async function callPaidAPI(endpoint: string, payload: any, timeout = 12000) {
     } catch (err: any) {
       const summary = `${new URL(base).hostname}: ${err.code || 'ERR'} (${err.message})`;
       errors.push(summary);
-      console.error(`[PAYME] Fail on ${base}:`, err.message);
+      console.error(`[PAYME] Fail on ${base}:`, err.code, err.message);
       
-      // If it's a DNS error, we MUST try the others.
-      if (err.code === 'ENOTFOUND') continue;
-      
-      // For other errors (like 401 or 400), the Seller Key might be wrong for THAT domain
-      // but right for another (older/newer). So we continue.
+      // We continue for ANY error in v2.4 to find the best working route
       continue; 
     }
   }
-  const finalError = new Error(`All domains failed: ${errors.join(' | ')}`);
+  const finalError = new Error(`Connection blocked across 8 domains: ${errors.join(' | ')}`);
   (finalError as any).allErrors = errors;
   throw finalError;
 }
