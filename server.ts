@@ -825,6 +825,34 @@ app.post('/api/payments/resync', async (req: any, res: any) => {
   }
 });
 
+app.get('/api/payments/connectivity-check', async (req, res) => {
+  const results: any[] = [];
+  for (const base of PAYME_DOMAINS) {
+    const start = Date.now();
+    try {
+      await axios.get(base, { httpsAgent: ipv4Agent, timeout: 5000 });
+      results.push({ domain: base, status: 'REACHABLE', time: `${Date.now() - start}ms` });
+    } catch (err: any) {
+      results.push({ 
+        domain: base, 
+        status: 'FAILED', 
+        code: err.code, 
+        message: err.message,
+        details: err.response?.status ? `HTTP ${err.response.status}` : 'No Response'
+      });
+    }
+  }
+  res.json({
+    timestamp: new Date().toISOString(),
+    environment: {
+      netlify: !!process.env.NETLIFY,
+      node: process.version,
+      platform: process.platform
+    },
+    results
+  });
+});
+
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('[SERVER UNCAUGHT ERROR]', err);

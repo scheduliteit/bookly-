@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Check, Shield, Rocket, Sparkles, Star, Loader2, Crown, Zap, Lock, ShieldCheck, CreditCard, ArrowRight, SmartphoneNfc, FileText, Globe } from 'lucide-react';
 import { paymentService } from '../services/paymentService';
+import PaymentErrorModal from './PaymentErrorModal';
 import { User } from '../types';
 import Logo from './Logo';
 import { auth } from '../firebase';
@@ -17,6 +18,7 @@ interface PricingProps {
 const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAuthRequired, onBack }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string} | null>(null);
   const [showCheckout, setShowCheckout] = useState<{plan: string, price: number, name: string} | null>(null);
   const [guestEmail, setGuestEmail] = useState('');
 
@@ -50,12 +52,11 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
       window.location.href = result.url;
     } catch (err: any) {
       console.error("[PRICING] Checkout Error:", err);
-      // Detailed error alert
-      const message = err.message || "Unknown error";
-      const details = err.details ? `\n\nDetails: ${err.details}` : "";
-      const code = err.errorCode ? `\n\nError Code: ${err.errorCode}` : "";
-      const hint = err.hint ? `\n\nHint: ${err.hint}` : "";
-      alert(`⚠️ GATEWAY ALERT [V2]:\n${message}${details}${code}${hint}`);
+      setGatewayError({
+        error: "Subscription Checkout Failed",
+        details: err.details || err.message || "Unknown error",
+        hint: err.hint || ""
+      });
       setIsProcessing(null);
     }
   };
@@ -107,6 +108,13 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] overflow-y-auto">
+      <PaymentErrorModal 
+        isOpen={!!gatewayError}
+        onClose={() => setGatewayError(null)}
+        error={gatewayError?.error || ""}
+        details={gatewayError?.details || ""}
+        hint={gatewayError?.hint || ""}
+      />
       {/* Gate Header */}
       {!currentPlan && (
         <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between border-b border-slate-100">
