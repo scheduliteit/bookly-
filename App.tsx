@@ -24,7 +24,7 @@ import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
-import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid } from 'lucide-react';
+import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
@@ -487,6 +487,92 @@ const App: React.FC = () => {
                 return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
               case 'ai-assistant':
                 return <AIAssistant appointments={appointments} clients={clients} />;
+              case 'booking-links':
+                return (
+                  <div className="h-full space-y-8 animate-in fade-in duration-500">
+                    <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                      <div>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-brand-blue uppercase tracking-[0.3em] mb-1">
+                          <Globe size={12} /> Live Assets
+                        </div>
+                        <h2 className="text-4xl font-black text-brand-dark tracking-tight">Booking Portals</h2>
+                        <p className="text-slate-500 font-medium">Your client-facing scheduling interfaces.</p>
+                      </div>
+                    </header>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl hover:border-brand-blue/20 transition-all group flex flex-col justify-between">
+                        <div className="space-y-6">
+                           <div className="w-16 h-16 bg-brand-blue/10 text-brand-blue rounded-[24px] flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                              <LinkIcon size={32} />
+                           </div>
+                           <div>
+                             <h3 className="text-2xl font-black text-brand-dark mb-2">Main Booking Page</h3>
+                             <p className="text-slate-500 leading-relaxed font-medium">
+                               This is your master scheduling link. Clients can browse all your active services, 
+                               check availability in their own timezone, and book instantly.
+                             </p>
+                           </div>
+                           
+                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group/link">
+                             <code className="text-[10px] font-bold text-slate-400 truncate pr-4">
+                               {window.location.origin}/book/{user?.id || 'default'}
+                             </code>
+                             <button 
+                               onClick={() => {
+                                 const url = `${window.location.origin}/book/${user?.id || 'default'}`;
+                                 navigator.clipboard.writeText(url);
+                                 showToast("Link copied!");
+                               }}
+                               className="p-2 text-brand-blue hover:bg-white rounded-xl transition-all shadow-sm"
+                             >
+                               <ExternalLink size={16} />
+                             </button>
+                           </div>
+                        </div>
+
+                        <div className="mt-10 pt-10 border-t border-slate-50 grid grid-cols-2 gap-4">
+                           <button 
+                            onClick={() => setIsPublicView(true)}
+                            className="py-4 bg-brand-blue text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-blue/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                           >
+                            <Globe size={18} /> Preview Live
+                           </button>
+                           <button 
+                            onClick={() => {
+                                const url = `${window.location.origin}/book/${user?.id || 'default'}`;
+                                window.open(url, '_blank');
+                            }}
+                            className="py-4 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2"
+                           >
+                            Open in New Tab
+                           </button>
+                        </div>
+                      </div>
+
+                      {/* Mini Widget Card */}
+                      <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm opacity-60 flex flex-col justify-between">
+                        <div className="space-y-6">
+                           <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-[24px] flex items-center justify-center">
+                              <LayoutGrid size={32} />
+                           </div>
+                           <div>
+                             <h3 className="text-2xl font-black text-slate-900 mb-2">Embeddable Widget</h3>
+                             <p className="text-slate-500 leading-relaxed font-medium">
+                               Embed your booking flow directly into your WordPress, Wix, or custom website.
+                               <span className="block mt-2 text-brand-blue text-[10px] font-black uppercase tracking-widest">Coming Soon in v2.0</span>
+                             </p>
+                           </div>
+                        </div>
+                        <div className="mt-10 pt-10 border-t border-slate-50">
+                           <button disabled className="w-full py-4 bg-slate-50 text-slate-300 rounded-2xl font-black text-sm cursor-not-allowed">
+                             GET EMBED CODE
+                           </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
               case 'management':
                 return <AdminPanel />;
               case 'earnings':

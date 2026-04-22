@@ -26,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
     { id: 'calendar', label: 'Scheduled Events', icon: Calendar },
     { id: 'marketing', label: 'Workflows', icon: Zap },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
+    { id: 'booking-links', label: 'Booking Links', icon: Globe },
     { id: 'subscription', label: 'Billing & Plan', icon: CreditCard },
     { id: 'clients', label: 'Contacts', icon: Users },
   ];
