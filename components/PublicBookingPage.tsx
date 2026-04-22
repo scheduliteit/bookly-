@@ -42,7 +42,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string} | null>(null);
+  const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string, version?: string} | null>(null);
   
   // AI Concierge State
   const [showAi, setShowAi] = useState(false);
@@ -128,7 +128,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       setGatewayError({
         error: err.error || "Booking failed",
         details: err.details || err.message || "Unknown error",
-        hint: err.hint || ""
+        hint: err.hint || "",
+        version: err.version
       });
     } finally {
       setIsSubmitting(false);
@@ -255,6 +256,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         error={gatewayError?.error || ""}
         details={gatewayError?.details || ""}
         hint={gatewayError?.hint || ""}
+        version={gatewayError?.version}
       />
 
       <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[640px] animate-in zoom-in-95 duration-700">

@@ -9,13 +9,21 @@ interface PaymentErrorModalProps {
   error: string;
   details: string;
   hint: string;
+  version?: string;
 }
 
-const PaymentErrorModal: React.FC<PaymentErrorModalProps> = ({ isOpen, onClose, error, details, hint }) => {
+const PaymentErrorModal: React.FC<PaymentErrorModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  error, 
+  details, 
+  hint,
+  version = '2.7.0'
+}) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = () => {
-    const text = `GATEWAY ERROR:\nMessage: ${error}\nDetails: ${details}\nHint: ${hint}`;
+    const text = `GATEWAY ERROR (v${version}):\nMessage: ${error}\nDetails: ${details}\nHint: ${hint}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
@@ -39,7 +47,7 @@ const PaymentErrorModal: React.FC<PaymentErrorModalProps> = ({ isOpen, onClose, 
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-slate-900">Gateway Alert</h3>
-                    <p className="text-xs font-bold text-rose-500 uppercase tracking-widest">Version 2.4.0 (IPv4 Force)</p>
+                    <p className="text-xs font-bold text-rose-500 uppercase tracking-widest">Version ${version} (DNS Failover)</p>
                   </div>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-all">

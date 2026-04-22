@@ -39,6 +39,7 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     error.hint = errorData.hint;
     error.errorCode = errorData.errorCode;
     error.status = errorData.status;
+    error.version = errorData.version || '2.7.0';
     throw error;
   }
   return res.json();

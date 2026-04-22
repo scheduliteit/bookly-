@@ -18,7 +18,7 @@ interface PricingProps {
 const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAuthRequired, onBack }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string} | null>(null);
+  const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string, version?: string} | null>(null);
   const [showCheckout, setShowCheckout] = useState<{plan: string, price: number, name: string} | null>(null);
   const [guestEmail, setGuestEmail] = useState('');
 
@@ -55,7 +55,8 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
       setGatewayError({
         error: "Subscription Checkout Failed",
         details: err.details || err.message || "Unknown error",
-        hint: err.hint || ""
+        hint: err.hint || "",
+        version: err.version
       });
       setIsProcessing(null);
     }
@@ -114,6 +115,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
         error={gatewayError?.error || ""}
         details={gatewayError?.details || ""}
         hint={gatewayError?.hint || ""}
+        version={gatewayError?.version}
       />
       {/* Gate Header */}
       {!currentPlan && (
