@@ -485,9 +485,17 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         </div>
       </div>
       
-      <div className="mt-12 flex items-center gap-3 py-2 px-4 bg-white/50 backdrop-blur-md rounded-full border border-white/20 text-slate-400 hover:text-slate-600 transition-all cursor-pointer">
-        <Logo size="sm" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] ml-2">Verified Secure</span>
+      <div className="mt-12 flex flex-col items-center gap-6">
+        <div className="flex items-center gap-3 py-2.5 px-6 bg-white border border-slate-200 rounded-full shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all group cursor-pointer" onClick={() => window.open('https://easybookly.com', '_blank')}>
+          <Logo size="sm" />
+          <div className="h-4 w-px bg-slate-200 mx-1" />
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 group-hover:text-brand-blue transition-colors">Create your own AI Booking Page • Free</span>
+          <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-blue group-hover:translate-x-0.5 transition-all" />
+        </div>
+        
+        <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-50">
+          <ShieldCheck size={14} /> Verified Secure • SSL Encrypted
+        </div>
       </div>
     </div>
   );

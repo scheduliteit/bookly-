@@ -242,7 +242,15 @@ app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: 
   const { appointments } = req.body;
   try {
     const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time }));
-    const prompt = `Consultant advice for: ${JSON.stringify(sanitized)}. One brief pro-tip.`;
+    const prompt = `
+      You are a high-level Strategic Business Growth Consultant. 
+      Analyze these appointments: ${JSON.stringify(sanitized)}.
+      Identify:
+      1. Busiest day/time patterns.
+      2. Most popular services.
+      3. A BOLD, ACTIONABLE strategy to increase revenue (e.g., price hikes, new slots, packaging).
+      Response MUST be 1 sentence, high-energy, and extremely actionable.
+    `;
     const advice = await callGemini(prompt);
     res.json({ advice });
   } catch (error: any) {

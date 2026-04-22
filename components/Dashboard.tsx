@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Appointment, Client, Service, User } from '../types';
-import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users } from 'lucide-react';
+import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
@@ -158,27 +158,56 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
         </div>
       </motion.div>
 
-      {/* AI Intelligence Layer */}
+      {/* AI Growth Advisor - Strategic Intelligence Tier */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-brand-blue p-8 rounded-3xl flex flex-col md:flex-row items-center gap-8 shadow-2xl shadow-brand-blue/20 relative overflow-hidden"
+        className="bg-brand-dark p-10 rounded-[48px] flex flex-col md:flex-row items-center gap-10 shadow-[0_32px_64px_-16px_rgba(0,107,255,0.25)] relative overflow-hidden group"
       >
-         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-         <div className="w-20 h-20 bg-white/10 text-white rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-md border border-white/10">
-           <Sparkles size={40} />
+         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-blue/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+         
+         <div className="w-24 h-24 bg-brand-blue/20 text-brand-blue rounded-[32px] flex items-center justify-center shrink-0 border border-brand-blue/30 backdrop-blur-sm relative">
+           <div className="absolute inset-0 bg-brand-blue animate-ping opacity-10 rounded-[32px]" />
+           <TrendingUp size={48} />
          </div>
-         <div className="flex-1 text-center md:text-left">
-            <h4 className="text-xs font-black text-white/60 flex items-center justify-center md:justify-start gap-2 uppercase tracking-[0.2em] mb-2">
-               Strategic Growth Advice <span className="bg-emerald-400 text-brand-dark text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">AI Analysis Complete</span>
-            </h4>
-            <p className={`text-xl text-white font-medium leading-relaxed italic ${isAdviceLoading ? 'animate-pulse opacity-50' : ''}`}>
-              "{isAdviceLoading ? 'Consulting the Gemini strategic core...' : aiInsight}"
+         
+         <div className="flex-1 text-center md:text-left space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <h4 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.4em]">
+                 Strategic Intelligence Tier 
+              </h4>
+              <span className="w-fit mx-auto md:mx-0 bg-emerald-500/10 text-emerald-400 text-[8px] px-3 py-1 rounded-full font-black uppercase tracking-widest border border-emerald-500/20">
+                PROACTIVE AUDIT: ACTIVE
+              </span>
+            </div>
+            
+            <p className={`text-2xl md:text-3xl text-white font-black leading-[1.1] tracking-tight ${isAdviceLoading ? 'animate-pulse opacity-50' : ''}`}>
+              {isAdviceLoading ? 'Synchronizing with global market data...' : aiInsight}
             </p>
+            
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+               <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                  <CheckCircle size={14} className="text-emerald-500" /> Pattern recognition enabled
+               </div>
+               <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                  <CheckCircle size={14} className="text-emerald-500" /> Revenue optimization active
+               </div>
+            </div>
          </div>
-         <button onClick={() => setActiveTab?.('ai-assistant')} className="px-6 py-3 bg-white text-brand-blue rounded-full font-black text-sm hover:bg-brand-dark hover:text-white transition-all shrink-0">
-           Full Analysis
-         </button>
+         
+         <div className="flex flex-col gap-3 shrink-0">
+           <button 
+            onClick={() => setActiveTab?.('ai-assistant')} 
+            className="px-10 py-5 bg-brand-blue text-white rounded-full font-black text-sm hover:bg-white hover:text-brand-dark transition-all shadow-xl shadow-brand-blue/20 flex items-center gap-2 group/btn"
+           >
+             EXECUTE STRATEGY <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+           </button>
+           <button 
+            className="px-10 py-5 bg-white/5 text-slate-400 rounded-full font-black text-xs hover:bg-white/10 hover:text-white transition-all border border-white/5"
+           >
+             IGNORE INSIGHT
+           </button>
+         </div>
       </motion.div>
 
       {/* Event Types Section */}
