@@ -478,6 +478,81 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
       )}
+
+      {activeTab === 'legal' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-brand-dark">Legal & Compliance</h3>
+                <p className="text-xs text-slate-500 mt-1">Manage your business terms and data protection policies.</p>
+              </div>
+              <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
+                <ShieldCheck size={20} />
+              </div>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-brand-blue/5 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-blue/10">
+                    <Database size={12} /> Privacy Policy
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed italic">
+                  This text appears on your public booking page. Be clear about how you use client data.
+                </p>
+                <textarea 
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand-blue outline-none transition-all min-h-[160px] resize-none"
+                  value={legalData.privacyPolicy}
+                  onChange={(e) => onUpdateLegalData({ ...legalData, privacyPolicy: e.target.value })}
+                  placeholder="Insert your privacy policy content here..."
+                />
+              </div>
+
+              <div className="pt-8 border-t border-slate-50 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-brand-blue/5 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-blue/10">
+                    <FileText size={12} /> Terms of Service
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed italic">
+                  Define your cancellation rules, refund policies, and user behavior expectations.
+                </p>
+                <textarea 
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand-blue outline-none transition-all min-h-[160px] resize-none"
+                  value={legalData.termsOfService}
+                  onChange={(e) => onUpdateLegalData({ ...legalData, termsOfService: e.target.value })}
+                  placeholder="Insert your terms of service content here..."
+                />
+              </div>
+
+              <div className="pt-8 border-t border-slate-50">
+                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                      <Lock className="text-brand-blue" size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-brand-dark">GDPR & Protection Mode</p>
+                      <p className="text-xs text-slate-500">Strict consent checkbox for all bookings</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={legalData.gdprStrict}
+                      onChange={(e) => onUpdateLegalData({ ...legalData, gdprStrict: e.target.checked })}
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-blue"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
