@@ -459,18 +459,19 @@ app.post('/api/payments/connect', (req, res) => {
   res.json({ success: true });
 });
 
-// PayMe Integration (Israeli Payment Gateway) - v2.2.1 (Build Fix)
-// V2.2 Strategy: Smart DNS Fallback
-// If one domain fails with ENOTFOUND, try the next instantly.
+// PayMe Integration (Israeli Payment Gateway) - v2.3.2 (Detailed Diagnosis)
+// V2.3 Strategy: Super DNS Fallback with Full Tracing
 const PAYME_DOMAINS = [
   'https://ngapi.payme.co.il', // Primary Israeli
+  'https://api.payme.co.il',   // Standard Israeli
   'https://api.paid.ai',       // New Branding
+  'https://api.paid.co.il',    // Rebranded Israeli
   'https://ngapi.payme.io',    // Legacy Global
   'https://api.payme.io'       // Standard Global
 ];
 
-async function callPaidAPI(endpoint: string, payload: any, timeout = 10000) {
-  let lastError: any = null;
+async function callPaidAPI(endpoint: string, payload: any, timeout = 12000) {
+  let errors: string[] = [];
   for (const base of PAYME_DOMAINS) {
     const fullUrl = `${base}${endpoint}`;
     try {
@@ -478,7 +479,7 @@ async function callPaidAPI(endpoint: string, payload: any, timeout = 10000) {
       const response = await axios.post(fullUrl, payload, {
         headers: { 
           'Content-Type': 'application/json',
-          'User-Agent': 'EasyBookly-Scheduler/2.2',
+          'User-Agent': 'EasyBookly-Scheduler/2.3.2',
           'Accept': 'application/json'
         },
         timeout
@@ -486,15 +487,21 @@ async function callPaidAPI(endpoint: string, payload: any, timeout = 10000) {
       console.log(`[PAYME] SUCCESS on endpoint: ${base}`);
       return response.data;
     } catch (err: any) {
-      lastError = err;
-      if (err.code === 'ENOTFOUND') {
-        console.warn(`[PAYME] DNS lookup failed for ${base}. Trying fallback...`);
-        continue;
-      }
-      throw err;
+      const summary = `${new URL(base).hostname}: ${err.code || 'ERR'} (${err.message})`;
+      errors.push(summary);
+      console.error(`[PAYME] Fail on ${base}:`, err.message);
+      
+      // If it's a DNS error, we MUST try the others.
+      if (err.code === 'ENOTFOUND') continue;
+      
+      // For other errors (like 401 or 400), the Seller Key might be wrong for THAT domain
+      // but right for another (older/newer). So we continue.
+      continue; 
     }
   }
-  throw lastError;
+  const finalError = new Error(`All domains failed: ${errors.join(' | ')}`);
+  (finalError as any).allErrors = errors;
+  throw finalError;
 }
 
 // Security Fix #2: No hardcoded fallback
@@ -683,18 +690,12 @@ app.post('/api/payments/create-subscription-checkout', async (req, res) => {
       hint: 'Subscriptions (sale_type: 2) often require manual approval in your PayMe dashboard. Ensure your Seller Key supports recurring payments.'
     });
   } catch (error: any) {
-    if (axios.isAxiosError(error)) {
-      console.error('[SERVER] PayMe Subscription Axios Error:', {
-        code: error.code,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      return res.status(error.response?.status || 500).json({ 
-        error: `Subscription gateway connection failed: ${error.code || 'UNKNOWN'}`, 
-        details: error.message,
-        payload: error.response?.data,
-        hint: 'Check your PayMe Seller Key or network connectivity. Subscriptions (sale_type: 2) may require additional permission in your PayMe dashboard.'
+    if (axios.isAxiosError(error) || error.allErrors) {
+      const detailedError = error.allErrors ? error.message : error.message;
+      return res.status(500).json({ 
+        error: `Subscription gateway unreachable`, 
+        details: detailedError,
+        hint: 'The server tried 6 different API domains and all failed. Screenshot this error "Details" section to help the developer diagnose the DNS blockade.'
       });
     }
     console.error('[SERVER] PayMe Subscription Fatal Error:', error);
@@ -790,6 +791,32 @@ app.get('/api/payments/verify-subscription', async (req: any, res: any) => {
   } catch (error: any) {
     console.error('Verify error:', error.message);
     res.redirect('/?subscription=failed&error=' + encodeURIComponent(error.message));
+  }
+});
+
+app.post('/api/payments/resync', async (req: any, res: any) => {
+  const { appointmentId, payme_sale_id } = req.body;
+  const sellerKey = getPayMeSellerKey();
+  
+  if (!sellerKey) return res.status(500).json({ error: 'Config error' });
+  
+  try {
+    const data = await callPaidAPI('/api/get-sales', {
+      seller_key: sellerKey,
+      payme_sale_id: payme_sale_id
+    });
+
+    const isSuccess = (data.status === 'success' || data.status_code === 0) && 
+                      (data.sale_status === 'success' || data.sale_status === 'paid');
+
+    if (isSuccess && appointmentId) {
+      await updateDoc(doc(db, 'appointments', appointmentId), { status: 'confirmed' });
+      return res.json({ success: true, status: 'confirmed' });
+    }
+    
+    return res.json({ success: false, status: data.sale_status || 'unknown' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

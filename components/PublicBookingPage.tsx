@@ -121,9 +121,11 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         onBookingComplete(result);
         setIsSuccess(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Booking failed", err);
-      alert("Something went wrong. Please try again.");
+      const errorMessage = err.details || err.message || "Unknown error";
+      const hint = err.hint ? `\n\nHint: ${err.hint}` : "";
+      alert(`⚠️ GATEWAY ALERT [V2]:\n${err.error || "Booking failed"}\n\nDetails: ${errorMessage}${hint}`);
     } finally {
       setIsSubmitting(false);
     }
