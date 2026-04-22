@@ -17,6 +17,7 @@ interface SettingsProps {
   onUpdateCurrency: (cur: 'ILS' | 'USD' | 'EUR' | 'GBP') => void;
   timezone: string;
   onUpdateTimezone: (tz: string) => void;
+  userId: string;
   initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal';
 }
 
@@ -33,6 +34,7 @@ const Settings: React.FC<SettingsProps> = ({
   onUpdateCurrency,
   timezone,
   onUpdateTimezone,
+  userId,
   initialTab
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>(initialTab || 'profile');
@@ -95,7 +97,7 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleConnectCalendar = async () => {
     try {
-      const response = await fetch('/api/auth/url');
+      const response = await fetch(`/api/auth/google/url?userId=${userId}`);
       const { url } = await response.json();
       window.open(url, 'oauth_popup', 'width=600,height=700');
     } catch (error) {
@@ -105,7 +107,7 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleConnectOutlook = async () => {
     try {
-      const response = await fetch('/api/auth/outlook/url');
+      const response = await fetch(`/api/auth/outlook/url?userId=${userId}`);
       const { url } = await response.json();
       window.open(url, 'oauth_popup', 'width=600,height=700');
     } catch (error) {

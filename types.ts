@@ -27,6 +27,8 @@ export interface User {
   role?: 'admin' | 'user';
   createdAt?: string; // ISO string for trial tracking
   timezone?: string;
+  googleCalendarTokens?: any;
+  outlookCalendarTokens?: any;
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';

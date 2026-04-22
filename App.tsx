@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [connectedApps, setConnectedApps] = useState<string[]>([]);
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [externalEvents, setExternalEvents] = useState<any[]>([]);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -227,6 +228,56 @@ const App: React.FC = () => {
     }
   }, [user?.id, user?.onboardingCompleted]);
 
+  const fetchExternalEvents = useCallback(async () => {
+    if (!user || connectedApps.length === 0) {
+      setExternalEvents([]);
+      return;
+    }
+    
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+      
+      const res = await fetch('/api/calendar/sync', {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setExternalEvents(data);
+      }
+    } catch (err) {
+      console.error("External sync failed", err);
+    }
+  }, [user, connectedApps]);
+
+  useEffect(() => {
+    if (user && connectedApps.length > 0) {
+      fetchExternalEvents();
+    }
+  }, [user?.id, connectedApps, fetchExternalEvents]);
+
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) return;
+      
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        showToast(`${event.data.provider === 'google' ? 'Google' : 'Outlook'} Calendar Connected!`, "success");
+        // Force refresh user to get new connectedApps
+        if (user) {
+          api.user.get(user.id).then(updated => {
+            if (updated) {
+              setConnectedApps(updated.connectedApps || []);
+              fetchExternalEvents();
+            }
+          });
+        }
+      }
+    };
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [user, fetchExternalEvents]);
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -419,6 +470,7 @@ const App: React.FC = () => {
                 return (
                   <AppointmentCalendar 
                     appointments={appointments} 
+                    externalEvents={externalEvents}
                     onAddClick={() => setShowAddModal(true)} 
                     onUpdateAppointment={(a) => api.appointments.update(a)} 
                     onDeleteAppointment={(id) => api.appointments.delete(id)} 
@@ -454,6 +506,7 @@ const App: React.FC = () => {
                     onUpdateCurrency={(val) => updateUserSettings({ currency: val })}
                     timezone={timezone}
                     onUpdateTimezone={(val) => updateUserSettings({ timezone: val })}
+                    userId={user!.id}
                     initialTab={settingsTab}
                   />
                 );

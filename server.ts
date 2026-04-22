@@ -304,10 +304,11 @@ app.post('/api/ai/summary', requireAuth, aiLimiter, async (req: any, res: any) =
 });
 
 // OAuth Routes
-app.get('/api/auth/url', (req, res) => {
+app.get('/api/auth/google/url', (req, res) => {
+  const { userId } = req.query;
   const callbackUrl = `${req.protocol}://${req.get('host')}/auth/callback`;
   
-  if (process.env.GOOGLE_CLIENT_ID) {
+  if (process.env.GOOGLE_CLIENT_ID && userId) {
     const client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
@@ -315,20 +316,22 @@ app.get('/api/auth/url', (req, res) => {
     );
     const url = client.generateAuthUrl({
       access_type: 'offline',
+      prompt: 'consent',
       scope: ['https://www.googleapis.com/auth/calendar.readonly'],
+      state: userId as string,
     });
     return res.json({ url });
   }
 
   // Fallback for mock demo
-  res.json({ url: callbackUrl + '?code=mock_code_123' });
+  res.json({ url: callbackUrl + `?code=mock_code_123&state=${userId || 'default'}` });
 });
 
 app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
-  const { code } = req.query;
+  const { code, state: userId } = req.query;
   const callbackUrl = `${req.protocol}://${req.get('host')}/auth/callback`;
 
-  if (process.env.GOOGLE_CLIENT_ID && code && code !== 'mock_code_123') {
+  if (process.env.GOOGLE_CLIENT_ID && code && code !== 'mock_code_123' && userId) {
     try {
       const client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -336,8 +339,16 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
         callbackUrl
       );
       const { tokens } = await client.getToken(code as string);
-      // In a real app, save tokens to the user in DB
-      console.log('[SERVER] Google Tokens received:', tokens);
+      
+      // Save tokens to Firestore
+      if (db) {
+        const userRef = doc(db, 'users', userId as string);
+        await updateDoc(userRef, { 
+          googleCalendarTokens: tokens,
+          connectedApps: admin.firestore.FieldValue.arrayUnion('google')
+        });
+        console.log('[SERVER] Google Tokens saved for user:', userId);
+      }
     } catch (error) {
       console.error('[SERVER] OAuth Error:', error);
     }
@@ -366,23 +377,54 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
   `);
 });
 
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
-
-const twilioClient = process.env.TWILIO_SID && process.env.TWILIO_TOKEN 
-  ? twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN) 
-  : null;
-
-// Outlook OAuth (Mock for now, similar to Google)
+// Outlook OAuth
 app.get('/api/auth/outlook/url', (req, res) => {
+  const { userId } = req.query;
   const callbackUrl = `${req.protocol}://${req.get('host')}/auth/outlook/callback`;
-  // In a real app, use @azure/msal-node or similar
-  const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${process.env.OUTLOOK_CLIENT_ID || 'MOCK'}&response_type=code&redirect_uri=${encodeURIComponent(callbackUrl)}&response_mode=query&scope=Calendars.Read`;
-  res.json({ url: process.env.OUTLOOK_CLIENT_ID ? url : callbackUrl + '?code=mock_outlook' });
+  
+  const params = new URLSearchParams({
+    client_id: process.env.OUTLOOK_CLIENT_ID || 'MOCK',
+    response_type: 'code',
+    redirect_uri: callbackUrl,
+    response_mode: 'query',
+    scope: 'offline_access Calendars.Read',
+    state: userId as string,
+  });
+
+  const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`;
+  res.json({ url: process.env.OUTLOOK_CLIENT_ID ? url : callbackUrl + `?code=mock_outlook&state=${userId || 'default'}` });
 });
 
-app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], (req, res) => {
+app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) => {
+  const { code, state: userId } = req.query;
+  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/outlook/callback`;
+
+  if (process.env.OUTLOOK_CLIENT_ID && code && code !== 'mock_outlook' && userId) {
+    try {
+      const response = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', new URLSearchParams({
+        client_id: process.env.OUTLOOK_CLIENT_ID!,
+        client_secret: process.env.OUTLOOK_CLIENT_SECRET!,
+        code: code as string,
+        redirect_uri: callbackUrl,
+        grant_type: 'authorization_code',
+      }).toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      const tokens = response.data;
+      if (db) {
+        const userRef = doc(db, 'users', userId as string);
+        await updateDoc(userRef, { 
+          outlookCalendarTokens: tokens,
+          connectedApps: admin.firestore.FieldValue.arrayUnion('outlook')
+        });
+        console.log('[SERVER] Outlook Tokens saved for user:', userId);
+      }
+    } catch (error) {
+      console.error('[SERVER] Outlook OAuth Error:', error);
+    }
+  }
+
   res.send(`
     <html>
       <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #fcfcfc;">
@@ -404,6 +446,94 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], (req, res) => {
       </body>
     </html>
   `);
+});
+
+// Sync External Calendars
+app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
+  const userId = req.user.uid;
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    if (!userSnap.exists()) return res.status(404).json({ error: 'User not found' });
+    
+    const userData = userSnap.data();
+    const externalEvents: any[] = [];
+
+    // 1. Google Calendar
+    if (userData.googleCalendarTokens) {
+      try {
+        const auth = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET
+        );
+        auth.setCredentials(userData.googleCalendarTokens);
+        
+        const calendar = google.calendar({ version: 'v3', auth });
+        const googleRes = await calendar.events.list({
+          calendarId: 'primary',
+          timeMin: new Date().toISOString(),
+          maxResults: 50,
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
+
+        const events = googleRes.data.items || [];
+        events.forEach((event: any) => {
+          if (event.start?.dateTime || event.start?.date) {
+            const start = new Date(event.start.dateTime || event.start.date);
+            externalEvents.push({
+              id: event.id,
+              title: event.summary || 'Busy (Google)',
+              start: start.toISOString(),
+              end: new Date(event.end.dateTime || event.end.date).toISOString(),
+              provider: 'google',
+              color: '#4285F4'
+            });
+          }
+        });
+      } catch (err) {
+        console.error('[SYNC] Google Sync Failed:', err);
+      }
+    }
+
+    // 2. Outlook Calendar
+    if (userData.outlookCalendarTokens) {
+      try {
+        let tokens = userData.outlookCalendarTokens;
+        
+        // Refresh token if needed (simplification: always try to refresh or use current)
+        // In a real app, check expiration
+        
+        const outlookRes = await axios.get('https://graph.microsoft.com/v1.0/me/calendar/events', {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+          params: {
+            '$select': 'subject,start,end,id',
+            '$top': 50,
+            '$filter': `start/dateTime ge '${new Date().toISOString()}'`
+          }
+        });
+
+        const events = outlookRes.data.value || [];
+        events.forEach((event: any) => {
+          externalEvents.push({
+            id: event.id,
+            title: event.subject || 'Busy (Outlook)',
+            start: new Date(event.start.dateTime + 'Z').toISOString(),
+            end: new Date(event.end.dateTime + 'Z').toISOString(),
+            provider: 'outlook',
+            color: '#0078d4'
+          });
+        });
+      } catch (err) {
+        console.error('[SYNC] Outlook Sync Failed:', err);
+      }
+    }
+
+    res.json(externalEvents);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/notify', async (req, res) => {
