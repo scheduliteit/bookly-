@@ -104,7 +104,8 @@ const App: React.FC = () => {
           // Fetch user settings from Firestore
           const userData = await api.user.get(firebaseUser.uid);
           if (userData) {
-            setUser(userData);
+            const effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
+            setUser(effectiveUser);
             setBusinessName(userData.businessName || '');
             setBusinessCategory(userData.businessCategory || 'Consulting');
             setIsOnboarded(userData.onboardingCompleted || false);
@@ -112,16 +113,15 @@ const App: React.FC = () => {
             setConnectedApps(userData.connectedApps || []);
             setLegalData(userData.legalData || legalData);
             setCurrency(userData.currency || 'USD');
-            setSubscriptionPlan(userData.subscriptionPlan);
+            // FREE FOR NOW: Default to premium if no plan
+            setSubscriptionPlan(effectiveUser.subscriptionPlan as 'basic' | 'premium');
           } else {
             console.log("New user detected, creating profile...");
             
-            // Apply pending plan if it exists
-            const initialPlan = pendingPlan;
-            if (initialPlan) {
-              setSubscriptionPlan(initialPlan);
-              setPendingPlan(undefined);
-            }
+            // FREE FOR NOW: All users get premium by default
+            const initialPlan = 'premium';
+            setSubscriptionPlan(initialPlan);
+            setPendingPlan(undefined);
 
             // New user
             const newUser: User = {

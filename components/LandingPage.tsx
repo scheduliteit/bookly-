@@ -203,7 +203,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                 onClick={() => onStart()}
                 className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
               >
-                Secure Your Membership
+                Start Free Trial
               </button>
            </div>
            
@@ -236,10 +236,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
       <section id="pricing" className="py-32 px-6 bg-slate-50/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 max-w-3xl mx-auto space-y-6">
-              <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">Invest in your <span className="text-brand-blue underline decoration-slate-200">Scale.</span></h2>
-              <p className="text-xl text-slate-500 font-medium">Simple, high-impact pricing. No hidden fees. No ad-based plans.</p>
+              <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">Free for <span className="text-brand-blue underline decoration-slate-200">Early Adopters.</span></h2>
+              <p className="text-xl text-slate-500 font-medium font-black italic">INVITE-ONLY BETA: ALL PLANS $0 FOR NOW</p>
               
-              <div className="flex flex-col items-center gap-6 pt-8">
+              <div className="flex flex-col items-center gap-6 pt-8 opacity-50 pointer-events-none">
                 <div className="flex items-center gap-5 p-1.5 bg-white rounded-[20px] border border-slate-200 w-fit shadow-sm">
                   <button 
                     onClick={() => setBillingCycle('monthly')} 
@@ -267,9 +267,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                 </div>
                 <div className="flex items-baseline gap-2 mb-10">
                   <span className="text-6xl font-black text-brand-dark tracking-tighter">
+                    $0
+                  </span>
+                  <span className="text-xl font-bold text-slate-400 line-through decoration-brand-blue">
                     ${billingCycle === 'annual' ? annualStarter : monthlyStarter}
                   </span>
-                  <span className="text-xl font-bold text-slate-400">/mo</span>
+                  <span className="text-slate-400 font-bold text-xl">/mo</span>
                 </div>
                 <div className="flex-1 space-y-6 mb-12">
                    {['Unlimited Events', 'Manual Payouts', 'White-labeling', 'Standard CRM'].map(f => (
@@ -279,7 +282,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                    ))}
                 </div>
                 <button onClick={() => onStart()} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">
-                  {isLoggedIn ? 'Dashboard' : 'Get Started'}
+                  {isLoggedIn ? 'Dashboard' : 'Activate Free Account'}
                 </button>
              </div>
 
@@ -295,9 +298,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                 </div>
                 <div className="flex items-baseline gap-2 mb-10">
                   <span className="text-6xl font-black text-white tracking-tighter text-shadow-xl">
+                    $0
+                  </span>
+                  <span className="text-xl font-bold text-white/40 line-through decoration-white/20">
                     ${billingCycle === 'annual' ? annualElite : monthlyElite}
                   </span>
-                  <span className="text-xl font-bold text-white/60">/mo</span>
+                  <span className="text-white/60 font-bold text-xl">/mo</span>
                 </div>
                 <div className="flex-1 space-y-6 mb-12">
                    {['Full AI Concierge', 'Automated PayMe Payouts', 'Strategic AI Audit', 'Priority API Access', 'Team Management'].map(f => (
@@ -307,7 +313,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                    ))}
                 </div>
                 <button onClick={() => onStart()} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">
-                  {isLoggedIn ? 'Upgrade Now' : 'Join as Pro'}
+                  {isLoggedIn ? 'Dashboard' : 'Activate Free Pro'}
                 </button>
              </div>
           </div>

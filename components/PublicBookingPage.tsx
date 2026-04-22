@@ -106,7 +106,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         price: selectedService.price,
       });
 
-      const isFreeMode = import.meta.env.VITE_FREE_MODE === 'true';
+      const isFreeMode = true; // Hardcoded for 'Free for Early Adopters' strategy
       
       if (selectedService.price > 0 && !isFreeMode) {
         // Redirect to PayMe Israeli Payment Gateway

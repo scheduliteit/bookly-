@@ -38,6 +38,28 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
 
     setIsProcessing(showCheckout.plan);
     
+    // If free mode, just activate directly
+    if (isFreeMode) {
+      try {
+        console.log("[PRICING] Free Mode Activation:", showCheckout.plan);
+        // Simulate a tiny delay for UX
+        await new Promise(resolve => setTimeout(resolve, 800));
+        onPlanChange(showCheckout.plan as 'basic' | 'premium');
+        setShowCheckout(null);
+        setIsProcessing(null);
+        return;
+      } catch (err: any) {
+        console.error("[PRICING] Activation Error:", err);
+        setGatewayError({
+          error: "Activation Failed",
+          details: err.message || "Unknown error",
+          hint: "Could not activate your profile. Please try again."
+        });
+        setIsProcessing(null);
+        return;
+      }
+    }
+
     // PayMe handle
     try {
       const result = await paymentService.createSubscriptionCheckout({
@@ -67,7 +89,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
   const monthlyElite = 25;
   const annualElite = 15; // $180 / 12
 
-  const isFreeMode = false; // "Now requiring payments"
+  const isFreeMode = true; // "Free for Early Adopters"
 
   const plans = [
     {
