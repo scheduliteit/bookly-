@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, ChevronRight, CheckCircle2, User, Phone, ShieldCheck, Check, Globe, Loader2, Lock, Languages, Info, ArrowLeft, ArrowRight, CalendarDays, Star, Zap, Users, Shield, MessageSquareText, Globe2, Sparkles, Send, X, Radio } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, CheckCircle2, User, Phone, ShieldCheck, Check, Globe, Loader2, Lock, Languages, Info, ArrowLeft, ArrowRight, CalendarDays, Star, Zap, Users, Shield, MessageSquareText, Globe2, Sparkles, Send, X, Radio, Video } from 'lucide-react';
 import { api } from '../services/api';
 import { Service } from '../types';
 import Logo from './Logo';
@@ -42,6 +42,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [confirmedMeetingLink, setConfirmedMeetingLink] = useState<string | null>(null);
   const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string, version?: string} | null>(null);
   
   // AI Concierge State
@@ -91,6 +92,14 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
     setIsSubmitting(true);
     const appointmentId = Math.random().toString(36).substr(2, 9);
     
+    // Generate meeting link if online
+    let meetingLink = undefined;
+    const locationType = selectedService.locationType || 'office';
+    if (locationType === 'online') {
+      const uniqueId = Math.random().toString(36).substr(2, 6);
+      meetingLink = `https://meet.google.com/ebk-${uniqueId}-vrs`;
+    }
+
     try {
       // Create the appointment first (as pending if payment is required)
       const result = await api.appointments.create({ 
@@ -104,6 +113,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         duration: selectedService.duration, 
         status: selectedService.price > 0 ? 'pending' : 'confirmed', 
         price: selectedService.price,
+        locationType: locationType,
+        meetingLink: meetingLink,
       });
 
       const isFreeMode = true; // Hardcoded for 'Free for Early Adopters' strategy
@@ -120,6 +131,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         });
         window.location.href = url;
       } else {
+        setConfirmedMeetingLink(meetingLink || null);
         onBookingComplete(result);
         setIsSuccess(true);
       }
@@ -187,6 +199,25 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                  <Globe2 size={16} className="text-slate-400" />
                  {timezone}
               </div>
+              
+              {selectedService?.locationType === 'online' && (
+                <div className="mt-4 p-4 bg-brand-blue/5 border border-brand-blue/10 rounded-xl space-y-2">
+                   <div className="flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest">
+                      <Video size={14} /> Virtual Meeting Room
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-600 truncate mr-4">{confirmedMeetingLink || 'link-generation-failed'}</span>
+                      <button 
+                        onClick={() => {
+                          if (confirmedMeetingLink) navigator.clipboard.writeText(confirmedMeetingLink);
+                        }}
+                        className="text-[10px] font-black text-brand-blue uppercase bg-white px-3 py-1 rounded-md border border-brand-blue/10 hover:bg-brand-blue/5 transition-all"
+                      >
+                        COPY
+                      </button>
+                   </div>
+                </div>
+              )}
            </div>
         </div>
         <div className="flex gap-4">

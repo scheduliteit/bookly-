@@ -39,12 +39,12 @@ const Settings: React.FC<SettingsProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
-  const [newService, setNewService] = useState<Partial<Service>>({ name: '', duration: 30, price: 0, color: '#006bff' });
+  const [newService, setNewService] = useState<Partial<Service>>({ name: '', duration: 30, price: 0, color: '#006bff', locationType: 'online' });
 
   const handleAddService = () => {
     if (!newService.name) return;
     onUpdateServices([...services, newService as Service]);
-    setNewService({ name: '', duration: 30, price: 0, color: '#006bff' });
+    setNewService({ name: '', duration: 30, price: 0, color: '#006bff', locationType: 'online' });
   };
 
   const handleDeleteService = (serviceName: string) => {
@@ -181,7 +181,12 @@ const Settings: React.FC<SettingsProps> = ({
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: service.color || '#006bff' }} />
                       <div>
                         <p className="text-sm font-bold text-brand-dark">{service.name}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">{service.duration} mins • ${service.price}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[10px] text-slate-500 font-medium">{service.duration} mins • ${service.price}</p>
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter ${service.locationType === 'online' ? 'bg-brand-blue/10 text-brand-blue' : 'bg-slate-100 text-slate-500'}`}>
+                            {service.locationType || 'Office'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <button 
@@ -196,12 +201,12 @@ const Settings: React.FC<SettingsProps> = ({
 
               <div className="pt-6 border-t border-slate-100">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Add New Event Type</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="md:col-span-2">
                     <input 
                       type="text" 
                       placeholder="Event Name (e.g. 30 Min Meeting)" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
                       value={newService.name}
                       onChange={e => setNewService({...newService, name: e.target.value})}
                     />
@@ -210,7 +215,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <input 
                       type="number" 
                       placeholder="Duration (min)" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
                       value={newService.duration}
                       onChange={e => setNewService({...newService, duration: Number(e.target.value)})}
                     />
@@ -219,10 +224,21 @@ const Settings: React.FC<SettingsProps> = ({
                     <input 
                       type="number" 
                       placeholder="Price ($)" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
                       value={newService.price}
                       onChange={e => setNewService({...newService, price: Number(e.target.value)})}
                     />
+                  </div>
+                  <div>
+                    <select 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
+                      value={newService.locationType}
+                      onChange={e => setNewService({...newService, locationType: e.target.value as any})}
+                    >
+                      <option value="online">Online (Auto-Link)</option>
+                      <option value="office">In-Person (Office)</option>
+                      <option value="phone">Phone Call</option>
+                    </select>
                   </div>
                 </div>
                 <button 

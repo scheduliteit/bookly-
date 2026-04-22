@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Appointment, Client, Service, User } from '../types';
-import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle } from 'lucide-react';
+import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle, Smartphone } from 'lucide-react';
 import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
@@ -78,7 +78,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
           </h1>
           <p className="text-slate-500 font-medium mt-2">Here's what's happening with your business today.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={() => setActiveTab?.('settings')} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-full font-bold text-sm hover:bg-slate-200 transition-all flex items-center gap-2">
+            <Smartphone size={16} /> Mobile App
+          </button>
           <button onClick={onOpenPublicView} className="px-6 py-2.5 text-brand-blue border-2 border-brand-blue/10 rounded-full font-bold text-sm hover:bg-brand-blue/5 transition-all flex items-center gap-2">
             <Eye size={16} /> Preview Site
           </button>

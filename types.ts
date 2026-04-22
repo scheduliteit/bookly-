@@ -40,6 +40,8 @@ export interface Client {
   userId?: string;
 }
 
+export type LocationType = 'online' | 'office' | 'phone';
+
 export interface Service {
   name: string;
   price: number;
@@ -47,6 +49,7 @@ export interface Service {
   description?: string;
   bufferTime?: number; // minutes after appointment
   color?: string;
+  locationType?: LocationType;
 }
 
 export interface Appointment {
@@ -62,6 +65,8 @@ export interface Appointment {
   price: number;
   reminderSent?: boolean;
   reminderTimestamp?: string;
+  locationType?: LocationType;
+  meetingLink?: string;
 }
 
 export interface BusinessStats {
