@@ -177,36 +177,8 @@ const App: React.FC = () => {
 
   // Sync Data (Security Fix #5 & #8)
   useEffect(() => {
-    const checkPayment = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const paymeSaleId = params.get('payme_sale_id');
-      const status = params.get('status');
-      const paymeStatus = params.get('payme_status');
-      
-      // Fix: only run if we have a sale ID AND a current user (Security Fix #5)
-      if (paymeSaleId && auth.currentUser) {
-        setIsVerifyingPayment(true);
-        try {
-          const idToken = await auth.currentUser.getIdToken();
-          const res = await fetch(`/api/payments/verify-subscription${window.location.search}`, {
-            headers: { 'Authorization': `Bearer ${idToken}` }
-          });
-          const data = await res.json();
-          
-          if (data.success) {
-            updateUserSettings({ subscriptionPlan: data.plan });
-            showToast("Subscription activated!", "success");
-            window.history.replaceState({}, '', '/');
-          }
-        } catch (err) {
-          console.error("Verification failed", err);
-        } finally {
-          setIsVerifyingPayment(false);
-        }
-      }
-    };
-    checkPayment();
-  }, [user?.id]); // Only refire when user identity changes
+    // Payment verification removed as PayMe is no longer integrated
+  }, [user?.id]); 
 
   useEffect(() => {
     if (user && user.onboardingCompleted) {

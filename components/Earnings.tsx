@@ -83,9 +83,9 @@ const Earnings: React.FC<EarningsProps> = ({ appointments, currency, businessNam
                   <Zap size={28} fill="currentColor" />
                 </div>
                 <div>
-                  <p className="text-lg font-black text-brand-dark">PayMe (Israel)</p>
+                  <p className="text-lg font-black text-brand-dark">Bank Payout Sync</p>
                   <p className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 uppercase tracking-widest">
-                    <ShieldCheck size={12} /> Active & Verified
+                    <ShieldCheck size={12} /> Account Verified
                   </p>
                 </div>
               </div>

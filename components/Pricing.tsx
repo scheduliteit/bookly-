@@ -38,47 +38,22 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
 
     setIsProcessing(showCheckout.plan);
     
-    // If free mode, just activate directly
-    if (isFreeMode) {
-      try {
-        console.log("[PRICING] Free Mode Activation:", showCheckout.plan);
-        // Simulate a tiny delay for UX
-        await new Promise(resolve => setTimeout(resolve, 800));
-        onPlanChange(showCheckout.plan as 'basic' | 'premium');
-        setShowCheckout(null);
-        setIsProcessing(null);
-        return;
-      } catch (err: any) {
-        console.error("[PRICING] Activation Error:", err);
-        setGatewayError({
-          error: "Activation Failed",
-          details: err.message || "Unknown error",
-          hint: "Could not activate your profile. Please try again."
-        });
-        setIsProcessing(null);
-        return;
-      }
-    }
-
-    // PayMe handle
+    // Finalize handle
     try {
-      const result = await paymentService.createSubscriptionCheckout({
-        plan: showCheckout.plan,
-        billingCycle: billingCycle,
-        userId: user?.id,
-        email: user?.email || guestEmail,
-        successUrl: `${window.location.origin}/`,
-        cancelUrl: `${window.location.origin}/#subscription`
-      });
-      console.log("[PRICING] Checkout result:", result);
-      window.location.href = result.url;
+      // Mock activation
+      console.log("[PRICING] Activation:", showCheckout.plan);
+      // Simulate a tiny delay for UX
+      await new Promise(resolve => setTimeout(resolve, 800));
+      onPlanChange(showCheckout.plan as 'basic' | 'premium');
+      setShowCheckout(null);
+      setIsProcessing(null);
+      return;
     } catch (err: any) {
-      console.error("[PRICING] Checkout Error:", err);
+      console.error("[PRICING] Activation Error:", err);
       setGatewayError({
-        error: "Subscription Checkout Failed",
-        details: err.details || err.message || "Unknown error",
-        hint: err.hint || "",
-        version: err.version
+        error: "Activation Failed",
+        details: err.message || "Unknown error",
+        hint: "Could not activate your profile. Please try again."
       });
       setIsProcessing(null);
     }
@@ -264,7 +239,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
                   <div>
                     <h3 className="text-2xl font-black text-slate-900">Checkout</h3>
                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1 mt-1">
-                       <ShieldCheck size={10} /> Secure Israeli Payment
+                       <ShieldCheck size={10} /> Secure Payment Processing
                     </p>
                   </div>
                   <button onClick={() => setShowCheckout(null)} className="p-2 hover:bg-slate-100 rounded-full">✕</button>
@@ -300,7 +275,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
                    <div className="grid grid-cols-2 gap-4">
                       <button className="flex flex-col items-center justify-center p-4 bg-brand-blue/5 border-2 border-brand-blue rounded-2xl gap-2">
                          <CreditCard size={24} className="text-brand-blue" />
-                         <span className="text-[10px] font-black uppercase text-brand-blue">PayMe / Card</span>
+                         <span className="text-[10px] font-black uppercase text-brand-blue">Credit Card</span>
                       </button>
                       <button className="flex flex-col items-center justify-center p-4 bg-slate-50 border-2 border-transparent rounded-2xl gap-2">
                          <Shield size={24} className="text-slate-400" />

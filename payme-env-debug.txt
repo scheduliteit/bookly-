@@ -1,9 +1,0 @@
-{
-  "present": true,
-  "length": 35,
-  "firstChar": "M",
-  "lastChar": "Q",
-  "allKeys": [
-    "PAYME_SELLER_KEY"
-  ]
-}

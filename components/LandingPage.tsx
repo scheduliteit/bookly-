@@ -77,7 +77,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               transition={{ delay: 0.2 }}
               className="text-xl md:text-2xl text-slate-500 font-medium max-w-2xl leading-relaxed"
             >
-              Stop wrestling with dirty calendars. EasyBookly automates your meetings with an AI concierge, secure PayMe payouts, and a booking page that people actually love to use.
+              Stop wrestling with dirty calendars. EasyBookly automates your meetings with an AI concierge, secure payouts, and a booking page that people actually love to use.
             </motion.p>
 
             <motion.div 
@@ -150,7 +150,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                 color: 'bg-brand-blue'
               },
               { 
-                title: 'PayMe Integration', 
+                title: 'Secured Payouts', 
                 desc: 'The only global scheduler optimized for Israeli payouts and international merchant logic.', 
                 icon: CreditCard,
                 color: 'bg-emerald-500' 
@@ -306,7 +306,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                   <span className="text-white/60 font-bold text-xl">/mo</span>
                 </div>
                 <div className="flex-1 space-y-6 mb-12">
-                   {['Full AI Concierge', 'Automated PayMe Payouts', 'Strategic AI Audit', 'Priority API Access', 'Team Management'].map(f => (
+                   {['Full AI Concierge', 'Automated Payouts', 'Strategic AI Audit', 'Priority API Access', 'Team Management'].map(f => (
                      <div key={f} className="flex items-center gap-3 text-sm font-black text-white">
                         <Check size={18} className="text-white" /> {f}
                      </div>
@@ -401,7 +401,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl">
                       {[
                         { label: 'AI Concierge', status: 'Processing...', icon: Sparkles },
-                        { label: 'PayMe Payout', status: 'Verified', icon: Zap },
+                        { label: 'Bank Payout', status: 'Verified', icon: Zap },
                         { label: 'CRM Sync', status: 'Success', icon: Users },
                         { label: 'Calendar', status: 'Optimized', icon: Timer }
                       ].map((item, i) => (

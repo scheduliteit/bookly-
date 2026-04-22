@@ -337,8 +337,8 @@ const Settings: React.FC<SettingsProps> = ({
                    <div className="flex items-center gap-4">
                       <CreditCard className="text-slate-400" />
                       <div>
-                         <p className="text-sm font-bold text-brand-dark">{merchantStats.clearerName || 'PayMe (Israel)'} Connected</p>
-                         <p className="text-xs text-slate-500">Direct payouts enabled</p>
+                         <p className="text-sm font-bold text-brand-dark">Bank Payout System</p>
+                         <p className="text-xs text-slate-500">Standard Payout Enabled</p>
                       </div>
                    </div>
                    <div className="w-3 h-3 bg-emerald-500 rounded-full" />

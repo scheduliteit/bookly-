@@ -143,22 +143,9 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
       const isFreeMode = true; // Hardcoded for 'Free for Early Adopters' strategy
       
-      if (selectedService.price > 0 && !isFreeMode) {
-        // Redirect to PayMe Israeli Payment Gateway
-        const { url } = await paymentService.createCheckoutSession({
-          serviceName: selectedService.name,
-          amount: selectedService.price,
-          currency: currency,
-          appointmentId: appointmentId,
-          successUrl: `${window.location.origin}/api/payments/success?appointmentId=${appointmentId}`,
-          cancelUrl: `${window.location.origin}/api/payments/cancel?appointmentId=${appointmentId}`
-        });
-        window.location.href = url;
-      } else {
-        setConfirmedMeetingLink(meetingLink || null);
-        onBookingComplete(result);
-        setIsSuccess(true);
-      }
+      setConfirmedMeetingLink(meetingLink || null);
+      onBookingComplete(result);
+      setIsSuccess(true);
     } catch (err: any) {
       console.error("Booking failed", err);
       setGatewayError({

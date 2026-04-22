@@ -152,11 +152,11 @@ const AdminPanel: React.FC = () => {
                    { label: 'API Latency', value: '42ms', icon: Zap, status: 'Healthy' },
                    { label: 'DB Connections', value: '1,492', icon: Database, status: 'Healthy' },
                    { label: 'Success Rate', value: '99.98%', icon: CheckCircle2, status: 'Healthy' },
-                   { 
-                     label: 'Payment Gateway', 
-                     value: merchantState?.isGatewayConnected ? (merchantState.clearerName || 'Connected') : 'Disconnected', 
+                    { 
+                     label: 'Financial Layer', 
+                     value: merchantState?.isGatewayConnected ? 'Operational' : 'Simulated', 
                      icon: CreditCard,
-                     status: merchantState?.isGatewayConnected ? 'Connected' : 'Action Required'
+                     status: merchantState?.isGatewayConnected ? 'Connected' : 'Legacy'
                    },
                  ].map((item, i) => (
                    <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
@@ -165,10 +165,7 @@ const AdminPanel: React.FC = () => {
                          <span className="text-xs font-bold text-white/60 tracking-wider uppercase">{item.label}</span>
                       </div>
                       <div className="text-right">
-                         <p className={`text-sm font-black ${item.status === 'Connected' || item.status === 'Healthy' ? 'text-emerald-400' : 'text-rose-400'}`}>{item.value}</p>
-                         {item.label === 'Payment Gateway' && !merchantState?.isGatewayConnected && (
-                           <p className="text-[8px] font-bold text-rose-400/60 uppercase tracking-tighter mt-0.5 animate-pulse">Missing API Key</p>
-                         )}
+                         <p className={`text-sm font-black ${item.status === 'Connected' || item.status === 'Healthy' || item.status === 'Operational' ? 'text-emerald-400' : 'text-slate-400'}`}>{item.value}</p>
                       </div>
                    </div>
                  ))}

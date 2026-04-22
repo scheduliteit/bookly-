@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, Users, MessageSquare, LayoutDashboard, CreditCard, Settings } from 'lucide-react';
+import { Calendar, Users, MessageSquare, LayoutDashboard, CreditCard, Settings, Globe } from 'lucide-react';
 import { translations, Language } from '../services/translations';
 
 interface BottomNavProps {
@@ -15,6 +15,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'calendar', label: 'Events', icon: Calendar },
+    { id: 'booking-links', label: 'Links', icon: Globe },
     { id: 'clients', label: 'Contacts', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
