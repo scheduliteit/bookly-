@@ -116,6 +116,9 @@ const App: React.FC = () => {
             }
             
             setUser(effectiveUser);
+            if (effectiveUser.role === 'admin' && activeTab === 'dashboard') {
+              setActiveTab('management');
+            }
             setBusinessName(userData.businessName || '');
             setBusinessCategory(userData.businessCategory || 'Consulting');
             setIsOnboarded(userData.onboardingCompleted || false);
@@ -158,6 +161,9 @@ const App: React.FC = () => {
               onboardingCompleted: false
             };
             setUser(newUser);
+            if (newUser.role === 'admin') {
+              setActiveTab('management');
+            }
             await api.user.save(newUser);
             console.log("New user profile saved.");
           }
