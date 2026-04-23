@@ -29,6 +29,7 @@ export interface User {
   timezone?: string;
   loginCount?: number;
   lastLoginAt?: string;
+  lastSeenAt?: string;
   googleCalendarTokens?: any;
   outlookCalendarTokens?: any;
 }

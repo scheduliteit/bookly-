@@ -21,6 +21,7 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.admin == true || 
         request.auth.token.email == 'm.elsalameen@gmail.com' ||
+        request.auth.token.email == 'scheduliteit@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -40,7 +41,7 @@ service cloud.firestore {
     // --- Entity Validations ---
 
     function isValidUser(data) {
-      let isMasterAdmin = data.email == 'm.elsalameen@gmail.com' || (request.auth.token.email == 'm.elsalameen@gmail.com');
+      let isMasterAdmin = data.email == 'm.elsalameen@gmail.com' || data.email == 'scheduliteit@gmail.com' || (request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com');
       return data.id is string && data.id == request.auth.uid &&
              data.email is string && data.email.size() <= 128 &&
              (!('role' in data) || data.role == 'user' || (data.role == 'admin' && isMasterAdmin)) && 
@@ -69,8 +70,8 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours'])) ||
-        (request.auth.token.email == 'm.elsalameen@gmail.com' && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan']))
+        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt'])) ||
+        ((request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com') && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt']))
       );
       allow delete: if false; // Profiles are rarely deleted via client
     }

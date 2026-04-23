@@ -241,8 +241,8 @@ const AdminPanel: React.FC = () => {
     { label: 'Total Nodes', value: systemStats?.totalSignups?.toLocaleString() || '---', icon: UserPlus, color: 'text-indigo-400' },
     { label: 'Total Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '---', icon: Calendar, color: 'text-emerald-400' },
     { label: 'Total Access Sessions', value: systemStats?.totalLogins?.toLocaleString() || '---', icon: Fingerprint, color: 'text-amber-400' },
-    { label: 'Currently Live', value: simulationMetrics.activeSessions.toLocaleString(), icon: Activity, color: 'text-brand-blue' },
-  ], [systemStats, simulationMetrics]);
+    { label: 'Currently Live', value: systemStats?.currentlyOnline?.toLocaleString() || '---', icon: Activity, color: 'text-brand-blue' },
+  ], [systemStats]);
 
   const handleBroadcast = () => {
     if (!broadcastMessage) return;

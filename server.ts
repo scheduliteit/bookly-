@@ -673,7 +673,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
     const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
     const userData = requesterSnap.data();
     
-    const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     
     if (!isAdmin) {
        return res.status(403).json({ error: 'Forbidden: Admin access required' });
@@ -686,9 +686,14 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
     // In a production app, we would use a dedicated 'activities' collection
     const fifteenMinutesAgo = new Date();
     fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
+    const fifteenMinutesAgoStr = fifteenMinutesAgo.toISOString();
     
-    const currentlyOnline = Math.floor(Math.random() * 5) + 1; // Simulated active for demo
-    
+    // Real active users in last 15 mins
+    const currentlyOnline = usersSnap.docs.filter(doc => {
+      const lastSeen = doc.data().lastSeenAt || doc.data().lastLoginAt || "";
+      return lastSeen >= fifteenMinutesAgoStr;
+    }).length;
+
     const totalLogins = usersSnap.docs.reduce((acc, doc) => acc + (doc.data().loginCount || 0), 0);
 
     // Derive regions from user timezones or profile data
@@ -741,7 +746,7 @@ app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
     const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const usersSnap = await getDocs(collection(db, 'users'));
@@ -756,7 +761,7 @@ app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
     const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const aptsSnap = await getDocs(collection(db, 'appointments'));
@@ -785,7 +790,7 @@ app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) 
   const { userId, role } = req.body;
   try {
     const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     await updateDoc(doc(db, 'users', userId), { role });
@@ -799,7 +804,7 @@ app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
     const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     await deleteDoc(doc(db, 'users', req.params.id));
@@ -813,7 +818,7 @@ app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any)
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
     const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const usersSnap = await getDocs(collection(db, 'users'));

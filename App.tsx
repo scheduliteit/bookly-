@@ -93,6 +93,25 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Activity Heartbeat
+  useEffect(() => {
+    if (!user) return;
+    
+    // Heartbeat every 5 minutes
+    const intervalId = setInterval(async () => {
+      try {
+        await api.user.save({
+          ...user,
+          lastSeenAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Heartbeat failed:", err);
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [user]);
+
   // Auth Listener
   useEffect(() => {
     // Set a safety timeout for initialization
@@ -111,8 +130,9 @@ const App: React.FC = () => {
             // Auto-upgrade if email matches
             const userEmail = firebaseUser.email?.toLowerCase();
             let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
-            if (userEmail === 'm.elsalameen@gmail.com') {
-               console.log("Welcome Master Admin (m.elsalameen@gmail.com). Verifying role...");
+            const isMasterEmail = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
+            if (isMasterEmail) {
+               console.log(`Welcome Master Admin (${userEmail}). Verifying role...`);
                if (userData.role !== 'admin') {
                   console.log("Upgrading account to Admin role...");
                   effectiveUser.role = 'admin';
@@ -124,10 +144,12 @@ const App: React.FC = () => {
             }
             
             // Update login tracking
+            const now = new Date().toISOString();
             const updatedUser: User = {
               ...effectiveUser,
               loginCount: (userData.loginCount || 0) + 1,
-              lastLoginAt: new Date().toISOString()
+              lastLoginAt: now,
+              lastSeenAt: now
             };
             
             setUser(updatedUser);
@@ -163,7 +185,7 @@ const App: React.FC = () => {
               services: [],
               currency: 'USD',
               subscriptionPlan: initialPlan,
-              role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com') ? 'admin' : undefined,
+              role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com' || firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com') ? 'admin' : undefined,
               createdAt: new Date().toISOString(),
               workingHours: {
                 monday: { start: '09:00', end: '17:00', active: true },
