@@ -197,7 +197,10 @@ const App: React.FC = () => {
                 sunday: { start: '09:00', end: '17:00', active: false },
               },
               legalData: legalData,
-              onboardingCompleted: false
+              onboardingCompleted: false,
+              loginCount: 1,
+              lastLoginAt: new Date().toISOString(),
+              lastSeenAt: new Date().toISOString()
             };
             setUser(newUser);
             if (newUser.role === 'admin') {

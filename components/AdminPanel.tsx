@@ -89,8 +89,8 @@ const AdminPanel: React.FC = () => {
       }));
     }, 2000);
 
-    // Refresh data every 2 minutes
-    const dataInterval = setInterval(fetchAllData, 120000);
+    // Refresh data every 20 seconds for a more "live" dashboard
+    const dataInterval = setInterval(fetchAllData, 20000);
     
     // Simulate live log stream
     const logInterval = setInterval(() => {
@@ -98,24 +98,24 @@ const AdminPanel: React.FC = () => {
         const sources = ['AUTH', 'DB', 'APP', 'PAY', 'SEC', 'GEMINI', 'MESH', 'CACHE'];
         const events = simulationMode ? [
           `RAW_READ: node_${Math.floor(Math.random()*1000)} - 1.2Kb`,
-          `SQL_QUERY: SELECT * FROM businesses WHERE id='${Math.random().toString(36).substr(5)}'`,
-          `CACHE_MISS: hash_${Math.random().toString(36).substr(2,6)}`,
-          `GEO_LATENCY: tok-01 -> lon-04: 142ms`,
+          `SQL_QUERY: SELECT * FROM businesses WHERE id='${Math.random().toString(36).substring(5)}'`,
+          `CACHE_MISS: hash_${Math.random().toString(36).substring(2,6)}`,
+          `TELEMETRY_SYNC: heartbeat_pulse`,
           `AUTH_TOKEN_GEN: RS256_EXP_3600`,
           `FIREWALL_SCRUB: pattern match 'sqli' blocked`,
           `MEM_USAGE: heap used ${Math.floor(Math.random()*200 + 400)}MB`,
           `NET_SYNC: global_clocks synchronized (+1ms)`
         ] : [
-          'Token refreshed for node_84',
-          'Search index re-sharded',
-          'Client sync operation: +12ms',
-          'Vector DB query latency: 12ms',
-          'Worker node A-4 recovered',
+          'Master Admin Telemetry Refreshed',
+          'Syncing total_logins from core',
+          'Client heartbeat: Active',
+          'Telemetry match: Succces',
+          'Active session count updated',
           'Gemini 1.5 prompt cached'
         ];
         
         const newLog: CommandLog = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).substring(2, 9),
           time: new Date().toLocaleTimeString('en-GB'),
           source: sources[Math.floor(Math.random() * sources.length)],
           event: events[Math.floor(Math.random() * events.length)],
@@ -123,7 +123,7 @@ const AdminPanel: React.FC = () => {
         };
         setLogs(prev => [newLog, ...prev.slice(0, 30)]);
       }
-    }, simulationMode ? 500 : 4000);
+    }, simulationMode ? 500 : 3000);
 
     return () => {
       clearInterval(logInterval);
@@ -581,6 +581,7 @@ const AdminPanel: React.FC = () => {
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Access Level</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Contact Node</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Core Sessions</th>
+                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Last Active</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Operation</th>
              </tr>
           </thead>
@@ -615,6 +616,9 @@ const AdminPanel: React.FC = () => {
                          <Zap size={10} className="animate-pulse" />
                          <span className="text-[10px] font-black uppercase tracking-widest">{user.loginCount || 0} Sessions</span>
                       </div>
+                   </td>
+                   <td className="px-10 py-8 text-white/40 font-mono text-[10px] uppercase tracking-wider">
+                      {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleTimeString('en-GB') : 'NEVER'}
                    </td>
                    <td className="px-10 py-8 text-right">
                       <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
