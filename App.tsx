@@ -123,8 +123,17 @@ const App: React.FC = () => {
                }
             }
             
-            setUser(effectiveUser);
-            if (effectiveUser.role === 'admin' && activeTab === 'dashboard') {
+            // Update login tracking
+            const updatedUser: User = {
+              ...effectiveUser,
+              loginCount: (userData.loginCount || 0) + 1,
+              lastLoginAt: new Date().toISOString()
+            };
+            
+            setUser(updatedUser);
+            await api.user.save(updatedUser);
+
+            if (updatedUser.role === 'admin' && activeTab === 'dashboard') {
               setActiveTab('management');
             }
             setBusinessName(userData.businessName || '');

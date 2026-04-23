@@ -689,6 +689,8 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
     
     const currentlyOnline = Math.floor(Math.random() * 5) + 1; // Simulated active for demo
     
+    const totalLogins = usersSnap.docs.reduce((acc, doc) => acc + (doc.data().loginCount || 0), 0);
+
     // Derive regions from user timezones or profile data
     const regions: any = {};
     usersSnap.forEach(doc => {
@@ -721,7 +723,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
 
     res.json({
       totalSignups: totalUsers,
-      totalLogins: totalUsers * 12 + Math.floor(Math.random() * 50), // Analytical projection
+      totalLogins: totalLogins,
       currentlyOnline: currentlyOnline,
       topRegions: topRegions.length > 0 ? topRegions : [{ country: 'Global', users: totalUsers, code: 'UN' }],
       totalRevenue: merchantStats.grossEarnings,

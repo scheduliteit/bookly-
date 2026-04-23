@@ -240,8 +240,8 @@ const AdminPanel: React.FC = () => {
   const kpis = useMemo(() => [
     { label: 'Total Nodes', value: systemStats?.totalSignups?.toLocaleString() || '---', icon: UserPlus, color: 'text-indigo-400' },
     { label: 'Total Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '---', icon: Calendar, color: 'text-emerald-400' },
-    { label: 'Currently Live', value: simulationMetrics.activeSessions.toLocaleString(), icon: Activity, color: 'text-amber-400' },
-    { label: 'System Health', value: 'OPTIMAL', icon: ShieldCheck, color: 'text-brand-blue' },
+    { label: 'Total Access Sessions', value: systemStats?.totalLogins?.toLocaleString() || '---', icon: Fingerprint, color: 'text-amber-400' },
+    { label: 'Currently Live', value: simulationMetrics.activeSessions.toLocaleString(), icon: Activity, color: 'text-brand-blue' },
   ], [systemStats, simulationMetrics]);
 
   const handleBroadcast = () => {
@@ -580,7 +580,7 @@ const AdminPanel: React.FC = () => {
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Business Identity</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Access Level</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Contact Node</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Telemetry</th>
+                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Core Sessions</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Operation</th>
              </tr>
           </thead>
@@ -611,9 +611,9 @@ const AdminPanel: React.FC = () => {
                       {user.email}
                    </td>
                    <td className="px-10 py-8">
-                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full w-fit bg-emerald-500/10 text-emerald-400 border border-emerald-500/20`}>
-                         <div className={`w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]`} />
-                         <span className="text-[10px] font-black uppercase tracking-widest">ENCRYPTED</span>
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full w-fit bg-brand-blue/10 text-brand-blue border border-brand-blue/20`}>
+                         <Zap size={10} className="animate-pulse" />
+                         <span className="text-[10px] font-black uppercase tracking-widest">{user.loginCount || 0} Sessions</span>
                       </div>
                    </td>
                    <td className="px-10 py-8 text-right">
