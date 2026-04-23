@@ -111,10 +111,16 @@ const App: React.FC = () => {
             // Auto-upgrade if email matches
             const userEmail = firebaseUser.email?.toLowerCase();
             let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
-            if (userEmail === 'scheduliteit@gmail.com' && userData.role !== 'admin') {
-               console.log("Master Admin detected via email sync. Upgrading role...");
-               effectiveUser.role = 'admin';
-               await api.user.save(effectiveUser);
+            if (userEmail === 'scheduliteit@gmail.com') {
+               console.log("Welcome Master Admin (scheduliteit@gmail.com). Verifying role...");
+               if (userData.role !== 'admin') {
+                  console.log("Upgrading account to Admin role...");
+                  effectiveUser.role = 'admin';
+                  await api.user.save(effectiveUser);
+                  console.log("Role update successful.");
+               } else {
+                  console.log("Admin role already active.");
+               }
             }
             
             setUser(effectiveUser);
@@ -346,17 +352,18 @@ const App: React.FC = () => {
     );
   }
 
-  if (showLanding) {
+  // Show landing page only if not a public route and not logged in (or explicitly requested)
+  if (showLanding && !user) {
     return (
       <LandingPage 
-        isLoggedIn={!!user}
+        isLoggedIn={false}
         onStart={() => { 
-          if (!user) setShowPricingGate(true);
+          setShowPricingGate(true);
           setShowLanding(false); 
         }} 
         onLogin={() => {
           setShowLanding(false);
-          if (!user) setAuthMode('login');
+          setAuthMode('login');
         }} 
       />
     );
