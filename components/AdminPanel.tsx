@@ -33,6 +33,7 @@ interface CommandLog {
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [isLive, setIsLive] = useState(true);
+  const [simulationMode, setSimulationMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [systemStats, setSystemStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -43,12 +44,18 @@ const AdminPanel: React.FC = () => {
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [isGeneratingIntel, setIsGeneratingIntel] = useState(false);
   const [logs, setLogs] = useState<CommandLog[]>([
-    { id: '1', time: '02:41:02', source: 'AUTH', event: 'Global login spike detected (Europe)', level: 'info' },
-    { id: '2', time: '02:40:48', source: 'PAY', event: 'Merchant "DentalPlus" connected meshulam', level: 'success' },
-    { id: '3', time: '02:39:12', source: 'SYS', event: 'V8 Garbage collection: 142ms', level: 'info' },
-    { id: '4', time: '02:38:55', source: 'DB', event: 'Read-replica lag: +4ms', level: 'warning' },
-    { id: '5', time: '02:37:01', source: 'SEC', event: 'CSRF attempt blocked (92.164.x.x)', level: 'error' },
+    { id: '1', time: '03:49:02', source: 'CORE', event: 'Simulation engine standby...', level: 'info' },
+    { id: '2', time: '03:48:48', source: 'NET', event: 'Global mesh routing optimized', level: 'success' },
   ]);
+
+  const [simulationMetrics, setSimulationMetrics] = useState({
+    rps: 0,
+    latency: 0,
+    cacheHit: 0,
+    activeSessions: 0,
+    revenue: 0,
+    payoutRate: 0
+  });
 
   const fetchAllData = async () => {
     try {
@@ -70,14 +77,35 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     fetchAllData();
 
+    // Simulation Ticker
+    const tickerInterval = setInterval(() => {
+      setSimulationMetrics(prev => ({
+        rps: Math.floor(Math.random() * 400 + 100),
+        latency: Math.floor(Math.random() * 20 + 5),
+        cacheHit: Math.floor(Math.random() * 15 + 80),
+        activeSessions: Math.floor(Math.random() * 200 + 1500),
+        revenue: prev.revenue + (Math.random() * 50),
+        payoutRate: Math.floor(Math.random() * 10 + 90)
+      }));
+    }, 2000);
+
     // Refresh data every 2 minutes
     const dataInterval = setInterval(fetchAllData, 120000);
     
     // Simulate live log stream
     const logInterval = setInterval(() => {
       if (isLive) {
-        const sources = ['AUTH', 'DB', 'APP', 'PAY', 'SEC', 'GEMINI'];
-        const events = [
+        const sources = ['AUTH', 'DB', 'APP', 'PAY', 'SEC', 'GEMINI', 'MESH', 'CACHE'];
+        const events = simulationMode ? [
+          `RAW_READ: node_${Math.floor(Math.random()*1000)} - 1.2Kb`,
+          `SQL_QUERY: SELECT * FROM businesses WHERE id='${Math.random().toString(36).substr(5)}'`,
+          `CACHE_MISS: hash_${Math.random().toString(36).substr(2,6)}`,
+          `GEO_LATENCY: tok-01 -> lon-04: 142ms`,
+          `AUTH_TOKEN_GEN: RS256_EXP_3600`,
+          `FIREWALL_SCRUB: pattern match 'sqli' blocked`,
+          `MEM_USAGE: heap used ${Math.floor(Math.random()*200 + 400)}MB`,
+          `NET_SYNC: global_clocks synchronized (+1ms)`
+        ] : [
           'Token refreshed for node_84',
           'Search index re-sharded',
           'Client sync operation: +12ms',
@@ -85,22 +113,24 @@ const AdminPanel: React.FC = () => {
           'Worker node A-4 recovered',
           'Gemini 1.5 prompt cached'
         ];
+        
         const newLog: CommandLog = {
           id: Math.random().toString(36).substr(2, 9),
           time: new Date().toLocaleTimeString('en-GB'),
           source: sources[Math.floor(Math.random() * sources.length)],
           event: events[Math.floor(Math.random() * events.length)],
-          level: Math.random() > 0.9 ? 'warning' : 'info'
+          level: Math.random() > 0.95 ? 'warning' : 'info'
         };
-        setLogs(prev => [newLog, ...prev.slice(0, 10)]);
+        setLogs(prev => [newLog, ...prev.slice(0, 30)]);
       }
-    }, 5000);
+    }, simulationMode ? 500 : 4000);
 
     return () => {
       clearInterval(logInterval);
       clearInterval(dataInterval);
+      clearInterval(tickerInterval);
     };
-  }, [isLive]);
+  }, [isLive, simulationMode]);
 
   const handleTerminalCommand = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +144,14 @@ const AdminPanel: React.FC = () => {
       setLogs([]);
       setTerminalInput("");
       return;
+    } else if (cmd === 'simulate on') {
+      setSimulationMode(true);
+      response = `Simulation Mode: ACTIVATED. Streaming live platform metadata.`;
+      level = 'warning';
+    } else if (cmd === 'simulate off') {
+      setSimulationMode(false);
+      response = `Simulation Mode: DEACTIVATED. Returning to high-level telemetry.`;
+      level = 'info';
     } else if (cmd === 'sync' || cmd === 'build') {
       response = `Process initiated: global_mesh_sync. Success.`;
       level = 'success';
@@ -123,7 +161,7 @@ const AdminPanel: React.FC = () => {
       response = `Cluster health: OPTIMAL. Nodes online: ${dbUsers.length}.`;
       level = 'success';
     } else if (cmd === 'help') {
-      response = `Available: sync, clear, whoami, health, build`;
+      response = `Available: simulate on/off, sync, clear, whoami, health, build`;
     }
 
     const newLog: CommandLog = {
@@ -202,9 +240,9 @@ const AdminPanel: React.FC = () => {
   const kpis = useMemo(() => [
     { label: 'Total Nodes', value: systemStats?.totalSignups?.toLocaleString() || '---', icon: UserPlus, color: 'text-indigo-400' },
     { label: 'Total Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '---', icon: Calendar, color: 'text-emerald-400' },
-    { label: 'Currently Live', value: systemStats?.currentlyOnline?.toLocaleString() || '---', icon: Activity, color: 'text-amber-400' },
+    { label: 'Currently Live', value: simulationMetrics.activeSessions.toLocaleString(), icon: Activity, color: 'text-amber-400' },
     { label: 'System Health', value: 'OPTIMAL', icon: ShieldCheck, color: 'text-brand-blue' },
-  ], [systemStats]);
+  ], [systemStats, simulationMetrics]);
 
   const handleBroadcast = () => {
     if (!broadcastMessage) return;
@@ -222,6 +260,26 @@ const AdminPanel: React.FC = () => {
 
   const renderOverview = () => (
     <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Simulation Live Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+         {[
+           { label: 'Requests/sec', value: `${simulationMetrics.rps}`, icon: Zap, color: 'text-brand-blue' },
+           { label: 'Latency', value: `${simulationMetrics.latency}ms`, icon: Activity, color: 'text-emerald-400' },
+           { label: 'Cache Hit', value: `${simulationMetrics.cacheHit}%`, icon: HardDrive, color: 'text-amber-400' },
+           { label: 'Mesh Status', value: 'SYNCED', icon: Network, color: 'text-indigo-400' },
+           { label: 'Revenue Flow', value: `$${simulationMetrics.revenue.toFixed(0)}`, icon: CreditCard, color: 'text-brand-blue' },
+           { label: 'Payout Ready', value: `${simulationMetrics.payoutRate}%`, icon: CheckCircle2, color: 'text-emerald-400' },
+         ].map((m, i) => (
+           <div key={i} className="bg-[#0A0A0B] border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-brand-blue/30 transition-all">
+              <div>
+                 <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">{m.label}</p>
+                 <p className={`text-sm font-black transition-colors ${m.color}`}>{m.value}</p>
+              </div>
+              <m.icon size={14} className="opacity-10 group-hover:opacity-50" />
+           </div>
+         ))}
+      </div>
+
       {/* Bento Grid Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
@@ -236,13 +294,13 @@ const AdminPanel: React.FC = () => {
               <kpi.icon size={48} />
             </div>
             <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">{kpi.label}</p>
-            <div className="flex items-end gap-3">
-              <h3 className={`text-4xl font-black text-white tracking-tighter ${isLoadingStats ? 'animate-pulse opacity-50' : ''}`}>
+            <div className="flex items-end gap-3 text-white">
+              <h3 className={`text-4xl font-black tracking-tighter ${isLoadingStats ? 'animate-pulse opacity-50' : ''}`}>
                 {kpi.value}
               </h3>
             </div>
             <div className="mt-6 flex gap-1 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-               <div className={`h-full bg-brand-blue rounded-full ${isLoadingStats ? 'animate-shimmer' : ''}`} style={{ width: '70%', transition: 'width 2s' }} />
+               <div className={`h-full bg-brand-blue rounded-full ${isLoadingStats ? 'animate-shimmer' : ''}`} style={{ width: i === 0 ? '60%' : i === 1 ? '85%' : '95%', transition: 'width 2s' }} />
             </div>
           </motion.div>
         ))}
@@ -254,12 +312,12 @@ const AdminPanel: React.FC = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-blue/50 to-transparent" />
           <div className="flex items-center justify-between mb-10">
             <div>
-              <h3 className="text-2xl font-black text-white tracking-tight">Node Activity Trend</h3>
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-1">Cross-cluster resource optimization (Last 7 Days)</p>
+              <h3 className="text-2xl font-black text-white tracking-tight">Platform Telemetry Matrix</h3>
+              <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-1">Global load balancer distribution (7 Day Window)</p>
             </div>
             <div className="flex items-center gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
-              {['CPU', 'MEM', 'ACTIVITY'].map(l => (
-                <button key={l} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${l === 'ACTIVITY' ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'text-white/40 hover:text-white'}`}>{l}</button>
+              {['CPU', 'MEM', 'REQ'].map(l => (
+                <button key={l} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${l === 'REQ' ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'text-white/40 hover:text-white'}`}>{l}</button>
               ))}
             </div>
           </div>
@@ -301,24 +359,48 @@ const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Global Node Map */}
+        {/* Global Node Map (Simulated visual) */}
         <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 flex flex-col relative group overflow-hidden">
            <div className="absolute top-0 right-0 w-1 h-1/2 bg-gradient-to-b from-transparent via-emerald-500/50 to-transparent" />
            <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand-blue/10 rounded-full blur-[100px]" />
            <div className="flex items-center justify-between mb-8 relative z-10">
-              <h4 className="text-xl font-black text-white">Recent Activity</h4>
+              <h4 className="text-xl font-black text-white">Live Operations Overlay</h4>
               <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-emerald-400"><Activity size={18} /></div>
            </div>
            
            <div className="flex-1 space-y-4 relative z-10 overflow-hidden">
+              <div className="relative h-48 w-full border border-white/5 rounded-3xl bg-black/40 overflow-hidden flex items-center justify-center">
+                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,107,255,0.05)_0%,transparent_80%)]" />
+                 {/* Visual dots representing global nodes */}
+                 {[
+                   { t: '15%', l: '20%', n: 'NYC-01' },
+                   { t: '40%', l: '45%', n: 'LON-04' },
+                   { t: '70%', l: '75%', n: 'TOK-02' },
+                   { t: '30%', l: '80%', n: 'SGP-01' },
+                   { t: '60%', l: '15%', n: 'LAX-02' }
+                 ].map((node, i) => (
+                   <motion.div 
+                     key={i}
+                     initial={{ scale: 0 }}
+                     animate={{ scale: [0, 1, 0.8, 1] }}
+                     transition={{ repeat: Infinity, duration: 4, delay: i * 0.5 }}
+                     className="absolute w-2 h-2 bg-brand-blue rounded-full shadow-[0_0_15px_rgba(0,107,255,0.8)]"
+                     style={{ top: node.t, left: node.l }}
+                   >
+                     <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[6px] font-black text-white/30 whitespace-nowrap uppercase tracking-widest">{node.n}</div>
+                   </motion.div>
+                 ))}
+                 <div className="text-[10px] font-black text-white/10 uppercase tracking-[0.4em] rotate-12 pointer-events-none">Global Mesh Topology</div>
+              </div>
+
               {activities.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-y-auto max-h-48 scrollbar-hide">
                   {activities.map((act, i) => (
                     <motion.div 
                       key={act.id} 
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1 }}
+                      transition={{ delay: i * 0.05 }}
                       className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all flex gap-3"
                     >
                       <div className="w-10 h-10 bg-brand-blue/10 rounded-xl flex items-center justify-center shrink-0">
@@ -337,27 +419,20 @@ const AdminPanel: React.FC = () => {
                    <p className="text-[10px] font-black uppercase tracking-widest font-mono">No recent activity detected</p>
                 </div>
               )}
-              
-              {!systemStats && [1,2,3,4].map((_, i) => (
-                <div key={i} className="p-5 bg-white/5 border border-white/5 rounded-[2rem] animate-pulse">
-                   <div className="h-4 bg-white/5 rounded w-1/2 mb-4" />
-                   <div className="h-1.5 bg-white/5 rounded-full w-full" />
-                </div>
-              ))}
            </div>
 
            <div className="mt-8 relative z-10 space-y-4">
               <input 
                 value={broadcastMessage}
                 onChange={(e) => setBroadcastMessage(e.target.value)}
-                placeholder="Global announcement..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:ring-1 ring-amber-500/30 transition-all"
+                placeholder="Push global announcement..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:ring-1 ring-amber-500/30 transition-all font-mono"
               />
               <button 
                 onClick={handleBroadcast}
                 className="w-full py-5 bg-brand-blue text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all shadow-xl active:scale-95"
               >
-                 Push Announcement
+                 Initialize Broadcast
               </button>
            </div>
         </div>
@@ -371,25 +446,28 @@ const AdminPanel: React.FC = () => {
           <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-10">
              <div className="flex items-center justify-between mb-10">
                 <div>
-                   <h3 className="text-2xl font-black text-white">Cluster Topology</h3>
+                   <h3 className="text-2xl font-black text-white">Cluster Topology Matrix</h3>
                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Active node distribution and health telemetry</p>
                 </div>
-                <button 
-                  onClick={fetchAllData}
-                  className="p-3 bg-white/5 rounded-2xl text-white/60 hover:text-white transition-all transform hover:rotate-180 duration-500"
-                >
-                  <RefreshCw size={20} />
-                </button>
+                <div className="flex items-center gap-4">
+                  <span className="text-[10px] font-black text-emerald-400 animate-pulse uppercase tracking-[0.2em] font-mono">Real-time Sync Active</span>
+                  <button 
+                    onClick={fetchAllData}
+                    className="p-3 bg-white/5 rounded-2xl text-white/60 hover:text-white transition-all transform hover:rotate-180 duration-500"
+                  >
+                    <RefreshCw size={20} />
+                  </button>
+                </div>
              </div>
              
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
-                  { name: 'Core Engine', status: 'Healthy', load: '14%', icon: Cpu, mem: '1.2GB' },
-                  { name: 'Vector Store', status: 'Healthy', load: '42%', icon: Database, mem: '4.8GB' },
-                  { name: 'Identity Relay', status: 'Healthy', load: '12%', icon: ShieldCheck, mem: '1.4GB' },
-                  { name: 'AI Controller', status: 'Healthy', load: '22%', icon: Radio, mem: '12GB' },
-                  { name: 'Image Processing', status: 'Healthy', load: '4%', icon: Layers, mem: '200MB' },
-                  { name: 'Public Traffic', status: 'Healthy', load: '31%', icon: Globe, mem: '2.1GB' },
+                  { name: 'Core Engine', status: 'Healthy', load: '14%', icon: Cpu, mem: '1.2GB', ping: '2ms' },
+                  { name: 'Vector Store', status: 'Healthy', load: '42%', icon: Database, mem: '4.8GB', ping: '12ms' },
+                  { name: 'Identity Relay', status: 'Healthy', load: '12%', icon: ShieldCheck, mem: '1.4GB', ping: '4ms' },
+                  { name: 'AI Controller', status: 'Healthy', load: '22%', icon: Radio, mem: '12GB', ping: '84ms' },
+                  { name: 'Image Processing', status: 'Healthy', load: '4%', icon: Layers, mem: '200MB', ping: '1ms' },
+                  { name: 'Public Traffic', status: 'Healthy', load: '31%', icon: Globe, mem: '2.1GB', ping: '0.5ms' },
                 ].map((node, i) => (
                   <motion.div 
                     key={i}
@@ -399,7 +477,11 @@ const AdminPanel: React.FC = () => {
                      <div className={`absolute top-6 right-6 w-2 h-2 rounded-full ${node.status === 'Healthy' ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-ping'}`} />
                      <div className="w-12 h-12 bg-white/5 text-brand-blue rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-blue group-hover:text-white transition-all"><node.icon size={24} /></div>
                      <h4 className="font-black text-white mb-1">{node.name}</h4>
-                     <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-6">{node.status} • {node.mem}</p>
+                     <div className="flex items-center gap-2 mb-6">
+                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{node.status} • {node.mem}</span>
+                        <div className="w-1 h-1 rounded-full bg-white/10" />
+                        <span className="text-[10px] font-black text-brand-blue font-mono">{node.ping}</span>
+                     </div>
                      
                      <div className="space-y-2">
                         <div className="flex justify-between text-[8px] font-black text-white/40 uppercase tracking-widest">
@@ -410,7 +492,7 @@ const AdminPanel: React.FC = () => {
                            <motion.div 
                              initial={{ width: 0 }}
                              animate={{ width: node.load }}
-                             className="h-full bg-brand-blue" 
+                             className="h-full bg-brand-blue shadow-[0_0_10px_rgba(0,107,255,0.5)]" 
                            />
                         </div>
                      </div>
@@ -423,31 +505,32 @@ const AdminPanel: React.FC = () => {
        {/* Realtime Terminal */}
        <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 flex flex-col h-full ring-1 ring-white/5 relative overflow-hidden">
           <div className="absolute inset-0 bg-[#000]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,107,255,0.1)_0%,transparent_70%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,107,255,0.15)_0%,transparent_70%)]" />
           <div className="flex items-center justify-between mb-8 relative z-10">
              <h4 className="text-lg font-black text-white flex items-center gap-2">
-                <TerminalIcon size={18} className="text-brand-blue" /> Master Shell
+                <TerminalIcon size={18} className={`${simulationMode ? 'text-amber-400' : 'text-brand-blue'}`} /> 
+                {simulationMode ? 'RAW SIMULATION' : 'MASTER SHELL'}
              </h4>
              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[8px] font-black text-white/40 tracking-widest uppercase">TTY_01</span>
+                <div className={`w-2 h-2 rounded-full ${simulationMode ? 'bg-amber-400 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
+                <span className="text-[8px] font-black text-white/40 tracking-widest uppercase font-mono">{simulationMode ? 'SIM_RUNNING' : 'TTY_01'}</span>
              </div>
           </div>
 
-          <div className="flex-1 space-y-4 font-mono text-[10px] overflow-y-auto relative z-10 scrollbar-hide flex flex-col-reverse">
+          <div className="flex-1 space-y-4 font-mono text-[9px] overflow-y-auto relative z-10 scrollbar-hide flex flex-col-reverse">
              <AnimatePresence initial={false}>
                {logs.map((log) => (
                  <motion.div 
                    key={log.id} 
                    initial={{ opacity: 0, x: -10 }} 
                    animate={{ opacity: 1, x: 0 }} 
-                   className="flex gap-3 leading-relaxed py-1"
+                   className="flex gap-3 leading-relaxed py-0.5"
                  >
-                    <span className="text-white/20 whitespace-nowrap uppercase tracking-tight">{log.time}</span>
+                    <span className="text-white/10 whitespace-nowrap uppercase tracking-tighter">{log.time}</span>
                     <span className={`font-black shrink-0 ${log.level === 'error' ? 'text-rose-400' : log.level === 'warning' ? 'text-amber-400' : log.level === 'success' ? 'text-emerald-400' : 'text-brand-blue'}`}>
-                       {log.source}:
+                       [{log.source}]:
                     </span>
-                    <span className="text-white/60 break-all">{log.event}</span>
+                    <span className={`break-all ${simulationMode ? 'text-white/40' : 'text-white/60'}`}>{log.event}</span>
                  </motion.div>
                ))}
              </AnimatePresence>
@@ -459,7 +542,7 @@ const AdminPanel: React.FC = () => {
                 <input 
                   value={terminalInput}
                   onChange={(e) => setTerminalInput(e.target.value)}
-                  placeholder="Run master command..."
+                  placeholder="Master authorization required..."
                   className="w-full bg-transparent border-none outline-none pl-6 text-[10px] font-bold font-mono text-white placeholder:text-white/10"
                 />
              </div>
