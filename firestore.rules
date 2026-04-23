@@ -20,6 +20,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true || 
+        request.auth.token.email == 'scheduliteit@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -39,9 +40,10 @@ service cloud.firestore {
     // --- Entity Validations ---
 
     function isValidUser(data) {
+      let isMasterAdmin = data.email == 'scheduliteit@gmail.com' || (request.auth.token.email == 'scheduliteit@gmail.com');
       return data.id is string && data.id == request.auth.uid &&
              data.email is string && data.email.size() <= 128 &&
-             (!('role' in data) || data.role == 'user') && // Prevent self-assignment of admin role
+             (!('role' in data) || data.role == 'user' || (data.role == 'admin' && isMasterAdmin)) && 
              (!('subscriptionPlan' in data) || data.subscriptionPlan in ['basic', 'premium']);
     }
 

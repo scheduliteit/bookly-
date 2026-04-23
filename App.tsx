@@ -109,8 +109,10 @@ const App: React.FC = () => {
           const userData = await api.user.get(firebaseUser.uid);
           if (userData) {
             // Auto-upgrade if email matches
+            const userEmail = firebaseUser.email?.toLowerCase();
             let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
-            if (firebaseUser.email === 'scheduliteit@gmail.com' && userData.role !== 'admin') {
+            if (userEmail === 'scheduliteit@gmail.com' && userData.role !== 'admin') {
+               console.log("Master Admin detected via email sync. Upgrading role...");
                effectiveUser.role = 'admin';
                await api.user.save(effectiveUser);
             }
@@ -146,7 +148,7 @@ const App: React.FC = () => {
               services: [],
               currency: 'USD',
               subscriptionPlan: initialPlan,
-              role: (firebaseUser.email === 'scheduliteit@gmail.com') ? 'admin' : undefined,
+              role: (firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com') ? 'admin' : undefined,
               createdAt: new Date().toISOString(),
               workingHours: {
                 monday: { start: '09:00', end: '17:00', active: true },
