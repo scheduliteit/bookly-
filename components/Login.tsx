@@ -23,20 +23,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
     setError(null);
 
     try {
-      let finalEmail = email;
-      if (email.toLowerCase() === 'admin') {
-        finalEmail = 'scheduliteit@gmail.com';
-      }
-      
       if (isRegistering) {
-        const result = await createUserWithEmailAndPassword(auth, finalEmail, password);
+        const result = await createUserWithEmailAndPassword(auth, email, password);
         // Set a default display name if registering
         await updateProfile(result.user, {
-          displayName: finalEmail.split('@')[0]
+          displayName: email.split('@')[0]
         });
         onLogin(result.user.email || '', result.user.uid, result.user.displayName);
       } else {
-        const result = await signInWithEmailAndPassword(auth, finalEmail, password);
+        const result = await signInWithEmailAndPassword(auth, email, password);
         onLogin(result.user.email || '', result.user.uid, result.user.displayName);
       }
     } catch (error: any) {
@@ -168,15 +163,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  {!isRegistering && (
-                    <button 
-                      type="button"
-                      onClick={() => setEmail('admin')}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-brand-blue/40 hover:text-brand-blue uppercase tracking-widest transition-colors flex items-center gap-1"
-                    >
-                      <ShieldCheck size={10} /> Admin Shortcut
-                    </button>
-                  )}
                 </div>
               </div>
 

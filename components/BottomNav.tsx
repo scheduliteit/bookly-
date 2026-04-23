@@ -1,24 +1,32 @@
 
 import React from 'react';
-import { Calendar, Users, MessageSquare, LayoutDashboard, CreditCard, Settings, Globe } from 'lucide-react';
+import { Calendar, Users, MessageSquare, LayoutDashboard, CreditCard, Settings, Globe, ShieldCheck } from 'lucide-react';
 import { translations, Language } from '../services/translations';
 
 interface BottomNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  user?: any;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, user }) => {
   const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
   const t = translations[lang];
+
+  const isAdmin = user?.role === 'admin';
 
   const menuItems = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'calendar', label: 'Events', icon: Calendar },
     { id: 'booking-links', label: 'Links', icon: Globe },
     { id: 'clients', label: 'Contacts', icon: Users },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  if (isAdmin) {
+    menuItems.push({ id: 'management', label: 'Admin', icon: ShieldCheck });
+  }
+
+  menuItems.push({ id: 'settings', label: 'Settings', icon: Settings });
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">

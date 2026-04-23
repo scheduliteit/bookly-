@@ -20,7 +20,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
   const isAdmin = user?.role === 'admin';
   const [isRolledDown, setIsRolledDown] = useState(true);
 
-  const menuItems = [
+  const menuItems = [];
+
+  if (isAdmin) {
+    menuItems.push({ id: 'management', label: 'Management', icon: ShieldCheck });
+  }
+
+  menuItems.push(
     { id: 'dashboard', label: 'Event Types', icon: LinkIcon },
     { id: 'earnings', label: 'Earnings', icon: Activity },
     { id: 'calendar', label: 'Scheduled Events', icon: Calendar },
@@ -29,11 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
     { id: 'booking-links', label: 'Booking Links', icon: Globe },
     { id: 'subscription', label: 'Billing & Plan', icon: CreditCard },
     { id: 'clients', label: 'Contacts', icon: Users },
-  ];
-
-  if (isAdmin) {
-    menuItems.push({ id: 'management', label: 'Management', icon: ShieldCheck });
-  }
+  );
 
   return (
     <div className="hidden md:flex w-64 bg-white border-r border-[#eaebed] h-full flex-col shrink-0 relative z-50 transition-all duration-500">
@@ -46,6 +48,21 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
           {isRolledDown ? <ChevronUp size={18} /> : <div className="animate-bounce"><ChevronDown size={18} /></div>}
         </button>
       </div>
+
+      {isAdmin && (
+        <div className="px-6 mb-4">
+          <div className="bg-brand-dark p-3 rounded-2xl border border-brand-blue/30 shadow-lg shadow-brand-blue/20 flex items-center gap-3 animate-shimmer relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-blue/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            <div className="w-8 h-8 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue relative z-10">
+              <ShieldCheck size={16} />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] leading-none">Master Admin</p>
+              <p className="text-[8px] font-bold text-brand-blue uppercase tracking-widest mt-1">Status: Active</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <AnimatePresence mode="wait">
         {isRolledDown && (

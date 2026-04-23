@@ -647,9 +647,9 @@ const App: React.FC = () => {
             {(user?.role === 'admin') && (
               <button 
                 onClick={() => setActiveTab('management')}
-                className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-brand-dark text-white rounded-lg text-xs font-bold hover:shadow-md transition-all animate-pulse"
+                className="flex items-center gap-2 px-3 py-1.5 bg-brand-dark text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all animate-shimmer shadow-lg shadow-brand-blue/20"
               >
-                <ShieldCheck size={14} /> Master Admin
+                <ShieldCheck size={14} className="text-brand-blue" /> Master Admin
               </button>
             )}
             <div 
@@ -688,7 +688,7 @@ const App: React.FC = () => {
           <Plus size={24} strokeWidth={3} />
         </button>
 
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
       </main>
 
       <MobileMenu 
