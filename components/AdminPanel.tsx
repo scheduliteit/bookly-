@@ -156,7 +156,7 @@ const AdminPanel: React.FC = () => {
       response = `Process initiated: global_mesh_sync. Success.`;
       level = 'success';
     } else if (cmd === 'whoami') {
-      response = `Authenticated: scheduliteit@gmail.com (Master Admin)`;
+      response = `Authenticated: m.elsalameen@gmail.com (Master Admin)`;
     } else if (cmd === 'health') {
       response = `Cluster health: OPTIMAL. Nodes online: ${dbUsers.length}.`;
       level = 'success';

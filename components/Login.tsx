@@ -163,7 +163,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  {email.toLowerCase() === 'scheduliteit@gmail.com' && (
+                  {email.toLowerCase() === 'm.elsalameen@gmail.com' && (
                     <div className="absolute -bottom-6 left-1 flex items-center gap-2">
                        <ShieldCheck size={10} className="text-brand-blue animate-pulse" />
                        <span className="text-[8px] font-black text-brand-blue uppercase tracking-widest">Master Admin ID Recognized</span>

@@ -133,7 +133,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                       S
                     </div>
                     <div className="flex-1 overflow-hidden">
-                       <p className="text-sm font-black text-white truncate">{user?.email || 'scheduliteit@gmail.com'}</p>
+                       <p className="text-sm font-black text-white truncate">{user?.email || 'm.elsalameen@gmail.com'}</p>
                        <p className="text-[9px] font-bold text-white/60 uppercase tracking-widest mt-0.5 italic">Free Phase User</p>
                     </div>
                  </div>
