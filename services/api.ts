@@ -151,6 +151,59 @@ export const api = {
       });
       if (!response.ok) throw new Error('Failed to fetch system stats');
       return response.json();
+    },
+    getUsers: async (): Promise<any[]> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch users');
+      return response.json();
+    },
+    getActivities: async (): Promise<any[]> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/activities', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch activities');
+      return response.json();
+    },
+    updateUserRole: async (userId: string, role: string): Promise<void> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/update-user-role', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId, role })
+      });
+      if (!response.ok) throw new Error('Failed to update role');
+    },
+    deleteUser: async (userId: string): Promise<void> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete user');
+    },
+    generateInsights: async (): Promise<any[]> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/generate-insights', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to generate insights');
+      return response.json();
     }
   }
 };

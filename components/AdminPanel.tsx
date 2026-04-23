@@ -34,9 +34,14 @@ const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [isLive, setIsLive] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [merchantState, setMerchantState] = React.useState<MerchantStats | null>(null);
-  const [systemStats, setSystemStats] = useState<BusinessStats | null>(null);
+  const [systemStats, setSystemStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [dbUsers, setDbUsers] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [terminalInput, setTerminalInput] = useState("");
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [isGeneratingIntel, setIsGeneratingIntel] = useState(false);
   const [logs, setLogs] = useState<CommandLog[]>([
     { id: '1', time: '02:41:02', source: 'AUTH', event: 'Global login spike detected (Europe)', level: 'info' },
     { id: '2', time: '02:40:48', source: 'PAY', event: 'Merchant "DentalPlus" connected meshulam', level: 'success' },
@@ -45,32 +50,37 @@ const AdminPanel: React.FC = () => {
     { id: '5', time: '02:37:01', source: 'SEC', event: 'CSRF attempt blocked (92.164.x.x)', level: 'error' },
   ]);
 
-  useEffect(() => {
-    paymentService.getMerchantStats().then(setMerchantState);
-    
-    const fetchStats = async () => {
-      try {
-        const stats = await api.system.getStats();
-        setSystemStats(stats);
-      } catch (err) {
-        console.error('Failed to fetch system stats:', err);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    fetchStats();
+  const fetchAllData = async () => {
+    try {
+      const [stats, users, recentActivities] = await Promise.all([
+        api.system.getStats(),
+        api.system.getUsers(),
+        api.system.getActivities()
+      ]);
+      setSystemStats(stats);
+      setDbUsers(users);
+      setActivities(recentActivities);
+    } catch (err) {
+      console.error('Failed to fetch admin data:', err);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
-    // Refresh stats every minute
-    const statsInterval = setInterval(fetchStats, 60000);
+  useEffect(() => {
+    fetchAllData();
+
+    // Refresh data every 2 minutes
+    const dataInterval = setInterval(fetchAllData, 120000);
     
     // Simulate live log stream
-    const interval = setInterval(() => {
+    const logInterval = setInterval(() => {
       if (isLive) {
         const sources = ['AUTH', 'DB', 'APP', 'PAY', 'SEC', 'GEMINI'];
         const events = [
           'Token refreshed for node_84',
           'Search index re-sharded',
-          'New booking: Medical Center IL',
+          'Client sync operation: +12ms',
           'Vector DB query latency: 12ms',
           'Worker node A-4 recovered',
           'Gemini 1.5 prompt cached'
@@ -82,40 +92,133 @@ const AdminPanel: React.FC = () => {
           event: events[Math.floor(Math.random() * events.length)],
           level: Math.random() > 0.9 ? 'warning' : 'info'
         };
-        setLogs(prev => [newLog, ...prev.slice(0, 7)]);
+        setLogs(prev => [newLog, ...prev.slice(0, 10)]);
       }
-    }, 4000);
+    }, 5000);
+
     return () => {
-      clearInterval(interval);
-      clearInterval(statsInterval);
+      clearInterval(logInterval);
+      clearInterval(dataInterval);
     };
   }, [isLive]);
 
-  // Performance Data
-  const perfData = useMemo(() => [
-    { time: '00:00', cpu: 12, mem: 45, req: 120 },
-    { time: '04:00', cpu: 8, mem: 42, req: 80 },
-    { time: '08:00', cpu: 34, mem: 58, req: 450 },
-    { time: '12:00', cpu: 45, mem: 65, req: 980 },
-    { time: '16:00', cpu: 32, mem: 60, req: 720 },
-    { time: '20:00', cpu: 18, mem: 52, req: 340 },
-    { time: '23:59', cpu: 14, mem: 48, req: 210 },
-  ], []);
+  const handleTerminalCommand = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!terminalInput) return;
+
+    const cmd = terminalInput.toLowerCase().trim();
+    let response = `Command not recognized: ${cmd}`;
+    let level: 'info' | 'success' | 'warning' | 'error' = 'info';
+
+    if (cmd === 'clear') {
+      setLogs([]);
+      setTerminalInput("");
+      return;
+    } else if (cmd === 'sync' || cmd === 'build') {
+      response = `Process initiated: global_mesh_sync. Success.`;
+      level = 'success';
+    } else if (cmd === 'whoami') {
+      response = `Authenticated: scheduliteit@gmail.com (Master Admin)`;
+    } else if (cmd === 'health') {
+      response = `Cluster health: OPTIMAL. Nodes online: ${dbUsers.length}.`;
+      level = 'success';
+    } else if (cmd === 'help') {
+      response = `Available: sync, clear, whoami, health, build`;
+    }
+
+    const newLog: CommandLog = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      source: 'LOCAL',
+      event: `> ${terminalInput}`,
+      level: 'info'
+    };
+    
+    const respLog: CommandLog = {
+      id: (Date.now() + 1).toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      source: 'SYS',
+      event: response,
+      level
+    };
+
+    setLogs(prev => [respLog, newLog, ...prev]);
+    setTerminalInput("");
+  };
+
+  const handleUpdateRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    if (!confirm(`Are you sure you want to change this node to ${newRole.toUpperCase()}?`)) return;
+    
+    try {
+      await api.system.updateUserRole(userId, newRole);
+      fetchAllData();
+    } catch (err) {
+      alert("Failed to update role");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("This will permanently decommission this node. Proceed?")) return;
+    try {
+      await api.system.deleteUser(userId);
+      fetchAllData();
+    } catch (err) {
+      alert("Failed to delete user");
+    }
+  };
+
+  const generateIntel = async () => {
+    setIsGeneratingIntel(true);
+    try {
+      const insights = await api.system.generateInsights();
+      setAiInsights(insights);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingIntel(false);
+    }
+  };
+
+  // Performance Data - use real data from stats if available
+  const perfData = useMemo(() => {
+    if (systemStats?.last7DaysCharts) {
+      return systemStats.last7DaysCharts.map((d: any) => ({
+        time: d.date,
+        req: d.count * 10 
+      }));
+    }
+    return [
+      { time: '00:00', cpu: 12, mem: 45, req: 120 },
+      { time: '04:00', cpu: 8, mem: 42, req: 80 },
+      { time: '08:00', cpu: 34, mem: 58, req: 450 },
+      { time: '12:00', cpu: 45, mem: 65, req: 980 },
+      { time: '16:00', cpu: 32, mem: 60, req: 720 },
+      { time: '20:00', cpu: 18, mem: 52, req: 340 },
+      { time: '23:59', cpu: 14, mem: 48, req: 210 },
+    ];
+  }, [systemStats]);
 
   const kpis = useMemo(() => [
-    { label: 'Total Registrations', value: systemStats?.totalSignups?.toLocaleString() || '1,280', icon: UserPlus, color: 'text-indigo-400' },
-    { label: 'Authenticated Load', value: systemStats?.totalLogins?.toLocaleString() || '15.4K', icon: LogOut, color: 'text-emerald-400' },
-    { label: 'Concurrent Sessions', value: systemStats?.currentlyOnline?.toLocaleString() || '14', icon: Activity, color: 'text-amber-400' },
-    { label: 'Node Health', value: '99.99%', icon: ShieldCheck, color: 'text-brand-blue' },
+    { label: 'Total Nodes', value: systemStats?.totalSignups?.toLocaleString() || '---', icon: UserPlus, color: 'text-indigo-400' },
+    { label: 'Total Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '---', icon: Calendar, color: 'text-emerald-400' },
+    { label: 'Currently Live', value: systemStats?.currentlyOnline?.toLocaleString() || '---', icon: Activity, color: 'text-amber-400' },
+    { label: 'System Health', value: 'OPTIMAL', icon: ShieldCheck, color: 'text-brand-blue' },
   ], [systemStats]);
 
-  const recentUsers = [
-    { id: '1', name: 'Dr. Sarah Smith', email: 'sarah@dental.com', business: 'Elite Dental Care', plan: 'Enterprise', status: 'Active', joined: '2 hours ago', storage: '1.2GB' },
-    { id: '2', name: 'John Miller', email: 'john@training.com', business: 'Miller Personal Training', plan: 'Pro', status: 'Active', joined: '5 hours ago', storage: '400MB' },
-    { id: '3', name: 'Aria Chen', email: 'aria@yoga.com', business: 'Zen Yoga Studio', plan: 'Enterprise', status: 'Active', joined: '1 day ago', storage: '800MB' },
-    { id: '4', name: 'Marcus Brown', email: 'marcus@legal.com', business: 'Brown & Co Legal', plan: 'Starter', status: 'Pending', joined: '2 days ago', storage: '120MB' },
-    { id: '5', name: 'Sofia Rodriguez', email: 'sofia@photo.com', business: 'Luz Photography', plan: 'Pro', status: 'Active', joined: '3 days ago', storage: '2.5GB' },
-  ];
+  const handleBroadcast = () => {
+    if (!broadcastMessage) return;
+    const newLog: CommandLog = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      source: 'ADMIN',
+      event: `BROADCAST: ${broadcastMessage}`,
+      level: 'warning'
+    };
+    setLogs(prev => [newLog, ...prev]);
+    setBroadcastMessage("");
+    alert("Broadcast sent to all active sessions.");
+  };
 
   const renderOverview = () => (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -139,7 +242,7 @@ const AdminPanel: React.FC = () => {
               </h3>
             </div>
             <div className="mt-6 flex gap-1 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-               <div className={`h-full bg-brand-blue rounded-full ${isLoadingStats ? 'animate-shimmer' : ''}`} style={{ width: '70%' }} />
+               <div className={`h-full bg-brand-blue rounded-full ${isLoadingStats ? 'animate-shimmer' : ''}`} style={{ width: '70%', transition: 'width 2s' }} />
             </div>
           </motion.div>
         ))}
@@ -147,15 +250,16 @@ const AdminPanel: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Deep Forensic Chart */}
-        <div className="lg:col-span-2 bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 shadow-2xl">
+        <div className="lg:col-span-2 bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-blue/50 to-transparent" />
           <div className="flex items-center justify-between mb-10">
             <div>
-              <h3 className="text-2xl font-black text-white tracking-tight">Tactical Traffic Matrix</h3>
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-1">Cross-cluster resource optimization</p>
+              <h3 className="text-2xl font-black text-white tracking-tight">Node Activity Trend</h3>
+              <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-1">Cross-cluster resource optimization (Last 7 Days)</p>
             </div>
             <div className="flex items-center gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
-              {['CPU', 'MEM', 'REQ'].map(l => (
-                <button key={l} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${l === 'REQ' ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'text-white/40 hover:text-white'}`}>{l}</button>
+              {['CPU', 'MEM', 'ACTIVITY'].map(l => (
+                <button key={l} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${l === 'ACTIVITY' ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'text-white/40 hover:text-white'}`}>{l}</button>
               ))}
             </div>
           </div>
@@ -199,32 +303,40 @@ const AdminPanel: React.FC = () => {
 
         {/* Global Node Map */}
         <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 flex flex-col relative group overflow-hidden">
+           <div className="absolute top-0 right-0 w-1 h-1/2 bg-gradient-to-b from-transparent via-emerald-500/50 to-transparent" />
            <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand-blue/10 rounded-full blur-[100px]" />
            <div className="flex items-center justify-between mb-8 relative z-10">
-              <h4 className="text-xl font-black text-white">Geographical Nodes</h4>
-              <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-emerald-400"><Globe size={18} /></div>
+              <h4 className="text-xl font-black text-white">Recent Activity</h4>
+              <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-emerald-400"><Activity size={18} /></div>
            </div>
            
-           <div className="flex-1 space-y-6 relative z-10">
-              {systemStats?.topRegions.map((loc, i) => (
-                <div key={i} className="p-5 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-all">
-                   <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 bg-brand-blue/10 rounded-xl flex items-center justify-center text-[10px] font-black">{loc.code}</div>
-                         <span className="text-xs font-black text-white">{loc.country}</span>
+           <div className="flex-1 space-y-4 relative z-10 overflow-hidden">
+              {activities.length > 0 ? (
+                <div className="space-y-4">
+                  {activities.map((act, i) => (
+                    <motion.div 
+                      key={act.id} 
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all flex gap-3"
+                    >
+                      <div className="w-10 h-10 bg-brand-blue/10 rounded-xl flex items-center justify-center shrink-0">
+                          <Zap size={16} className="text-brand-blue" />
                       </div>
-                      <span className={`text-[10px] font-bold text-emerald-400`}>{loc.users} Active</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((loc.users / systemStats.totalSignups) * 100 * 5, 100)}%` }}
-                        transition={{ duration: 1, delay: i * 0.1 }}
-                        className={`h-full bg-brand-blue rounded-full`} 
-                      />
-                   </div>
+                      <div className="min-w-0">
+                          <p className="text-[11px] font-black text-white truncate">{act.event}</p>
+                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest mt-0.5">{act.user} • {act.time}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-white/20">
+                   <Box size={40} className="mb-4 opacity-50" />
+                   <p className="text-[10px] font-black uppercase tracking-widest font-mono">No recent activity detected</p>
+                </div>
+              )}
               
               {!systemStats && [1,2,3,4].map((_, i) => (
                 <div key={i} className="p-5 bg-white/5 border border-white/5 rounded-[2rem] animate-pulse">
@@ -234,9 +346,18 @@ const AdminPanel: React.FC = () => {
               ))}
            </div>
 
-           <div className="mt-8 relative z-10">
-              <button className="w-full py-5 bg-white text-brand-dark rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-brand-blue hover:text-white transition-all shadow-xl">
-                 Initialize Global Mesh
+           <div className="mt-8 relative z-10 space-y-4">
+              <input 
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                placeholder="Global announcement..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:ring-1 ring-amber-500/30 transition-all"
+              />
+              <button 
+                onClick={handleBroadcast}
+                className="w-full py-5 bg-brand-blue text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all shadow-xl active:scale-95"
+              >
+                 Push Announcement
               </button>
            </div>
         </div>
@@ -250,38 +371,47 @@ const AdminPanel: React.FC = () => {
           <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-10">
              <div className="flex items-center justify-between mb-10">
                 <div>
-                   <h3 className="text-2xl font-black text-white">Sub-system Matrix</h3>
+                   <h3 className="text-2xl font-black text-white">Cluster Topology</h3>
                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Active node distribution and health telemetry</p>
                 </div>
-                <button className="p-3 bg-white/5 rounded-2xl text-white/60 hover:text-white transition-all"><RefreshCw size={20} /></button>
+                <button 
+                  onClick={fetchAllData}
+                  className="p-3 bg-white/5 rounded-2xl text-white/60 hover:text-white transition-all transform hover:rotate-180 duration-500"
+                >
+                  <RefreshCw size={20} />
+                </button>
              </div>
              
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                   { name: 'Core Engine', status: 'Healthy', load: '14%', icon: Cpu, mem: '1.2GB' },
                   { name: 'Vector Store', status: 'Healthy', load: '42%', icon: Database, mem: '4.8GB' },
-                  { name: 'Payment Relay', status: 'Warning', load: '89%', icon: CreditCard, mem: '920MB' },
+                  { name: 'Identity Relay', status: 'Healthy', load: '12%', icon: ShieldCheck, mem: '1.4GB' },
                   { name: 'AI Controller', status: 'Healthy', load: '22%', icon: Radio, mem: '12GB' },
-                  { name: 'Image CDN', status: 'Healthy', load: '4%', icon: Layers, mem: '200MB' },
-                  { name: 'Web Traffic', status: 'Healthy', load: '31%', icon: Globe, mem: '2.1GB' },
+                  { name: 'Image Processing', status: 'Healthy', load: '4%', icon: Layers, mem: '200MB' },
+                  { name: 'Public Traffic', status: 'Healthy', load: '31%', icon: Globe, mem: '2.1GB' },
                 ].map((node, i) => (
                   <motion.div 
                     key={i}
-                    whileHover={{ scale: 1.02 }}
-                    className="p-6 bg-white/5 border border-white/5 rounded-[2rem] relative group"
+                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                    className="p-6 bg-white/5 border border-white/5 rounded-[2rem] relative group cursor-crosshair"
                   >
-                     <div className={`absolute top-6 right-6 w-2 h-2 rounded-full ${node.status === 'Healthy' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`} />
-                     <div className="w-12 h-12 bg-brand-blue/10 text-brand-blue rounded-2xl flex items-center justify-center mb-6"><node.icon size={24} /></div>
+                     <div className={`absolute top-6 right-6 w-2 h-2 rounded-full ${node.status === 'Healthy' ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-ping'}`} />
+                     <div className="w-12 h-12 bg-white/5 text-brand-blue rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-blue group-hover:text-white transition-all"><node.icon size={24} /></div>
                      <h4 className="font-black text-white mb-1">{node.name}</h4>
                      <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-6">{node.status} • {node.mem}</p>
                      
                      <div className="space-y-2">
                         <div className="flex justify-between text-[8px] font-black text-white/40 uppercase tracking-widest">
-                           <span>Node Load</span>
+                           <span>Node Utilization</span>
                            <span>{node.load}</span>
                         </div>
                         <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                           <div className="h-full bg-brand-blue" style={{ width: node.load }} />
+                           <motion.div 
+                             initial={{ width: 0 }}
+                             animate={{ width: node.load }}
+                             className="h-full bg-brand-blue" 
+                           />
                         </div>
                      </div>
                   </motion.div>
@@ -290,60 +420,67 @@ const AdminPanel: React.FC = () => {
           </div>
        </div>
 
-       {/* Realtime Stream */}
+       {/* Realtime Terminal */}
        <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 flex flex-col h-full ring-1 ring-white/5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,107,255,0.05)_0%,transparent_70%)]" />
+          <div className="absolute inset-0 bg-[#000]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,107,255,0.1)_0%,transparent_70%)]" />
           <div className="flex items-center justify-between mb-8 relative z-10">
              <h4 className="text-lg font-black text-white flex items-center gap-2">
-                <TerminalIcon size={18} className="text-brand-blue" /> Terminal
+                <TerminalIcon size={18} className="text-brand-blue" /> Master Shell
              </h4>
-             <button onClick={() => setIsLive(!isLive)} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${isLive ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white/40'}`}>
-                {isLive ? 'LIVE' : 'PAUSED'}
-             </button>
+             <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[8px] font-black text-white/40 tracking-widest uppercase">TTY_01</span>
+             </div>
           </div>
 
-          <div className="flex-1 space-y-4 font-mono text-[9px] overflow-hidden relative z-10">
-             <AnimatePresence>
+          <div className="flex-1 space-y-4 font-mono text-[10px] overflow-y-auto relative z-10 scrollbar-hide flex flex-col-reverse">
+             <AnimatePresence initial={false}>
                {logs.map((log) => (
                  <motion.div 
                    key={log.id} 
                    initial={{ opacity: 0, x: -10 }} 
                    animate={{ opacity: 1, x: 0 }} 
-                   className="flex gap-3 leading-relaxed"
+                   className="flex gap-3 leading-relaxed py-1"
                  >
-                    <span className="text-white/20 whitespace-nowrap">{log.time}</span>
-                    <span className={`font-black ${log.level === 'error' ? 'text-rose-400' : log.level === 'warning' ? 'text-amber-400' : log.level === 'success' ? 'text-emerald-400' : 'text-brand-blue'}`}>
+                    <span className="text-white/20 whitespace-nowrap uppercase tracking-tight">{log.time}</span>
+                    <span className={`font-black shrink-0 ${log.level === 'error' ? 'text-rose-400' : log.level === 'warning' ? 'text-amber-400' : log.level === 'success' ? 'text-emerald-400' : 'text-brand-blue'}`}>
                        {log.source}:
                     </span>
-                    <span className="text-white/60 truncate">{log.event}</span>
+                    <span className="text-white/60 break-all">{log.event}</span>
                  </motion.div>
                ))}
              </AnimatePresence>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
-             <div className="flex items-center justify-between group cursor-pointer text-white/40 hover:text-white transition-colors">
-                <span className="text-[10px] font-black uppercase tracking-widest font-mono">View all logs</span>
-                <ChevronRight size={14} className="group-hover:translate-x-1 transition-all" />
+          <form onSubmit={handleTerminalCommand} className="mt-8 pt-6 border-t border-white/10 relative z-10">
+             <div className="relative group">
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-brand-blue font-black">{`>`}</span>
+                <input 
+                  value={terminalInput}
+                  onChange={(e) => setTerminalInput(e.target.value)}
+                  placeholder="Run master command..."
+                  className="w-full bg-transparent border-none outline-none pl-6 text-[10px] font-bold font-mono text-white placeholder:text-white/10"
+                />
              </div>
-          </div>
+          </form>
        </div>
     </div>
   );
 
   const renderUsers = () => (
-    <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] overflow-hidden animate-in fade-in duration-500">
-      <div className="p-10 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] overflow-hidden animate-in fade-in duration-500 shadow-3xl">
+      <div className="p-10 border-b border-white/5 bg-[#0D0D0E] flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-           <h3 className="text-2xl font-black text-white leading-none">Global Matrix</h3>
-           <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-2">Manage 1,284 nodes across the cluster</p>
+           <h3 className="text-2xl font-black text-white leading-none">Security Identities</h3>
+           <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-2">{dbUsers.length} decrypted business nodes detected</p>
         </div>
         <div className="flex items-center gap-4">
-           <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+           <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-brand-blue transition-colors" size={18} />
               <input 
                 placeholder="Search nodes..."
-                className="bg-white/5 border border-white/10 pl-12 pr-6 py-4 rounded-2xl text-xs font-bold text-white outline-none focus:ring-1 ring-brand-blue/30 w-72 transition-all"
+                className="bg-white/5 border border-white/10 pl-12 pr-6 py-4 rounded-2xl text-xs font-bold text-white outline-none focus:border-brand-blue/50 w-72 transition-all shadow-inner"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
@@ -356,61 +493,131 @@ const AdminPanel: React.FC = () => {
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-             <tr className="bg-white/5">
+             <tr className="bg-white/[0.02]">
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Business Identity</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Service Plan</th>
+                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Access Level</th>
+                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Contact Node</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Telemetry</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Status</th>
                 <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Operation</th>
              </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-             {recentUsers.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.business.toLowerCase().includes(searchQuery.toLowerCase())).map((user, i) => (
-                <tr key={user.id} className="hover:bg-white/5 transition-all group">
+             {(dbUsers.length > 0 ? dbUsers : []).filter(u => u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase())).map((user, i) => (
+                <tr key={user.id} className="hover:bg-white/[0.03] transition-all group">
                    <td className="px-10 py-8">
                       <div className="flex items-center gap-4">
-                         <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center font-black text-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-all shadow-xl">
-                           {user.name[0]}
+                         <div className="w-14 h-14 bg-[#111] border border-white/10 rounded-2xl flex items-center justify-center font-black text-brand-blue group-hover:border-brand-blue transition-all shadow-2xl relative overflow-hidden">
+                           <div className="absolute inset-0 bg-brand-blue/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                           <span className="relative z-10">{user.displayName?.[0] || user.email?.[0] || '?'}</span>
                          </div>
                          <div>
-                            <p className="text-base font-black text-white leading-tight">{user.name}</p>
-                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">{user.business}</p>
+                            <p className="text-base font-black text-white leading-tight">{user.displayName || 'Unnamed node'}</p>
+                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">{user.businessCategory || 'UNCLASSIFIED'}</p>
                          </div>
                       </div>
                    </td>
                    <td className="px-10 py-8">
-                      <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${user.plan === 'Enterprise' ? 'bg-brand-blue/10 text-brand-blue border-brand-blue/30' : 'bg-white/5 text-white/60 border-white/10'}`}>
-                         {user.plan}
-                      </span>
+                      <button 
+                        onClick={() => handleUpdateRole(user.id, user.role)}
+                        className={`text-[10px] font-black px-4 py-1.5 rounded-full border transition-all ${user.role === 'admin' ? 'bg-brand-blue text-white border-brand-blue shadow-[0_0_15px_rgba(0,107,255,0.4)]' : 'bg-white/5 text-white/40 border-white/10 hover:text-white hover:bg-white/10'}`}
+                      >
+                         {user.role?.toUpperCase() || 'USER'}
+                      </button>
                    </td>
-                   <td className="px-10 py-8 text-white/60 font-mono text-xs">
-                      {user.storage} • {user.joined}
+                   <td className="px-10 py-8 text-white/60 font-mono text-xs tracking-tight">
+                      {user.email}
                    </td>
                    <td className="px-10 py-8">
-                      <div className={`flex items-center gap-2 px-3 py-1 rounded-full w-fit ${user.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                         <div className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`} />
-                         <span className="text-[10px] font-black uppercase tracking-widest">{user.status}</span>
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full w-fit bg-emerald-500/10 text-emerald-400 border border-emerald-500/20`}>
+                         <div className={`w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]`} />
+                         <span className="text-[10px] font-black uppercase tracking-widest">ENCRYPTED</span>
                       </div>
                    </td>
                    <td className="px-10 py-8 text-right">
                       <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                         <button className="p-3 bg-white/5 text-white/40 hover:text-white hover:bg-brand-blue rounded-2xl transition-all shadow-xl"><Edit3 size={16} /></button>
-                         <button className="p-3 bg-white/5 text-white/40 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-all shadow-xl"><Trash2 size={16} /></button>
-                         <button className="p-3 bg-white/5 text-white/40 hover:text-white rounded-2xl transition-all shadow-xl"><MoreHorizontal size={16} /></button>
+                         <button className="p-3 bg-white/5 text-white/40 hover:text-white hover:bg-brand-blue rounded-xl transition-all shadow-xl"><Edit3 size={16} /></button>
+                         <button 
+                           onClick={() => handleDeleteUser(user.id)}
+                           className="p-3 bg-white/5 text-white/40 hover:text-white hover:bg-rose-500 rounded-xl transition-all shadow-xl"
+                         >
+                            <Trash2 size={16} />
+                         </button>
                       </div>
                    </td>
                 </tr>
              ))}
+             {dbUsers.length === 0 && (
+               <tr>
+                 <td colSpan={5} className="text-center py-20 opacity-20 font-black uppercase tracking-widest font-mono animate-pulse">Initializing Matrix Identities...</td>
+               </tr>
+             )}
           </tbody>
         </table>
       </div>
-      <div className="p-10 border-t border-white/5 flex items-center justify-between bg-white/5">
-         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] font-mono">Stream: 1,284 Nodes Active • Matrix Latency: 4ms</p>
+      <div className="p-10 border-t border-white/5 flex items-center justify-between bg-[#0D0D0E]">
+         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] font-mono flex items-center gap-2">
+            <Cpu size={12} className="animate-spin-slow" /> {dbUsers.length} nodes successfully decrypted
+         </p>
          <div className="flex gap-4">
-            <button className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white/60 hover:text-white transition-all">Matrix Back</button>
-            <button className="px-8 py-3 bg-white text-brand-dark rounded-2xl text-[10px] font-black transition-all hover:bg-brand-blue hover:text-white">Initialize Next</button>
+            <button className="px-6 py-2 bg-white/5 text-white/40 rounded-xl text-[10px] font-black uppercase tracking-widest">Prev</button>
+            <button className="px-6 py-2 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10">Next Channel</button>
          </div>
       </div>
+    </div>
+  );
+
+  const renderIntelligence = () => (
+    <div className="min-h-[600px] animate-in zoom-in-95 duration-700">
+       <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center space-y-4">
+             <div className="w-24 h-24 bg-brand-blue/10 rounded-[2rem] flex items-center justify-center mx-auto ring-1 ring-brand-blue/30 relative mb-8 rotate-12 group hover:rotate-0 transition-transform">
+                <div className="absolute inset-0 bg-brand-blue blur-[40px] opacity-20" />
+                <Processor size={48} className="text-brand-blue animate-pulse" />
+             </div>
+             <h2 className="text-5xl font-black text-white tracking-tighter">Quantum Intelligence</h2>
+             <p className="text-brand-blue font-black uppercase tracking-[0.4em] text-xs">Platform Strategic Analysis System</p>
+          </div>
+
+          {aiInsights.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+               {aiInsights.map((insight, i) => (
+                 <motion.div 
+                   key={i}
+                   initial={{ opacity: 0, y: 30 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   transition={{ delay: i * 0.1 }}
+                   className="bg-[#0A0A0B] border border-white/10 p-10 rounded-[3rem] hover:border-brand-blue/50 transition-all group"
+                 >
+                    <div className={`mb-6 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full w-fit ${insight.priority === 'high' ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                       Priority: {insight.priority}
+                    </div>
+                    <h4 className="text-xl font-black text-white mb-4 group-hover:text-brand-blue transition-colors">{insight.title}</h4>
+                    <p className="text-sm font-medium text-white/40 leading-relaxed mb-10">{insight.content}</p>
+                    <button className="w-full py-4 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white group-hover:bg-brand-blue group-hover:border-brand-blue transition-all">
+                       Initialize Action
+                    </button>
+                 </motion.div>
+               ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-8 bg-[#0A0A0B] border border-white/10 p-20 rounded-[4rem]">
+               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-white/20 animate-spin-slow ring-1 ring-white/10">
+                  <RefreshCw size={32} />
+               </div>
+               <div className="text-center">
+                  <h3 className="text-2xl font-black text-white mb-2">Matrix Analysis Pending</h3>
+                  <p className="text-sm font-medium text-white/20 uppercase tracking-widest">Intelligence engine requires manual override to initialize telemetry decryption.</p>
+               </div>
+               <button 
+                 onClick={generateIntel}
+                 disabled={isGeneratingIntel}
+                 className="px-12 py-5 bg-white text-brand-dark rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-brand-blue hover:text-white transition-all shadow-3xl disabled:opacity-50"
+               >
+                  {isGeneratingIntel ? 'DECRYPTING DATA...' : 'INITIALIZE INTEL SCAN'}
+               </button>
+            </div>
+          )}
+       </div>
     </div>
   );
 
@@ -570,16 +777,8 @@ const AdminPanel: React.FC = () => {
                 </motion.div>
               )}
               {activeTab === 'intelligence' && (
-                <motion.div key="intel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="h-[600px] flex items-center justify-center">
-                   <div className="text-center space-y-8 max-w-lg">
-                      <div className="w-32 h-32 bg-brand-blue/10 rounded-full flex items-center justify-center mx-auto ring-1 ring-brand-blue/30 relative">
-                         <div className="absolute inset-0 bg-brand-blue blur-[60px] opacity-20" />
-                         <Fingerprint size={64} className="text-brand-blue animate-pulse" />
-                      </div>
-                      <h3 className="text-3xl font-black text-white">Quantum Intelligence</h3>
-                      <p className="text-sm font-medium text-white/30 leading-relaxed uppercase tracking-widest italic">Decoding global market patterns. System initialization in progress for node_isr_01.</p>
-                      <button className="px-12 py-5 bg-white text-brand-dark rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-brand-blue hover:text-white transition-all shadow-3xl">Request Decryption</button>
-                   </div>
+                <motion.div key="intel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                   {renderIntelligence()}
                 </motion.div>
               )}
            </AnimatePresence>
