@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, ChevronRight, CheckCircle2, User, Phone, ShieldCheck, Check, Globe, Loader2, Lock, Languages, Info, ArrowLeft, ArrowRight, CalendarDays, Star, Zap, Users, Shield, MessageSquareText, Globe2, Sparkles, Send, X, Radio, Video } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
 import { Service } from '../types';
 import Logo from './Logo';
@@ -53,6 +54,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [aiInput, setAiInput] = useState("");
   const [aiMessages, setAiMessages] = useState<{role: 'ai' | 'user', text: string}[]>([]);
   const [isAiTyping, setIsAiTyping] = useState(false);
+
+  const [showLegalModal, setShowLegalModal] = useState<'privacy' | 'terms' | null>(null);
 
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
@@ -527,9 +530,41 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                
                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                     By confirming this booking, you agree to our <span onClick={() => alert('Terms of Service')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Terms of Service</span> and <span onClick={() => alert('Privacy Policy')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Privacy Policy</span>. Your data is handled securely via EasyBookly.
+                     By confirming this booking, you agree to our <span onClick={() => setShowLegalModal('terms')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Terms of Service</span> and <span onClick={() => setShowLegalModal('privacy')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Privacy Policy</span>. Your data is handled securely via EasyBookly.
                    </p>
                 </div>
+
+                <AnimatePresence>
+                  {showLegalModal && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                       <motion.div 
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="bg-white rounded-[32px] w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+                       >
+                          <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                             <h3 className="text-2xl font-black text-brand-dark tracking-tight">
+                                {showLegalModal === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+                             </h3>
+                             <button onClick={() => setShowLegalModal(null)} className="p-2 hover:bg-slate-50 rounded-full text-slate-400"><X size={24} /></button>
+                          </div>
+                          <div className="p-10 overflow-y-auto custom-scroll">
+                             <div className="prose prose-slate max-w-none">
+                                <p className="text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">
+                                   {showLegalModal === 'terms' ? legalData.termsOfService : legalData.privacyPolicy}
+                                   {(!legalData.termsOfService && showLegalModal === 'terms') && "Standard Terms of Service for " + businessName + ". By booking, you agree to attend at the scheduled time."}
+                                   {(!legalData.privacyPolicy && showLegalModal === 'privacy') && "Standard Privacy Policy for " + businessName + ". We respect your privacy and only use your data for booking purposes."}
+                                </p>
+                             </div>
+                          </div>
+                          <div className="p-8 border-t border-slate-50 bg-slate-50/50">
+                             <button onClick={() => setShowLegalModal(null)} className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-blue/20">I UNDERSTAND</button>
+                          </div>
+                       </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
 
                <button 
                 onClick={handleBook}

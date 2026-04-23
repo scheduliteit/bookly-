@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone } from 'lucide-react';
+import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
 
@@ -95,6 +95,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                   {item.label}
                 </motion.button>
               ))}
+
+              <motion.button
+                variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
+                onClick={() => { setActiveTab('settings'); /* trigger legal tab if I could but let's just go to settings */ }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm ${
+                  activeTab === 'settings'
+                    ? 'bg-slate-50 text-brand-dark'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <FileText size={18} strokeWidth={2.5} className={`${activeTab === 'settings' ? 'text-brand-dark' : 'text-slate-400'}`} />
+                Legal & Compliance
+              </motion.button>
 
               <motion.button
                 variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}

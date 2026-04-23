@@ -79,4 +79,9 @@ export interface BusinessStats {
   completedAppointments: number;
   pendingRequests: number;
   clientGrowth: number;
+  // New traffic and user engagement metrics
+  totalLogins: number;
+  totalSignups: number;
+  currentlyOnline: number;
+  topRegions: { country: string; users: number; code: string }[];
 }

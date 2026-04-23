@@ -141,6 +141,16 @@ export const api = {
     checkAvailability: async (date: string): Promise<string[]> => {
       // For now, keep it simple or implement logic based on appointments
       return ["09:00", "10:00", "11:00", "12:00", "13:30", "14:30", "15:30", "16:30"];
+    },
+    getStats: async (): Promise<any> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch system stats');
+      return response.json();
     }
   }
 };

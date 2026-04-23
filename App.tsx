@@ -108,7 +108,13 @@ const App: React.FC = () => {
           // Fetch user settings from Firestore
           const userData = await api.user.get(firebaseUser.uid);
           if (userData) {
-            const effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
+            // Auto-upgrade if email matches
+            let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
+            if (firebaseUser.email === 'scheduliteit@gmail.com' && userData.role !== 'admin') {
+               effectiveUser.role = 'admin';
+               await api.user.save(effectiveUser);
+            }
+            
             setUser(effectiveUser);
             setBusinessName(userData.businessName || '');
             setBusinessCategory(userData.businessCategory || 'Consulting');
@@ -137,6 +143,7 @@ const App: React.FC = () => {
               services: [],
               currency: 'USD',
               subscriptionPlan: initialPlan,
+              role: (firebaseUser.email === 'scheduliteit@gmail.com') ? 'admin' : undefined,
               createdAt: new Date().toISOString(),
               workingHours: {
                 monday: { start: '09:00', end: '17:00', active: true },
@@ -583,7 +590,14 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-[#fcfcfc] overflow-hidden font-sans selection:bg-brand-blue/10 selection:text-brand-blue">
       <Sidebar 
         activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+        setActiveTab={(tab) => {
+          if (tab === 'legal-direct') {
+            setActiveTab('settings');
+            setSettingsTab('legal');
+          } else {
+            setActiveTab(tab);
+          }
+        }} 
         user={user}
         subscriptionPlan={subscriptionPlan} 
         connectedApps={connectedApps}
