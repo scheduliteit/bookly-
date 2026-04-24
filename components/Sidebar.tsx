@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
+import { translations } from '../services/translations';
 
 interface SidebarProps {
   activeTab: string;
@@ -14,11 +15,14 @@ interface SidebarProps {
   onLogout?: () => void;
   onAddClick?: () => void;
   onOpenMobileGuide?: () => void;
+  language: 'en' | 'he';
+  onUpdateLanguage: (lang: 'en' | 'he') => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick, onOpenMobileGuide }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick, onOpenMobileGuide, language, onUpdateLanguage }) => {
   const isAdmin = user?.role === 'admin';
   const [isRolledDown, setIsRolledDown] = useState(true);
+  const t = translations[language];
 
   const menuItems = [];
 
@@ -27,14 +31,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
   }
 
   menuItems.push(
-    { id: 'dashboard', label: 'Event Types', icon: LinkIcon },
-    { id: 'earnings', label: 'Earnings', icon: Activity },
-    { id: 'calendar', label: 'Scheduled Events', icon: Calendar },
-    { id: 'marketing', label: 'Workflows', icon: Zap },
-    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
-    { id: 'booking-links', label: 'Booking Links', icon: Globe },
+    { id: 'dashboard', label: t.services, icon: LinkIcon },
+    { id: 'earnings', label: t.payouts, icon: Activity },
+    { id: 'calendar', label: t.calendar, icon: Calendar },
+    { id: 'marketing', label: t.marketing, icon: Zap },
+    { id: 'ai-assistant', label: t.aiAssistant, icon: Sparkles },
+    { id: 'booking-links', label: t.publicPortal, icon: Globe },
     { id: 'subscription', label: 'Billing & Plan', icon: CreditCard },
-    { id: 'clients', label: 'Contacts', icon: Users },
+    { id: 'clients', label: t.clients, icon: Users },
   );
 
   return (
@@ -124,6 +128,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
               >
                 <FileText size={18} strokeWidth={2.5} className={`${activeTab === 'settings' ? 'text-brand-dark' : 'text-slate-400'}`} />
                 Legal & Compliance
+              </motion.button>
+
+              <motion.button
+                variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
+                onClick={() => onUpdateLanguage(language === 'en' ? 'he' : 'en')}
+                className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all font-bold text-xs text-slate-500 bg-slate-50 hover:bg-slate-100 mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Globe size={16} />
+                  <span>{language === 'en' ? 'עברית' : 'English'}</span>
+                </div>
+                <div className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[8px] uppercase tracking-tighter">
+                  {language.toUpperCase()}
+                </div>
               </motion.button>
 
               <motion.button

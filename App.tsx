@@ -27,10 +27,13 @@ import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './fir
 import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { Language, translations } from './services/translations';
+
 const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'undefined' && API_KEY !== '';
 
 const App: React.FC = () => {
+  const isFreeMode = import.meta.env.VITE_IS_FREE_MODE === 'true';
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -55,7 +58,8 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
-  const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('ILS');
+  const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('USD');
+  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('easybookly_lang') as Language) || 'en');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [businessName, setBusinessName] = useState('');
   const [businessCategory, setBusinessCategory] = useState('Consulting');
@@ -152,6 +156,10 @@ const App: React.FC = () => {
               lastSeenAt: now
             };
             
+            // Subscription Plan Logic
+            let planToSet: 'basic' | 'premium' = userData.subscriptionPlan as 'basic' | 'premium';
+            if (isFreeMode) planToSet = 'premium';
+            
             setUser(updatedUser);
             await api.user.save(updatedUser);
 
@@ -165,8 +173,7 @@ const App: React.FC = () => {
             setConnectedApps(userData.connectedApps || []);
             setLegalData(userData.legalData || legalData);
             setCurrency(userData.currency || 'USD');
-            // FREE FOR NOW: Default to premium if no plan
-            setSubscriptionPlan(effectiveUser.subscriptionPlan as 'basic' | 'premium');
+            setSubscriptionPlan(planToSet);
           } else {
             console.log("New user detected, creating profile...");
             
@@ -246,6 +253,10 @@ const App: React.FC = () => {
         setServices(updatedUser.services || []);
         setLegalData(updatedUser.legalData || legalData);
         setCurrency(updatedUser.currency || 'USD');
+        if (updatedUser.language && updatedUser.language !== language) {
+          setLanguage(updatedUser.language as Language);
+          localStorage.setItem('easybookly_lang', updatedUser.language);
+        }
         setTimezone(updatedUser.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       });
 
@@ -349,7 +360,7 @@ const App: React.FC = () => {
   };
   
   const trialDays = getTrialDaysRemaining();
-  const isTrialExpired = false; // "all free for now"
+  const isTrialExpired = !isFreeMode && trialDays <= 0;
 
   if (isInitializing || !isAuthReady || isVerifyingPayment) {
     return (
@@ -495,7 +506,7 @@ const App: React.FC = () => {
           {(() => {
             switch (activeTab) {
               case 'dashboard':
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} />;
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} />;
               case 'calendar':
                 return (
                   <AppointmentCalendar 
@@ -624,10 +635,16 @@ const App: React.FC = () => {
                     onUpdateTimezone={(val) => updateUserSettings({ timezone: val })}
                     userId={user!.id}
                     initialTab={settingsTab}
+                    language={language}
+                    onUpdateLanguage={(l) => {
+                      setLanguage(l);
+                      localStorage.setItem('easybookly_lang', l);
+                      updateUserSettings({ language: l });
+                    }}
                   />
                 );
               default:
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => setActiveTab('settings')} />;
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} />;
             }
           })()}
         </motion.div>
@@ -636,7 +653,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#fcfcfc] overflow-hidden font-sans selection:bg-brand-blue/10 selection:text-brand-blue">
+    <div 
+      className={`flex h-screen bg-[#fcfcfc] overflow-hidden font-sans selection:bg-brand-blue/10 selection:text-brand-blue ${language === 'he' ? 'font-hebrew' : ''}`}
+      dir={language === 'he' ? 'rtl' : 'ltr'}
+    >
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={(tab) => {
@@ -653,6 +673,12 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         onAddClick={() => setShowAddModal(true)}
         onOpenMobileGuide={() => setShowMobileGuide(true)}
+        language={language}
+        onUpdateLanguage={(l) => {
+          setLanguage(l);
+          localStorage.setItem('easybookly_lang', l);
+          updateUserSettings({ language: l });
+        }}
       />
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 bg-white border-b border-[#eaebed] flex items-center justify-between px-8 shrink-0 z-20">
@@ -678,7 +704,7 @@ const App: React.FC = () => {
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                <input 
                   type="text" 
-                  placeholder="Search..."
+                  placeholder={language === 'he' ? 'חיפוש...' : 'Search...'}
                   className="w-full bg-slate-50 border border-slate-100 rounded-lg py-1.5 pl-10 pr-4 text-sm font-medium focus:ring-1 focus:ring-brand-blue outline-none transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -699,7 +725,7 @@ const App: React.FC = () => {
               onClick={() => setActiveTab('ai-assistant')}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 cursor-pointer transition-colors"
             >
-              <span className="text-sm font-bold">Help</span>
+              <span className="text-sm font-bold">{language === 'he' ? 'עזרה' : 'Help'}</span>
             </div>
             <button 
               onClick={() => alert('No new notifications')}
@@ -714,7 +740,7 @@ const App: React.FC = () => {
               <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs group-hover:bg-slate-200 transition-all">
                 {businessName.charAt(0)}
               </div>
-              <span className="text-sm font-bold text-slate-700">Account</span>
+              <span className="text-sm font-bold text-slate-700">{language === 'he' ? 'חשבון' : 'Account'}</span>
             </div>
           </div>
         </header>

@@ -67,8 +67,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               transition={{ delay: 0.1 }}
               className="text-7xl md:text-[9.5rem] font-black text-brand-dark leading-[0.85] tracking-tighter"
             >
-              BOOK <span className="text-brand-blue">FASTER.</span><br />
-              GROW <span className="text-slate-200">WILDER.</span>
+              AI <span className="text-brand-blue">AGENT.</span><br />
+              BOOKINGS <span className="text-slate-200">SOLVED.</span>
             </motion.h1>
 
             <motion.p 
@@ -77,7 +77,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               transition={{ delay: 0.2 }}
               className="text-xl md:text-2xl text-slate-500 font-medium max-w-2xl leading-relaxed"
             >
-              Stop wrestling with dirty calendars. EasyBookly automates your meetings with an AI concierge, secure payouts, and a booking page that people actually love to use.
+              The professional scheduling OS for high-performance consultants. EasyBookly automates your briefings with an AI concierge, secure global payouts, and a brand experience that builds trust instantly.
             </motion.p>
 
             <motion.div 
@@ -108,13 +108,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               className="flex items-center gap-10 pt-10"
             >
                <div className="flex -space-x-4">
-                  {[1,2,3,4,5].map(i => (
-                    <img key={i} src={`https://picsum.photos/seed/user${i}/100/100`} className="w-12 h-12 rounded-2xl border-4 border-white object-cover" referrerPolicy="no-referrer" />
-                  ))}
+                  <div className="w-12 h-12 rounded-2xl border-4 border-white bg-brand-blue flex items-center justify-center text-white font-black text-xs shadow-lg"><Globe size={18} /></div>
+                  <div className="w-12 h-12 rounded-2xl border-4 border-white bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">BETA</div>
                </div>
                <div>
-                  <div className="flex gap-1 text-amber-400"><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /></div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">Join 22,000+ Founders</p>
+                  <div className="flex gap-1 text-emerald-500 items-center"><Check size={14} strokeWidth={4} /><span className="text-[10px] font-black uppercase tracking-widest leading-none">Global Beta Access Active</span></div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">Join the future of autonomous scheduling</p>
                </div>
             </motion.div>
           </div>
@@ -124,16 +123,87 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
       {/* Proof Section - Logo Wall */}
       <section className="py-20 bg-slate-50/50 border-y border-slate-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
-           <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mb-12">Powering global teams</p>
+           <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mb-12">Built for high-performance professionals</p>
            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-30 grayscale hover:grayscale-0 transition-all duration-1000">
-              {['Amazon', 'Revolut', 'Stripe', 'Figma', 'Spotify'].map(name => (
+              {['Architects', 'Consultants', 'Engineers', 'Coaches', 'Designers'].map(name => (
                 <span key={name} className="text-2xl font-black tracking-tighter text-slate-900">{name}</span>
               ))}
            </div>
         </div>
       </section>
 
-      {/* Disruptor Features */}
+      {/* The AI Showcase */}
+      <section id="ai-assistant" className="py-32 bg-brand-dark text-white overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-blue/20 rounded-full blur-[120px]" />
+        
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
+           <div className="space-y-10">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
+                 Gemini 1.5 Integration
+              </div>
+              <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tighter">Your Assistant <br/> Never <span className="text-brand-blue">Sleeps.</span></h2>
+              <div className="space-y-6">
+              {['Automate bookings with an AI concierge', 'Accept payments globally (USD/EUR/GBP)', 'Zero maintenance, maximum performance'].map(text => (
+                   <div key={text} className="flex items-center gap-4 text-white/70 font-bold">
+                      <div className="w-6 h-6 bg-brand-blue/20 text-brand-blue rounded-full flex items-center justify-center shrink-0"><Check size={14} strokeWidth={4} /></div>
+                      {text}
+                   </div>
+                 ))}
+              </div>
+              <button 
+                onClick={() => onStart()}
+                className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
+              >
+                Start Free Trial
+              </button>
+           </div>
+           
+           <div className="relative">
+              <div className="absolute inset-0 bg-brand-blue/30 blur-[100px] rounded-full scale-75" />
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[48px] shadow-2xl relative">
+                  <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 bg-brand-blue rounded-2xl flex items-center justify-center"><Sparkles size={24} /></div>
+                       <div>
+                         <h4 className="font-black text-sm">AI Response Generator</h4>
+                         <p className="text-[10px] text-white/40 uppercase tracking-widest">Processing Inquiry...</p>
+                       </div>
+                    </div>
+                    <div className="hidden md:block">
+                       <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20">
+                          <Activity size={10} /> Live
+                       </div>
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="bg-white/10 p-5 rounded-2xl text-xs leading-relaxed text-white/60 italic border-l-4 border-brand-blue">
+                      "I see you want to book a Strategic Consulting session. Jane specializes in Fintech pivots. Would you like to see her available slots for Friday?"
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div initial={{ x: '-100%' }} animate={{ x: '0%' }} transition={{ duration: 2, repeat: Infinity }} className="h-full w-1/2 bg-brand-blue" />
+                      </div>
+                    </div>
+                  </div>
+              </div>
+              
+              {/* Floating Live Tooltip */}
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity }}
+                className="absolute -bottom-6 -right-6 bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex items-center gap-4 z-20 hidden md:flex"
+              >
+                 <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                    <DollarSign size={20} />
+                 </div>
+                 <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Payout</p>
+                    <p className="text-sm font-black text-brand-dark">$2,450.00 <span className="text-[10px] text-emerald-500 font-bold ml-1">SETTLED</span></p>
+                 </div>
+              </motion.div>
+           </div>
+        </div>
+      </section>
       <section id="features" className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24 max-w-3xl mx-auto space-y-6">
@@ -145,13 +215,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
             {[
               { 
                 title: 'AI Booking Concierge', 
-                desc: 'Your private AI agent answers client questions and clarifies value before they even book.', 
+                desc: 'Your private AI agent answers client questions and clarifies value before they even book—available in multiple languages.', 
                 icon: Sparkles,
                 color: 'bg-brand-blue'
               },
               { 
-                title: 'Secured Payouts', 
-                desc: 'The only global scheduler optimized for Israeli payouts and international merchant logic.', 
+                title: 'Global Payouts', 
+                desc: 'Support for independent professionals worldwide. Accept payments in any major currency with regional compliance automated.', 
                 icon: CreditCard,
                 color: 'bg-emerald-500' 
               },
@@ -176,61 +246,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
         </div>
       </section>
 
-      {/* The AI Showcase */}
-      <section id="ai-assistant" className="py-32 bg-brand-dark text-white overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-blue/20 rounded-full blur-[120px]" />
-        
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
-           <div className="space-y-10">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
-                 Gemini 1.5 Integration
-              </div>
-              <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tighter">Your Assistant <br/> Never <span className="text-brand-blue">Sleeps.</span></h2>
-              <div className="space-y-6">
-                 {[
-                   'Pre-qualify leads with smart questions',
-                   'Automated meeting briefs sent to your inbox',
-                   'Instant research on your booked clients',
-                   'Multi-lingual support for 40+ languages'
-                 ].map(text => (
-                   <div key={text} className="flex items-center gap-4 text-white/70 font-bold">
-                      <div className="w-6 h-6 bg-brand-blue/20 text-brand-blue rounded-full flex items-center justify-center shrink-0"><Check size={14} strokeWidth={4} /></div>
-                      {text}
-                   </div>
-                 ))}
-              </div>
-              <button 
-                onClick={() => onStart()}
-                className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
-              >
-                Start Free Trial
-              </button>
-           </div>
-           
-           <div className="relative">
-              <div className="absolute inset-0 bg-brand-blue/30 blur-[100px] rounded-full scale-75" />
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[48px] shadow-2xl relative">
-                  <div className="flex items-center gap-4 mb-10">
-                    <div className="w-12 h-12 bg-brand-blue rounded-2xl flex items-center justify-center"><Sparkles size={24} /></div>
-                    <div>
-                      <h4 className="font-black text-sm">AI Response Generator</h4>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">Processing Inquiry...</p>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div className="bg-white/10 p-5 rounded-2xl text-xs leading-relaxed text-white/60 italic border-l-4 border-brand-blue">
-                      "I see you want to book a Strategic Consulting session. Jane specializes in Fintech pivots. Would you like to see her available slots for Friday?"
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div initial={{ x: '-100%' }} animate={{ x: '0%' }} transition={{ duration: 2, repeat: Infinity }} className="h-full w-1/2 bg-brand-blue" />
-                      </div>
-                    </div>
-                  </div>
-              </div>
-           </div>
-        </div>
-      </section>
+
 
       {/* Pricing / Value Deck */}
       <section id="pricing" className="py-32 px-6 bg-slate-50/50">

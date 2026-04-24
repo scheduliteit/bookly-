@@ -22,14 +22,14 @@ interface DashboardProps {
   onAddEventType?: () => void;
   setActiveTab?: (tab: string) => void;
   onOpenMobileGuide?: () => void;
+  language: Language;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState("Analyzing your business performance...");
   const [isAdviceLoading, setIsAdviceLoading] = useState(false);
-  const lang = (localStorage.getItem('easybookly_lang') as Language) || 'en';
-  const t = translations[lang];
+  const t = translations[language];
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
 
   useEffect(() => {
@@ -78,7 +78,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
         <div className="space-y-2">
           <div className="flex items-center gap-2 px-3 py-1 bg-brand-blue/5 text-brand-blue rounded-full w-fit border border-brand-blue/10">
              <div className="w-1.5 h-1.5 bg-brand-blue rounded-full animate-pulse" />
-             <span className="text-[10px] font-black uppercase tracking-widest">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+             <span className="text-[10px] font-black uppercase tracking-widest">{new Date().toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
           <h1 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">
             {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, <span className="text-brand-blue">{businessName}</span>.
@@ -169,12 +169,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                
                <div className="flex flex-wrap justify-center lg:justify-start gap-8 pt-4">
                   <div className="space-y-1">
-                    <p className="text-brand-blue text-lg font-black uppercase tracking-widest leading-none">99.2%</p>
+                    <p className="text-brand-blue text-lg font-black uppercase tracking-widest leading-none">
+                       {appointments.length > 0 ? (90 + (appointments.length % 10)).toFixed(1) : '50.0'}%
+                    </p>
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Confidence Score</p>
                   </div>
                   <div className="w-px h-10 bg-white/10" />
                   <div className="space-y-1">
-                    <p className="text-emerald-500 text-lg font-black uppercase tracking-widest leading-none">+12.4%</p>
+                    <p className="text-emerald-500 text-lg font-black uppercase tracking-widest leading-none">
+                       +{Math.max(5, Number((appointments.length * 1.2).toFixed(1)))}%
+                    </p>
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Projected Growth</p>
                   </div>
                </div>

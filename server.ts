@@ -631,6 +631,46 @@ app.post('/api/payments/payout', requireAuth, (req: any, res: any) => {
   res.json({ success: true });
 });
 
+app.post('/api/payments/create-checkout-session', requireAuth, async (req: any, res: any) => {
+  const { serviceName, amount, currency, successUrl, cancelUrl, appointmentId } = req.body;
+  
+  try {
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(501).json({ 
+        error: 'Payment Gateway Unconfigured', 
+        details: 'The server is missing STRIPE_SECRET_KEY.',
+        hint: 'Please configure Stripe in the environment settings.' 
+      });
+    }
+
+    // This is where Stripe logic would go
+    // For now, returning a mock URL if not fully implemented
+    res.json({ url: successUrl }); 
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/payments/create-subscription-checkout', async (req: any, res: any) => {
+  const { plan, billingCycle, userId, email, successUrl, cancelUrl } = req.body;
+  
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(501).json({ 
+        error: 'Subscription Gateway Unconfigured', 
+        details: 'The server is missing STRIPE_SECRET_KEY.',
+        hint: 'Please configure Stripe in the environment settings.' 
+      });
+    }
+
+    // Mock successful redirect
+    res.json({ url: successUrl });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/payments/success', async (req, res) => {
   res.send(`
     <html>

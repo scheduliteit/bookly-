@@ -13,12 +13,14 @@ interface SettingsProps {
   onUpdateConnectedApps: (apps: string[]) => void;
   legalData: { privacyPolicy: string; termsOfService: string; gdprStrict: boolean };
   onUpdateLegalData: (data: any) => void;
-  currency: 'ILS' | 'USD' | 'EUR' | 'GBP';
-  onUpdateCurrency: (cur: 'ILS' | 'USD' | 'EUR' | 'GBP') => void;
+  currency: 'USD' | 'EUR' | 'GBP' | 'ILS';
+  onUpdateCurrency: (cur: 'USD' | 'EUR' | 'GBP' | 'ILS') => void;
   timezone: string;
   onUpdateTimezone: (tz: string) => void;
   userId: string;
-  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal';
+  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization';
+  language: 'en' | 'he';
+  onUpdateLanguage: (lang: 'en' | 'he') => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -35,9 +37,11 @@ const Settings: React.FC<SettingsProps> = ({
   timezone,
   onUpdateTimezone,
   userId,
-  initialTab
+  initialTab,
+  language,
+  onUpdateLanguage
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>(initialTab || 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
 
   useEffect(() => {
@@ -154,6 +158,7 @@ const Settings: React.FC<SettingsProps> = ({
             { id: 'services', label: 'Event Types' },
             { id: 'availability', label: 'Availability' },
             { id: 'payouts', label: 'Payments' },
+            { id: 'localization', label: 'Localization' },
             { id: 'legal', label: 'Legal' }
           ].map((tab) => (
             <button 
@@ -479,6 +484,87 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
+      {activeTab === 'localization' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-brand-dark">Language & Locale</h3>
+                <p className="text-xs text-slate-500 mt-1">Select your preferred language and currency display.</p>
+              </div>
+              <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
+                <Globe size={20} />
+              </div>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <Languages size={14} /> Application Language
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => onUpdateLanguage('en')}
+                      className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${language === 'en' ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
+                    >
+                      English (US)
+                    </button>
+                    <button 
+                      onClick={() => onUpdateLanguage('he')}
+                      className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${language === 'he' ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
+                    >
+                      עברית (IL)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <DollarSign size={14} /> Default Currency
+                  </label>
+                  <select 
+                    value={currency}
+                    onChange={(e) => onUpdateCurrency(e.target.value as any)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all"
+                  >
+                    <option value="USD">USD ($) - US Dollar</option>
+                    <option value="EUR">EUR (€) - Euro</option>
+                    <option value="GBP">GBP (£) - British Pound</option>
+                    <option value="ILS">ILS (₪) - Israeli Shekel</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-8 border-t border-slate-50 space-y-3">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Clock size={14} /> Timezone Settings
+                </label>
+                <div className="p-6 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <Globe className="text-brand-blue" size={20} />
+                       <div>
+                         <p className="text-sm font-bold text-brand-dark">Current Detection</p>
+                         <p className="text-xs text-slate-500">{timezone}</p>
+                       </div>
+                     </div>
+                     <select 
+                        value={timezone}
+                        onChange={(e) => onUpdateTimezone(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none"
+                     >
+                       {['UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Jerusalem', 'Asia/Tokyo', 'Australia/Sydney'].map(tz => (
+                         <option key={tz} value={tz}>{tz}</option>
+                       ))}
+                     </select>
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {activeTab === 'legal' && (
         <div className="space-y-8 animate-in slide-in-from-bottom-4">
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">

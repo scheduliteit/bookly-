@@ -32,6 +32,7 @@ export interface User {
   lastSeenAt?: string;
   googleCalendarTokens?: any;
   outlookCalendarTokens?: any;
+  language?: string;
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';

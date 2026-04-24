@@ -61,7 +61,7 @@ function createBlob(data: Float32Array) {
 
 const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> = ({ appointments, clients }) => {
   const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', content: "Hello! I'm your EasyBookly Intelligence core. I can analyze your upcoming sessions, optimize your availability, or help with client prep. How can I assist you?" }
+    { role: 'assistant', content: "Hello! I'm your EasyBookly Intelligence. I can analyze your upcoming sessions, optimize your availability, or help with client prep. How can I assist you?" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);

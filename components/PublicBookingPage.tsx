@@ -8,6 +8,7 @@ import Logo from './Logo';
 import { geminiAssistant } from '../services/geminiService';
 import { paymentService } from '@/services/paymentService';
 import PaymentErrorModal from '@/components/PaymentErrorModal';
+import { Language, translations } from '../services/translations';
 
 interface PublicBookingPageProps {
   userId?: string;
@@ -37,6 +38,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [legalData, setLegalData] = useState(initialLegalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
   const [currency, setCurrency] = useState<'ILS' | 'USD' | 'EUR' | 'GBP'>(initialCurrency || 'USD');
   const [isLoading, setIsLoading] = useState(!initialBusinessName);
+  const [language, setLanguage] = useState<Language>('en');
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -59,6 +61,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
+  const t = translations[language] || translations.en;
 
   const formatInTimezone = (timeStr: string, dateStr: string, targetTz: string) => {
     try {
@@ -89,6 +92,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
             setLegalData(data.legalData);
             setCurrency(data.currency);
             setBusinessTimezone(data.timezone || 'UTC');
+            setLanguage((data as any).language || 'en');
           }
         } catch (err) {
           console.error("Failed to fetch public profile", err);
@@ -144,7 +148,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         businessTimezone: businessTimezone,
       });
 
-      const isFreeMode = true; // Hardcoded for 'Free for Early Adopters' strategy
+      const isFreeMode = import.meta.env.VITE_IS_FREE_MODE === 'true'; // Controlled via environment variable
       
       setConfirmedMeetingLink(meetingLink || null);
       onBookingComplete(result);
@@ -260,7 +264,10 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center justify-center p-4">
+    <div 
+      className={`min-h-screen bg-[#f9fafb] flex flex-col items-center justify-center p-4 ${language === 'he' ? 'font-hebrew' : ''}`}
+      dir={language === 'he' ? 'rtl' : 'ltr'}
+    >
       {/* AI Float Button */}
       <button 
         onClick={() => setShowAi(!showAi)}
@@ -273,7 +280,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       {showAi && (
         <div className="fixed bottom-24 right-8 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[100] animate-in slide-in-from-bottom-4">
            <div className="bg-brand-blue p-4 text-white">
-              <h4 className="font-bold flex items-center gap-2 text-sm"><Sparkles size={14} /> AI Booking Concierge</h4>
+              <h4 className="font-bold flex items-center gap-2 text-sm"><Sparkles size={14} /> EasyBookly Intelligence</h4>
               <p className="text-[10px] opacity-80">Ask anything about this session</p>
            </div>
            <div className="h-64 overflow-y-auto p-4 space-y-4 text-xs scroll-smooth">

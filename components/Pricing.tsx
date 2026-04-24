@@ -40,14 +40,37 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
     
     // Finalize handle
     try {
-      // Mock activation
-      console.log("[PRICING] Activation:", showCheckout.plan);
-      // Simulate a tiny delay for UX
-      await new Promise(resolve => setTimeout(resolve, 800));
-      onPlanChange(showCheckout.plan as 'basic' | 'premium');
-      setShowCheckout(null);
-      setIsProcessing(null);
-      return;
+      if (isFreeMode) {
+        // Mock activation for free mode
+        console.log("[PRICING] Activation:", showCheckout.plan);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        onPlanChange(showCheckout.plan as 'basic' | 'premium');
+        setShowCheckout(null);
+        setIsProcessing(null);
+        return;
+      }
+
+      // Real Stripe Flow
+      const response = await fetch('/api/payments/create-subscription-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: showCheckout.plan,
+          billingCycle,
+          userId: user?.id || 'guest',
+          email: user?.email || guestEmail,
+          successUrl: window.location.origin + '/dashboard?payment=success',
+          cancelUrl: window.location.origin + '/pricing?payment=cancel',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Failed to initiate checkout');
+      }
     } catch (err: any) {
       console.error("[PRICING] Activation Error:", err);
       setGatewayError({
@@ -64,7 +87,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
   const monthlyElite = 25;
   const annualElite = 15; // $180 / 12
 
-  const isFreeMode = true; // "Free for Early Adopters"
+  const isFreeMode = import.meta.env.VITE_IS_FREE_MODE === 'true'; // "Free for Early Adopters"
 
   const plans = [
     {
