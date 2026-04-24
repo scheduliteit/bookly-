@@ -43,6 +43,7 @@ const AdminPanel: React.FC = () => {
   const [terminalInput, setTerminalInput] = useState("");
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [isGeneratingIntel, setIsGeneratingIntel] = useState(false);
+  const symbol = '$'; // Default for global admin view
   const [logs, setLogs] = useState<CommandLog[]>([
     { id: '1', time: '03:49:02', source: 'CORE', event: 'Simulation engine standby...', level: 'info' },
     { id: '2', time: '03:48:48', source: 'NET', event: 'Global mesh routing optimized', level: 'success' },
@@ -238,11 +239,11 @@ const AdminPanel: React.FC = () => {
   }, [systemStats]);
 
   const kpis = useMemo(() => [
-    { label: 'Total Nodes', value: systemStats?.totalSignups?.toLocaleString() || '---', icon: UserPlus, color: 'text-indigo-400' },
-    { label: 'Total Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '---', icon: Calendar, color: 'text-emerald-400' },
-    { label: 'Total Access Sessions', value: systemStats?.totalLogins?.toLocaleString() || '---', icon: Fingerprint, color: 'text-amber-400' },
-    { label: 'Currently Live', value: systemStats?.currentlyOnline?.toLocaleString() || '---', icon: Activity, color: 'text-brand-blue' },
-  ], [systemStats]);
+    { label: 'Confirmed Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '0', icon: Calendar, color: 'text-emerald-400' },
+    { label: 'Pending Requests', value: systemStats?.pendingRequests?.toLocaleString() || '0', icon: Clock, color: 'text-amber-400' },
+    { label: 'Total Revenue', value: systemStats?.totalRevenue ? `${symbol}${systemStats.totalRevenue.toLocaleString()}` : `${symbol}0`, icon: CreditCard, color: 'text-brand-blue' },
+    { label: 'Currently Live', value: systemStats?.currentlyOnline?.toLocaleString() || '0', icon: Activity, color: 'text-brand-blue' },
+  ], [systemStats, symbol]);
 
   const handleBroadcast = () => {
     if (!broadcastMessage) return;

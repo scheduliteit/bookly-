@@ -670,8 +670,9 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
   
   try {
     // Check if requester is actually an admin
-    const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
-    const userData = requesterSnap.data();
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterDoc = await admin.firestore(dbId).collection('users').doc(req.user.uid).get();
+    const userData = requesterDoc.data();
     
     const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     
@@ -679,24 +680,24 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
        return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
     
-    const usersSnap = await getDocs(collection(db, 'users'));
+    const usersSnap = await admin.firestore(dbId).collection('users').get();
     const totalUsers = usersSnap.size;
     
-    // Simulate some realistic traffic patterns based on actual records
-    // In a production app, we would use a dedicated 'activities' collection
     const fifteenMinutesAgo = new Date();
     fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
     const fifteenMinutesAgoStr = fifteenMinutesAgo.toISOString();
     
     // Real active users in last 15 mins
-    const currentlyOnline = usersSnap.docs.filter(doc => {
-      const lastSeen = doc.data().lastSeenAt || doc.data().lastLoginAt || "";
+    const currentlyOnlineData = usersSnap.docs.filter(doc => {
+      const data = doc.data();
+      const lastSeen = data.lastSeenAt || data.lastLoginAt || "";
       return lastSeen >= fifteenMinutesAgoStr;
-    }).length;
+    });
+    const currentlyOnlineCount = currentlyOnlineData.length;
 
     const totalLogins = usersSnap.docs.reduce((acc, doc) => acc + (doc.data().loginCount || 0), 0);
 
-    // Derive regions from user timezones or profile data
+    // Derive regions
     const regions: any = {};
     usersSnap.forEach(doc => {
       const data = doc.data();
@@ -713,29 +714,41 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
       .sort((a, b) => b.users - a.users)
       .slice(0, 4);
 
-    const appointmentsSnap = await getDocs(collection(db, 'appointments'));
-    const totalAppointments = appointmentsSnap.size;
+    const appointmentsSnap = await admin.firestore(dbId).collection('appointments').get();
+    const totalAppointmentsCount = appointmentsSnap.size;
     
+    // Calculate REAL revenue from confirmed/completed appointments
+    const totalRevenueValue = appointmentsSnap.docs.reduce((acc, doc) => {
+      const data = doc.data();
+      if (data.status === 'confirmed' || data.status === 'completed') {
+        return acc + (Number(data.price) || 0);
+      }
+      return acc;
+    }, 0);
+
+    const confirmedBookingsCount = appointmentsSnap.docs.filter(doc => doc.data().status === 'confirmed').length;
+    const pendingRequestsCount = appointmentsSnap.docs.filter(doc => doc.data().status === 'pending').length;
+
     // Calculate last 7 days activity
-    const last7Days: any[] = [];
+    const last7DaysData: any[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       const count = appointmentsSnap.docs.filter(doc => doc.data().date === dateStr).length;
-      last7Days.push({ date: dateStr.substring(5), count: count + Math.floor(Math.random() * 5) }); // Add noise for demo
+      last7DaysData.push({ date: dateStr.substring(5), count: count });
     }
 
     res.json({
       totalSignups: totalUsers,
       totalLogins: totalLogins,
-      currentlyOnline: currentlyOnline,
+      currentlyOnline: currentlyOnlineCount,
       topRegions: topRegions.length > 0 ? topRegions : [{ country: 'Global', users: totalUsers, code: 'UN' }],
-      totalRevenue: merchantStats.grossEarnings,
-      completedAppointments: totalAppointments, 
-      pendingRequests: appointmentsSnap.docs.filter(doc => doc.data().status === 'pending').length,
+      totalRevenue: totalRevenueValue,
+      completedAppointments: confirmedBookingsCount, 
+      pendingRequests: pendingRequestsCount,
       clientGrowth: 15,
-      last7DaysCharts: last7Days
+      last7DaysCharts: last7DaysData
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -743,13 +756,13 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
 });
 
 app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
-    const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await admin.firestore(dbId).collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    const usersSnap = await getDocs(collection(db, 'users'));
+    const usersSnap = await admin.firestore(dbId).collection('users').get();
     const users = usersSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     res.json(users);
   } catch (error: any) {
@@ -758,13 +771,12 @@ app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
 });
 
 app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
-    const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
+    const requesterSnap = await admin.firestore().collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    const aptsSnap = await getDocs(collection(db, 'appointments'));
+    const aptsSnap = await admin.firestore().collection('appointments').get();
     const activities = aptsSnap.docs
       .map(doc => {
         const data = doc.data();
@@ -786,14 +798,13 @@ app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const { userId, role } = req.body;
   try {
-    const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
+    const requesterSnap = await admin.firestore().collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    await updateDoc(doc(db, 'users', userId), { role });
+    await admin.firestore().collection('users').doc(userId).update({ role });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -801,13 +812,12 @@ app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) 
 });
 
 app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
-    const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
+    const requesterSnap = await admin.firestore().collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    await deleteDoc(doc(db, 'users', req.params.id));
+    await admin.firestore().collection('users').doc(req.params.id).delete();
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -815,14 +825,13 @@ app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
   try {
-    const requesterSnap = await getDoc(doc(db, 'users', req.user.uid));
+    const requesterSnap = await admin.firestore().collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    const usersSnap = await getDocs(collection(db, 'users'));
-    const appointmentsSnap = await getDocs(collection(db, 'appointments'));
+    const usersSnap = await admin.firestore().collection('users').get();
+    const appointmentsSnap = await admin.firestore().collection('appointments').get();
     
     const stats = {
       users: usersSnap.size,

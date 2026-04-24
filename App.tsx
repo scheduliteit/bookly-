@@ -201,6 +201,10 @@ const App: React.FC = () => {
               loginCount: 1,
               lastLoginAt: new Date().toISOString(),
               lastSeenAt: new Date().toISOString()
+            };,
+              loginCount: 1,
+              lastLoginAt: new Date().toISOString(),
+              lastSeenAt: new Date().toISOString()
             };
             setUser(newUser);
             if (newUser.role === 'admin') {
