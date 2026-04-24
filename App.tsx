@@ -402,9 +402,14 @@ const App: React.FC = () => {
     return (
       <LandingPage 
         isLoggedIn={false}
-        onStart={() => { 
-          setShowPricingGate(true);
-          setShowLanding(false); 
+        onStart={(mode) => { 
+          if (isFreeMode) {
+            setAuthMode(mode || 'register');
+            setShowLanding(false);
+          } else {
+            setShowPricingGate(true);
+            setShowLanding(false);
+          }
         }} 
         onLogin={() => {
           setShowLanding(false);
@@ -419,7 +424,10 @@ const App: React.FC = () => {
        <Pricing 
          user={null} 
          currentPlan={undefined} 
-         onPlanChange={() => {}} 
+         onPlanChange={(p) => {
+           setPendingPlan(p);
+           setShowPricingGate(false);
+         }} 
          onAuthRequired={() => setShowPricingGate(false)} 
          onBack={() => {
            setShowPricingGate(false);
@@ -435,6 +443,16 @@ const App: React.FC = () => {
 
   // Force subscription plan selection before onboarding or dashboard
   if (!user.subscriptionPlan) {
+    if (isFreeMode) {
+      // Auto-assign premium if in free mode
+      updateUserSettings({ subscriptionPlan: 'premium' });
+      return (
+        <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="animate-spin text-brand-blue" size={40} />
+          <p className="text-slate-500 font-bold animate-pulse">Activating your free premium account...</p>
+        </div>
+      );
+    }
     return (
       <Pricing 
         currentPlan={subscriptionPlan} 
