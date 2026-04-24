@@ -142,9 +142,9 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                               if (room && onJoinMeeting) onJoinMeeting(room);
                               else window.open((evt as any).meetingLink, '_blank');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-lg text-xs font-bold border border-brand-blue/10 hover:bg-brand-blue hover:text-white transition-all ml-2"
+                            className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all ml-4"
                           >
-                            <Video size={12} /> Join Video
+                            <Video size={14} /> Join Meeting
                           </button>
                         )}
                       </div>

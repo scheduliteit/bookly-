@@ -25,7 +25,7 @@ import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
-import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon } from 'lucide-react';
+import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon, Video } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { Language, translations } from './services/translations';
@@ -748,6 +748,17 @@ const App: React.FC = () => {
             >
               <span className="text-sm font-bold">{language === 'he' ? 'עזרה' : 'Help'}</span>
             </div>
+            <button 
+              onClick={() => {
+                const room = `ebk-quick-${user?.id.substring(0,5)}-${Math.random().toString(36).substr(2,6)}`;
+                setActiveMeetingRoom(room);
+              }}
+              className="px-3 py-1.5 bg-brand-blue/5 text-brand-blue rounded-xl hover:bg-brand-blue hover:text-white transition-all flex items-center gap-2 font-bold text-xs border border-brand-blue/10 shadow-sm"
+              title="Start Video Meeting"
+            >
+              <Video size={16} />
+              <span className="hidden lg:inline">Video Meet</span>
+            </button>
             <button 
               onClick={() => alert('No new notifications')}
               className="text-slate-400 hover:text-brand-blue transition-colors"

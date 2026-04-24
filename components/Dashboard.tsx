@@ -312,9 +312,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                                 if (room && onJoinMeeting) onJoinMeeting(room);
                                 else window.open(apt.meetingLink, '_blank');
                               }}
-                              className="flex items-center gap-1.5 px-2 py-0.5 bg-brand-blue/10 text-brand-blue rounded-full text-[8px] font-black uppercase tracking-widest border border-brand-blue/10 hover:bg-brand-blue hover:text-white transition-all ml-auto"
+                              className="flex items-center gap-2 px-4 py-1.5 bg-brand-blue text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all ml-auto border-none"
                             >
-                              <Video size={10} /> Join
+                              <Video size={12} /> Join Call
                             </button>
                           )}
                        </div>

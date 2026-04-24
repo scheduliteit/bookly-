@@ -348,8 +348,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                   {selectedService.duration} Minutes
                 </div>
                 <div className="flex items-center gap-3 text-slate-600 font-bold text-sm">
-                  <Globe size={18} className="text-slate-300" />
-                  Online Meeting (Zoom/Meet)
+                  <Video size={18} className="text-slate-300" />
+                  Integrated Video Call (Built-in)
                 </div>
                 {selectedDate && (
                   <div className="flex items-start gap-3 text-brand-blue font-bold text-sm animate-in fade-in">

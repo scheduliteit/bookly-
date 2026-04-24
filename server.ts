@@ -187,7 +187,7 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
     const { service, date, time, duration, locationType } = req.body;
     let meetingLink = req.body.meetingLink;
 
-    if (!meetingLink && (locationType === 'online')) {
+    if (!meetingLink && (locationType === 'online' || locationType === 'zoom')) {
       const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
       meetingLink = `https://meet.jit.si/${roomName}`;
     }
