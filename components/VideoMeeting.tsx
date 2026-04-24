@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { X, Maximize2, Minimize2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, Maximize2, Minimize2, Copy, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface VideoMeetingProps {
@@ -10,6 +10,15 @@ interface VideoMeetingProps {
 
 const VideoMeeting: React.FC<VideoMeetingProps> = ({ roomName, onClose, displayName = 'Host' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  const jitsiLink = `https://meet.jit.si/${roomName}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(jitsiLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     // Load Jitsi script if not already present
@@ -72,12 +81,22 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({ roomName, onClose, displayN
           </div>
         </div>
         
-        <button 
-          onClick={onClose}
-          className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-all"
-        >
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleCopyLink}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'}`}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? 'Copied Link' : 'Copy Invite Link'}
+          </button>
+
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-all cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
       
       <div className="flex-1 bg-black relative" ref={containerRef}>
