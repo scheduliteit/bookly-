@@ -39,7 +39,8 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({
       time: formData.time,
       duration: service?.duration || 60,
       status: 'confirmed',
-      price: formData.price
+      price: formData.price,
+      locationType: service?.locationType
     };
     onAdd(newApt);
     onClose();

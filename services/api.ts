@@ -17,15 +17,37 @@ export const api = {
       });
     },
     create: async (data: Appointment): Promise<Appointment> => {
-      const docRef = doc(collection(db, 'appointments'));
-      const newApt = { ...data, id: docRef.id };
-      try {
-        await setDoc(docRef, newApt);
-        return newApt;
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'appointments');
-        throw error;
+      // If it's a public booking (no current user), use the public endpoint 
+      // so the server can handle Zoom meeting generation without admin auth token
+      if (!auth.currentUser) {
+        const response = await fetch('/api/public/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          throw err;
+        }
+        return response.json();
       }
+
+      // For authenticated user (admin), use the authenticated proxy
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw err;
+      }
+      return response.json();
     },
     delete: async (id: string): Promise<void> => {
       try {

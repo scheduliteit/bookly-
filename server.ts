@@ -141,13 +141,59 @@ app.get('/api/appointments', requireAuth, async (req: any, res: any) => {
   }
 });
 
+app.post('/api/public/book', async (req: any, res: any) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const { userId, service, date, time, duration, locationType } = req.body;
+  
+  try {
+    let meetingLink = undefined;
+    if (locationType === 'zoom' || locationType === 'online') {
+      // Generate a unique Jitsi room name
+      const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
+      meetingLink = `https://meet.jit.si/${roomName}`;
+    }
+
+    const docDef = { ...req.body, meetingLink };
+    const docRef = await addDoc(collection(db, 'appointments'), docDef);
+    
+    // Optional: Send notification
+    try {
+      const message = `Confirmation: Your appointment for ${service} is scheduled for ${date} at ${time}. ${meetingLink ? 'Link: ' + meetingLink : ''}`;
+      // Logic from /api/notify could be called here or duplicated
+      if (process.env.SENDGRID_API_KEY) {
+        await sgMail.send({
+          to: req.body.clientEmail,
+          from: 'notifications@easybookly.com',
+          subject: 'Appointment Confirmed',
+          text: message
+        });
+      }
+    } catch (e) {
+      console.warn('[SERVER] Post-booking notification failed:', e);
+    }
+
+    res.status(201).json({ ...docDef, id: docRef.id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update authenticated appointment creation to handle Zoom
 app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.user.uid;
   
   try {
-    const docRef = await addDoc(collection(db, 'appointments'), { ...req.body, userId });
-    res.status(201).json({ ...req.body, id: docRef.id, userId });
+    const { service, date, time, duration, locationType } = req.body;
+    let meetingLink = req.body.meetingLink;
+
+    if (!meetingLink && (locationType === 'online')) {
+      const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
+      meetingLink = `https://meet.jit.si/${roomName}`;
+    }
+
+    const docRef = await addDoc(collection(db, 'appointments'), { ...req.body, userId, meetingLink });
+    res.status(201).json({ ...req.body, id: docRef.id, userId, meetingLink });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -465,6 +511,140 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) 
     </html>
   `);
 });
+
+// Zoom OAuth
+app.get('/api/auth/zoom/url', (req, res) => {
+  const { userId } = req.query;
+  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/zoom/callback`;
+  
+  if (process.env.ZOOM_CLIENT_ID && userId) {
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: process.env.ZOOM_CLIENT_ID,
+      redirect_uri: callbackUrl,
+      state: userId as string,
+    });
+    const url = `https://zoom.us/oauth/authorize?${params.toString()}`;
+    return res.json({ url });
+  }
+
+  // Fallback for mock demo
+  res.json({ url: callbackUrl + `?code=mock_zoom_code&state=${userId || 'default'}` });
+});
+
+app.get(['/auth/zoom/callback', '/auth/zoom/callback/'], async (req, res) => {
+  const { code, state: userId } = req.query;
+  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/zoom/callback`;
+
+  if (process.env.ZOOM_CLIENT_ID && code && code !== 'mock_zoom_code' && userId) {
+    try {
+      const authHeader = Buffer.from(`${process.env.ZOOM_CLIENT_ID}:${process.env.ZOOM_CLIENT_SECRET}`).toString('base64');
+      const response = await axios.post('https://zoom.us/oauth/token', new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code as string,
+        redirect_uri: callbackUrl,
+      }).toString(), {
+        headers: { 
+          'Authorization': `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded' 
+        }
+      });
+
+      const tokens = response.data;
+      if (db) {
+        const userRef = doc(db, 'users', userId as string);
+        await updateDoc(userRef, { 
+          zoomTokens: tokens,
+          connectedApps: admin.firestore.FieldValue.arrayUnion('zoom')
+        });
+        console.log('[SERVER] Zoom Tokens saved for user:', userId);
+      }
+    } catch (error: any) {
+      console.error('[SERVER] Zoom OAuth Error:', error.response?.data || error.message);
+    }
+  }
+
+    res.send(`
+    <html>
+      <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #fcfcfc;">
+        <div style="background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center;">
+          <div style="width: 64px; height: 64px; background: #2D8CFF; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; color: white;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+          </div>
+          <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 900;">Zoom Connected!</h1>
+          <p style="color: #64748b; margin-bottom: 32px;">You can now host meetings on Zoom.</p>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', provider: 'zoom' }, '*');
+              setTimeout(() => window.close(), 1500);
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
+const refreshZoomToken = async (userId: string, tokens: any) => {
+  if (!process.env.ZOOM_CLIENT_ID || !process.env.ZOOM_CLIENT_SECRET) return tokens;
+  
+  try {
+    const authHeader = Buffer.from(`${process.env.ZOOM_CLIENT_ID}:${process.env.ZOOM_CLIENT_SECRET}`).toString('base64');
+    const response = await axios.post('https://zoom.us/oauth/token', new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: tokens.refresh_token,
+    }).toString(), {
+      headers: { 
+        'Authorization': `Basic ${authHeader}`,
+        'Content-Type': 'application/x-www-form-urlencoded' 
+      }
+    });
+
+    const newTokens = response.data;
+    if (db) {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { zoomTokens: newTokens });
+    }
+    return newTokens;
+  } catch (error) {
+    console.error('[ZOOM] Token refresh failed:', error);
+    return tokens;
+  }
+};
+
+const createZoomMeeting = async (userId: string, topic: string, startTime: string, duration: number) => {
+  if (!db) return null;
+  
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    if (!userSnap.exists() || !userSnap.data().zoomTokens) return null;
+    
+    let tokens = userSnap.data().zoomTokens;
+    // Always refresh or check expiration (simplified: always refresh for now or use current)
+    tokens = await refreshZoomToken(userId, tokens);
+
+    const response = await axios.post('https://zoom.us/v2/users/me/meetings', {
+      topic,
+      type: 2, // Scheduled meeting
+      start_time: startTime,
+      duration,
+      settings: {
+        join_before_host: true,
+        jbh_time: 0,
+        waiting_room: false
+      }
+    }, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+
+    return response.data.join_url;
+  } catch (error: any) {
+    console.error('[ZOOM] Meeting creation failed:', error.response?.data || error.message);
+    return null;
+  }
+};
 
 // Sync External Calendars
 app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {

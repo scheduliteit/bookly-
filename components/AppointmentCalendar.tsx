@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Appointment } from '../types';
-import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video } from 'lucide-react';
 import { geminiAssistant } from '../services/geminiService';
 
 interface AppointmentCalendarProps {
@@ -13,6 +13,7 @@ interface AppointmentCalendarProps {
   onNavigate?: (tab: string) => void;
   connectedApps: string[];
   currency?: 'ILS' | 'USD' | 'EUR' | 'GBP';
+  onJoinMeeting?: (room: string) => void;
 }
 
 const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
@@ -23,7 +24,8 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   onDeleteAppointment,
   onNavigate,
   connectedApps,
-  currency
+  currency,
+  onJoinMeeting
 }) => {
   const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
@@ -133,6 +135,18 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                       <div className="flex items-center gap-4 mt-1">
                         <span className="text-sm text-slate-500 flex items-center gap-1.5"><Clock size={14} /> {evt.duration} mins</span>
                         <span className="text-sm text-slate-500 flex items-center gap-1.5"><Globe size={14} /> {evt.service}</span>
+                        {(evt as any).meetingLink && (
+                          <button 
+                            onClick={() => {
+                              const room = (evt as any).meetingLink?.split('/').pop();
+                              if (room && onJoinMeeting) onJoinMeeting(room);
+                              else window.open((evt as any).meetingLink, '_blank');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-lg text-xs font-bold border border-brand-blue/10 hover:bg-brand-blue hover:text-white transition-all ml-2"
+                          >
+                            <Video size={12} /> Join Video
+                          </button>
+                        )}
                       </div>
                    </div>
                 </div>

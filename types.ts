@@ -47,7 +47,7 @@ export interface Client {
   userId?: string;
 }
 
-export type LocationType = 'online' | 'office' | 'phone';
+export type LocationType = 'online' | 'office' | 'phone' | 'zoom';
 
 export interface Service {
   name: string;

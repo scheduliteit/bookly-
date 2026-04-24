@@ -119,21 +119,15 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const handleBook = async () => {
     if (!selectedService) return;
     setIsSubmitting(true);
-    const appointmentId = Math.random().toString(36).substr(2, 9);
     
-    // Generate meeting link if online
-    let meetingLink = undefined;
+    // Server will handle meetingLink generation if locationType is online or zoom
     const locationType = selectedService.locationType || 'office';
-    if (locationType === 'online') {
-      const uniqueId = Math.random().toString(36).substr(2, 6);
-      meetingLink = `https://meet.google.com/ebk-${uniqueId}-vrs`;
-    }
 
     try {
-      // Create the appointment first (as pending if payment is required)
+      // Create the appointment using the public API endpoint
       const result = await api.appointments.create({ 
-        id: appointmentId, 
-        userId: userId, // The owner of the business
+        id: Math.random().toString(36).substr(2, 9), 
+        userId: userId, 
         clientId: 'public-' + Date.now(),
         clientName: clientInfo.name, 
         service: selectedService.name, 
@@ -143,14 +137,13 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         status: selectedService.price > 0 ? 'pending' : 'confirmed', 
         price: selectedService.price,
         locationType: locationType,
-        meetingLink: meetingLink,
         clientTimezone: timezone,
         businessTimezone: businessTimezone,
-      });
+        clientEmail: clientInfo.email, // Added for notification
+        clientPhone: clientInfo.phone, // Added for notification
+      } as any);
 
-      const isFreeMode = import.meta.env.VITE_IS_FREE_MODE === 'true'; // Controlled via environment variable
-      
-      setConfirmedMeetingLink(meetingLink || null);
+      setConfirmedMeetingLink(result.meetingLink || null);
       onBookingComplete(result);
       setIsSuccess(true);
     } catch (err: any) {

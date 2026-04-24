@@ -109,6 +109,16 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
+  const handleConnectZoom = async () => {
+    try {
+      const response = await fetch(`/api/auth/zoom/url?userId=${userId}`);
+      const { url } = await response.json();
+      window.open(url, 'oauth_popup', 'width=600,height=700');
+    } catch (error) {
+      console.error('Zoom OAuth error:', error);
+    }
+  };
+
   const handleConnectOutlook = async () => {
     try {
       const response = await fetch(`/api/auth/outlook/url?userId=${userId}`);
@@ -246,7 +256,7 @@ const Settings: React.FC<SettingsProps> = ({
                       value={newService.locationType}
                       onChange={e => setNewService({...newService, locationType: e.target.value as any})}
                     >
-                      <option value="online">Online (Auto-Link)</option>
+                      <option value="online">Integrated Video Call (Built-in)</option>
                       <option value="office">In-Person (Office)</option>
                       <option value="phone">Phone Call</option>
                     </select>
@@ -409,6 +419,22 @@ const Settings: React.FC<SettingsProps> = ({
                     Connect
                   </button>
                 )}
+              </div>
+
+              {/* Integrated Video Toggle */}
+              <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <Radio className="text-brand-blue" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-brand-dark">Built-in Video Calls</p>
+                    <p className="text-xs text-slate-500">Every online booking gets a private video room link.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold">
+                  <Check size={14} /> Global Active
+                </div>
               </div>
             </div>
           </div>

@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import AppointmentCalendar from './components/AppointmentCalendar';
+import VideoMeeting from './components/VideoMeeting';
 import AIAssistant from './components/AIAssistant';
 import MarketingStudio from './components/MarketingStudio';
 import Pricing from './components/Pricing';
@@ -56,6 +57,7 @@ const App: React.FC = () => {
   const [showMobileGuide, setShowMobileGuide] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeMeetingRoom, setActiveMeetingRoom] = useState<string | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('USD');
@@ -524,7 +526,7 @@ const App: React.FC = () => {
           {(() => {
             switch (activeTab) {
               case 'dashboard':
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} />;
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} onJoinMeeting={setActiveMeetingRoom} />;
               case 'calendar':
                 return (
                   <AppointmentCalendar 
@@ -536,6 +538,7 @@ const App: React.FC = () => {
                     onNavigate={setActiveTab}
                     connectedApps={connectedApps} 
                     currency={currency} 
+                    onJoinMeeting={setActiveMeetingRoom}
                   />
                 );
               case 'clients':
@@ -799,6 +802,13 @@ const App: React.FC = () => {
       )}
 
       <AnimatePresence>
+        {activeMeetingRoom && (
+          <VideoMeeting 
+            roomName={activeMeetingRoom} 
+            onClose={() => setActiveMeetingRoom(null)}
+            displayName={businessName}
+          />
+        )}
         {showMobileGuide && (
           <MobileInstallGuide onClose={() => setShowMobileGuide(false)} />
         )}

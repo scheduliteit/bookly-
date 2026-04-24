@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Appointment, Client, Service, User } from '../types';
-import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle, Smartphone } from 'lucide-react';
+import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle, Smartphone, Video } from 'lucide-react';
 import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
@@ -23,9 +23,10 @@ interface DashboardProps {
   setActiveTab?: (tab: string) => void;
   onOpenMobileGuide?: () => void;
   language: Language;
+  onJoinMeeting?: (room: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide, onJoinMeeting }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState("Analyzing your business performance...");
   const [isAdviceLoading, setIsAdviceLoading] = useState(false);
@@ -304,6 +305,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                           <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${apt.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                             {apt.status}
                           </span>
+                          {apt.meetingLink && (
+                            <button 
+                              onClick={() => {
+                                const room = apt.meetingLink?.split('/').pop();
+                                if (room && onJoinMeeting) onJoinMeeting(room);
+                                else window.open(apt.meetingLink, '_blank');
+                              }}
+                              className="flex items-center gap-1.5 px-2 py-0.5 bg-brand-blue/10 text-brand-blue rounded-full text-[8px] font-black uppercase tracking-widest border border-brand-blue/10 hover:bg-brand-blue hover:text-white transition-all ml-auto"
+                            >
+                              <Video size={10} /> Join
+                            </button>
+                          )}
                        </div>
                     </div>
                   </div>
