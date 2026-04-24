@@ -9,7 +9,7 @@ import {
   Cloud, Cpu as Processor, Fingerprint, ShieldAlert, Radio,
   Command, Box, Layers, MousePointer2, ChevronRight, BarChart3,
   Network, Share2, Shield, Settings2, Power, Terminal as TerminalIcon,
-  LogOut, UserPlus, MapPin
+  LogOut, UserPlus, MapPin, Clock
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
