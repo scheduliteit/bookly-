@@ -18,15 +18,20 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'system' | 'repairs' | 'ai-architect'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'system' | 'repairs' | 'ai-architect' | 'feedback'>('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [repairStep, setRepairStep] = useState<string | null>(null);
   const [repairProgress, setRepairProgress] = useState(0);
   const [configStatus, setConfigStatus] = useState<any>(null);
+  const [feedback, setFeedback] = useState<any[]>([]);
 
   useEffect(() => {
     if (activeTab === 'system') {
       api.system.getConfigStatus().then(setConfigStatus).catch(console.error);
+    }
+    if (activeTab === 'feedback') {
+      setIsLoading(true);
+      api.system.getFeedback().then(setFeedback).catch(console.error).finally(() => setIsLoading(false));
     }
   }, [activeTab]);
 
@@ -162,7 +167,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
           </button>
           <div className="h-6 w-px bg-slate-100 mx-2" />
           <nav className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 overflow-x-auto no-scrollbar">
-            {(['overview', 'users', 'system', 'repairs', 'ai-architect'] as const).map(tab => (
+            {(['overview', 'users', 'system', 'feedback', 'repairs', 'ai-architect'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -330,8 +335,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
                                {(item.name || item.email || 'U').charAt(0)}
                             </div>
                             <div>
-                              <p className="text-sm font-black text-slate-900">ID-{item.id.substring(0, 8)}</p>
-                              <p className="text-xs text-slate-500 font-bold tracking-tight">{item.email}</p>
+                               <p className="text-sm font-black text-slate-900">ID-{item.id.substring(0, 8)}</p>
+                               <p className="text-xs text-slate-500 font-bold tracking-tight">{item.email}</p>
                             </div>
                           </div>
                         </td>
@@ -373,6 +378,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'feedback' && (
+            <motion.div 
+              key="feedback"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {feedback.length === 0 ? (
+                  <div className="col-span-full bg-white p-20 rounded-[40px] border border-slate-100 text-center">
+                    <div className="w-20 h-20 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <MessageSquare size={40} />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900">No Feedback Signal Detected</h3>
+                    <p className="text-slate-500 font-medium mt-2">The architects are currently silent. Wait for incoming transmissions.</p>
+                  </div>
+                ) : (
+                  feedback.map((item, i) => (
+                    <motion.div 
+                      key={item.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all group"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          item.type === 'bug' ? 'bg-rose-50 text-rose-500' :
+                          item.type === 'feature' ? 'bg-amber-50 text-amber-500' :
+                          item.type === 'improvement' ? 'bg-indigo-50 text-brand-blue' : 'bg-slate-50 text-slate-500'
+                        }`}>
+                          {item.type}
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400">{new Date(item.createdAt?.seconds * 1000).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm font-bold text-brand-dark leading-relaxed mb-6 italic">"{item.message}"</p>
+                      <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-black text-slate-500">
+                             {item.userEmail?.charAt(0).toUpperCase()}
+                           </div>
+                           <span className="text-[10px] font-black text-slate-400 truncate max-w-[120px]">{item.userEmail}</span>
+                        </div>
+                        <button className="text-slate-300 hover:text-indigo-600 transition-colors">
+                          <CheckCircle2 size={16} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
               </div>
             </motion.div>
           )}

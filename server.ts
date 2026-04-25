@@ -1266,6 +1266,20 @@ app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
   }
 });
 
+app.get('/api/admin/feedback', requireAuth, async (req: any, res: any) => {
+  try {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const snap = await getAdminFirestore(dbId).collection('feedback').orderBy('createdAt', 'desc').get();
+    res.json(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) => {
   const { userId, role } = req.body;
   try {

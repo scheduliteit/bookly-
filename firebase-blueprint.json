@@ -109,6 +109,21 @@
         }
       },
       "required": ["userId", "businessName"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback or bug reports",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "type": { "type": "string", "enum": ["bug", "feature", "improvement", "other"] },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["new", "reviewed", "resolved"] }
+      },
+      "required": ["userId", "type", "message", "createdAt"]
     }
   },
   "firestore": {
@@ -127,6 +142,10 @@
     "/appointments/{appointmentId}": {
       "schema": "Appointment",
       "description": "Appointments scheduled by the user"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Platform feedback and bug reports"
     }
   }
 }

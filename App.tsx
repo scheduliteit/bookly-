@@ -18,6 +18,7 @@ import AddAppointmentModal from './components/AddAppointmentModal';
 import MobileMenu from './components/MobileMenu';
 import Onboarding from './components/Onboarding';
 import LandingPage from './components/LandingPage';
+import FeedbackModal from './components/FeedbackModal';
 import Login from './components/Login';
 import Logo from './components/Logo';
 import MobileInstallGuide from './components/MobileInstallGuide';
@@ -25,7 +26,7 @@ import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
-import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon, Video, Bot } from 'lucide-react';
+import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon, Video, Bot, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { Language, translations } from './services/translations';
@@ -56,6 +57,7 @@ const App: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showMobileGuide, setShowMobileGuide] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<string | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -844,7 +846,29 @@ const App: React.FC = () => {
         {showMobileGuide && (
           <MobileInstallGuide onClose={() => setShowMobileGuide(false)} />
         )}
+        {showFeedbackModal && (
+          <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
+        )}
       </AnimatePresence>
+
+      {/* Floating Feedback Button */}
+      {user && (
+        <button 
+          onClick={() => setShowFeedbackModal(true)}
+          className="fixed bottom-24 right-8 z-[900] w-12 h-12 bg-white border border-slate-100 shadow-2xl rounded-2xl flex items-center justify-center text-slate-400 hover:text-brand-blue hover:scale-110 active:scale-95 transition-all group lg:bottom-12 lg:right-28"
+          title="Share Feedback"
+        >
+          <motion.div
+            animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+            transition={{ duration: 4, repeat: Infinity, repeatDelay: 5 }}
+          >
+            <MessageSquare size={20} strokeWidth={2.5} />
+          </motion.div>
+          <div className="absolute right-full mr-4 px-3 py-1.5 bg-brand-dark text-white text-[10px] font-black uppercase tracking-widest rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all translate-x-2 group-hover:translate-x-0">
+            Send Feedback
+          </div>
+        </button>
+      )}
 
       <AIAssistant appointments={appointments} clients={clients} />
     </div>

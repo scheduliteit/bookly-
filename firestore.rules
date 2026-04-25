@@ -63,6 +63,13 @@ service cloud.firestore {
              data.status in ['confirmed', 'pending', 'cancelled', 'completed'];
     }
 
+    function isValidFeedback(data) {
+      return data.userId is string &&
+             data.type in ['bug', 'feature', 'improvement', 'other'] &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.createdAt is timestamp;
+    }
+
     // --- Rules ---
 
     // /users/{userId}
@@ -100,6 +107,13 @@ service cloud.firestore {
       allow update: if (isSignedIn() && existing().userId == request.auth.uid && isValidAppointment(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['date', 'time', 'status', 'reminderSent'])) || isAdmin();
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // /feedback/{feedbackId}
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidFeedback(incoming());
+      allow update, delete: if isAdmin();
     }
   }
 }

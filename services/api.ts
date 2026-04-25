@@ -260,6 +260,16 @@ export const api = {
       });
       if (!response.ok) throw new Error('Failed to generate insights');
       return response.json();
+    },
+    getFeedback: async (): Promise<any[]> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/feedback', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch feedback');
+      return response.json();
     }
   }
 };
