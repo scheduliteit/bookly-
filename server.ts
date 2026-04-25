@@ -885,6 +885,21 @@ app.get('/api/payments/cancel', (req, res) => {
   `);
 });
 
+app.get('/api/admin/appointments', requireAuth, async (req: any, res: any) => {
+  try {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const appointmentsSnap = await getAdminFirestore(dbId).collection('appointments').get();
+    const appointments = appointmentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    res.json(appointments);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Admin stats restricted to administrative roles
 app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });

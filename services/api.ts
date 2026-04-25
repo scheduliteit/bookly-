@@ -184,6 +184,16 @@ export const api = {
       if (!response.ok) throw new Error('Failed to fetch users');
       return response.json();
     },
+    getAppointments: async (): Promise<Appointment[]> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/appointments', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch all appointments');
+      return response.json();
+    },
     getActivities: async (): Promise<any[]> => {
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/activities', {
