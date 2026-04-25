@@ -25,7 +25,7 @@ import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
 import { storageService } from './services/storageService';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider } from './firebase';
-import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon, Video } from 'lucide-react';
+import { Plus, Search, Bell, Loader2, Radio, CheckCircle2, AlertCircle, X, ShieldCheck, Globe, Info, Zap, Settings as SettingsIcon, Key, ExternalLink, Lock, ArrowRight, LayoutGrid, Link as LinkIcon, Video, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { Language, translations } from './services/translations';
@@ -552,7 +552,18 @@ const App: React.FC = () => {
               case 'marketing':
                 return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
               case 'ai-assistant':
-                return <AIAssistant appointments={appointments} clients={clients} />;
+                return (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <div className="w-20 h-20 bg-brand-blue/10 text-brand-blue rounded-3xl flex items-center justify-center mx-auto animate-bounce">
+                        <Bot size={40} />
+                      </div>
+                      <h2 className="text-2xl font-black text-brand-dark">AI Companion is Active</h2>
+                      <p className="text-slate-500 font-medium">Click the floating robot in the corner to chat with your business intelligence.</p>
+                      <button onClick={() => setActiveTab('dashboard')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all">Back to Dashboard</button>
+                    </div>
+                  </div>
+                );
               case 'booking-links':
                 return (
                   <div className="h-full space-y-8 animate-in fade-in duration-500">
@@ -834,6 +845,8 @@ const App: React.FC = () => {
           <MobileInstallGuide onClose={() => setShowMobileGuide(false)} />
         )}
       </AnimatePresence>
+
+      <AIAssistant appointments={appointments} clients={clients} />
     </div>
   );
 };

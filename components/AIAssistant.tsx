@@ -1,11 +1,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Mic, MicOff, BrainCircuit, Globe, ChevronRight, Activity, Zap, ExternalLink, MapPin, Link as LinkIcon, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Send, Bot, User, Sparkles, Loader2, Mic, MicOff, BrainCircuit, Globe, ChevronRight, Activity, Zap, ExternalLink, MapPin, Link as LinkIcon, Info, X, MessageSquare, Cpu } from 'lucide-react';
 import { geminiAssistant, GroundingLink } from '../services/geminiService';
 import { Appointment, Client } from '../types';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 
-// Fix: Manual base64 encoding for raw PCM audio streaming
+// Base64 utilities (keeping these as they are used for audio)
 function encode(bytes: Uint8Array) {
   let binary = '';
   const len = bytes.byteLength;
@@ -15,7 +16,6 @@ function encode(bytes: Uint8Array) {
   return btoa(binary);
 }
 
-// Fix: Manual base64 decoding for raw PCM audio playback
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -26,7 +26,6 @@ function decode(base64: string) {
   return bytes;
 }
 
-// Fix: Custom audio decoding for raw PCM data streams
 async function decodeAudioData(
   data: Uint8Array,
   ctx: AudioContext,
@@ -46,7 +45,6 @@ async function decodeAudioData(
   return buffer;
 }
 
-// Fix: Utility to create PCM blobs for real-time input
 function createBlob(data: Float32Array) {
   const l = data.length;
   const int16 = new Int16Array(l);
@@ -60,8 +58,9 @@ function createBlob(data: Float32Array) {
 }
 
 const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> = ({ appointments, clients }) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', content: "Hello! I'm your EasyBookly Intelligence. I can analyze your upcoming sessions, optimize your availability, or help with client prep. How can I assist you?" }
+    { role: 'assistant', content: "Neural sync complete. I am your EasyBookly AI. How can I optimize your workflow today?" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +70,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
+  }, [messages, isOpen]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -97,12 +96,10 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
       return;
     }
 
-    // Check for API key selection for advanced Live model
     if (typeof (window as any).aistudio !== 'undefined') {
       const hasKey = await (window as any).aistudio.hasSelectedApiKey();
       if (!hasKey) {
         await (window as any).aistudio.openSelectKey();
-        // Assume success and proceed as per guidelines
       }
     }
 
@@ -112,12 +109,10 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
     outputNode.connect(outputAudioContext.destination);
     
     let nextStartTime = 0;
-    const sources = new Set<AudioBufferSourceNode>();
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setIsVoiceMode(true);
-      // Use process.env.API_KEY for selected key
       const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey || apiKey === '' || apiKey === 'undefined') {
         throw new Error("API Key is missing for voice mode.");
@@ -160,7 +155,6 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
               source.connect(outputNode);
               source.start(nextStartTime);
               nextStartTime = nextStartTime + audioBuffer.duration;
-              sources.add(source);
             }
           },
           onclose: () => setIsVoiceMode(false),
@@ -174,82 +168,146 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm max-w-5xl mx-auto">
-      <header className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-blue/20">
-            <Sparkles size={20} />
-          </div>
-          <div>
-            <h3 className="font-bold text-brand-dark">AI Intelligence Hub</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered by Google Gemini</p>
-          </div>
-        </div>
+    <>
+      {/* Floating Robot Mascot */}
+      <motion.div 
+        className="fixed bottom-8 right-8 z-[999]"
+        initial={{ y: 0 }}
+        animate={{ 
+          y: isOpen ? -20 : [0, -10, 0],
+        }}
+        transition={{ 
+          y: {
+            duration: isOpen ? 0.3 : 3,
+            repeat: isOpen ? 0 : Infinity,
+            ease: "easeInOut"
+          }
+        }}
+      >
         <button 
-          onClick={toggleVoiceMode}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${isVoiceMode ? 'bg-rose-500 text-white animate-pulse' : 'bg-brand-blue/10 text-brand-blue hover:bg-brand-blue/20'}`}
+          onClick={() => setIsOpen(!isOpen)}
+          className={`relative group p-4 rounded-full shadow-2xl transition-all ${
+            isOpen 
+            ? 'bg-rose-500 hover:bg-rose-600 scale-90' 
+            : 'bg-brand-blue hover:bg-brand-dark scale-110'
+          }`}
         >
-          {isVoiceMode ? <MicOff size={14}/> : <Mic size={14}/>}
-          {isVoiceMode ? 'Stop Voice' : 'Voice Mode'}
-        </button>
-      </header>
+          {/* Robotic "Antenna" or Interaction Ring */}
+          <div className="absolute -top-1 -right-1 flex gap-0.5">
+             <div className={`w-2 h-2 rounded-full ${isLoading || isVoiceMode ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 opacity-50'}`} />
+          </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/30 custom-scroll">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-brand-blue text-white' : 'bg-slate-200 text-slate-600'}`}>
-                {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
+          {/* Robot Eyes / Core */}
+          <div className="relative flex items-center justify-center">
+            {isOpen ? <X className="text-white" size={24} /> : (
+              <div className="relative">
+                <Bot className="text-white" size={28} />
+                <motion.div 
+                  className="absolute top-2 left-1/2 -translate-x-1/2 flex gap-2"
+                  animate={{ opacity: [1, 0.4, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full shadow-[0_0_5px_#10b981]" />
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full shadow-[0_0_5px_#10b981]" />
+                </motion.div>
               </div>
-              <div className={`p-4 rounded-2xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-brand-blue text-white' : 'bg-white border border-slate-200 text-slate-700 shadow-sm'}`}>
-                {msg.content}
-                
-                {msg.links && msg.links.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-                     {msg.links.map((link: any, idx: number) => (
-                       <a key={idx} href={link.uri} target="_blank" className="inline-flex items-center gap-2 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold hover:bg-slate-200 transition-colors">
-                         <LinkIcon size={10} /> {link.title.substring(0, 20)}...
-                       </a>
-                     ))}
-                  </div>
-                )}
-              </div>
+            )}
+          </div>
+
+          {/* Tooltip */}
+          {!isOpen && (
+            <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-brand-dark text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg whitespace-nowrap shadow-xl transition-all pointer-events-none">
+              AI Assistant Ready
             </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-             <div className="w-12 h-8 bg-slate-100 rounded-full flex items-center justify-center animate-pulse">
-                <div className="flex gap-1">
-                   <div className="w-1 h-1 bg-slate-400 rounded-full" />
-                   <div className="w-1 h-1 bg-slate-400 rounded-full" />
-                   <div className="w-1 h-1 bg-slate-400 rounded-full" />
-                </div>
-             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </button>
+      </motion.div>
 
-      <div className="p-6 bg-white border-t border-slate-100">
-        <div className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask anything about your business..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-6 py-4 pr-16 text-sm font-medium focus:ring-1 focus:ring-brand-blue outline-none transition-all"
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-brand-blue text-white rounded-lg flex items-center justify-center hover:bg-brand-dark transition-all disabled:opacity-20"
+      {/* Chat Interface Panel */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20, x: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20, x: 20 }}
+            className="fixed bottom-28 right-8 w-[400px] max-h-[600px] h-[70vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden z-[998] flex flex-col"
           >
-            <Send size={18} />
-          </button>
-        </div>
-      </div>
-    </div>
+            <header className="px-6 py-5 bg-brand-dark text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                  <Cpu className="text-brand-blue" size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm tracking-tight">EasyBookly Core</h3>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">Neural Link Active</span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={toggleVoiceMode}
+                className={`p-2 rounded-xl transition-all ${isVoiceMode ? 'bg-rose-500 text-white animate-pulse' : 'hover:bg-white/10 text-white/60 hover:text-white'}`}
+              >
+                {isVoiceMode ? <MicOff size={18}/> : <Mic size={18}/>}
+              </button>
+            </header>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 custom-scroll">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-2xl rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-none shadow-sm'} p-4 text-xs font-medium leading-relaxed`}>
+                    {msg.content}
+                    
+                    {msg.links && msg.links.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
+                         {msg.links.map((link: any, idx: number) => (
+                           <a key={idx} href={link.uri} target="_blank" className="inline-flex items-center gap-2 px-2 py-1 bg-slate-100 text-slate-600 rounded text-[9px] font-bold hover:bg-slate-200">
+                             <LinkIcon size={8} /> {link.title.substring(0, 15)}...
+                           </a>
+                         ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                   <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-3 shadow-sm">
+                      <div className="flex gap-1">
+                         <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 h-1 bg-slate-400 rounded-full" />
+                         <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1 h-1 bg-slate-400 rounded-full" />
+                         <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1 h-1 bg-slate-400 rounded-full" />
+                      </div>
+                   </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-100">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Analyze data, schedule, prep..."
+                  className="w-full bg-slate-100 border-none rounded-2xl px-5 py-3 pr-12 text-xs font-bold outline-none focus:ring-2 focus:ring-brand-blue/20 placeholder:text-slate-400"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={isLoading || !input.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-brand-blue text-white rounded-xl flex items-center justify-center hover:bg-brand-dark transition-all disabled:opacity-20"
+                >
+                  <Send size={14} />
+                </button>
+              </div>
+              <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-widest">Powered by Google Gemini Intelligence</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
