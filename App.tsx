@@ -753,11 +753,14 @@ const App: React.FC = () => {
                 const room = `ebk-quick-${user?.id.substring(0,5)}-${Math.random().toString(36).substr(2,6)}`;
                 setActiveMeetingRoom(room);
               }}
-              className="px-3 py-1.5 bg-brand-blue/5 text-brand-blue rounded-xl hover:bg-brand-blue hover:text-white transition-all flex items-center gap-2 font-bold text-xs border border-brand-blue/10 shadow-sm"
-              title="Start Video Meeting"
+              className="px-4 py-2 bg-brand-blue text-white rounded-xl hover:bg-brand-dark transition-all flex items-center gap-2 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-brand-blue/30 scale-105"
+              title="Start Quick Video Meeting"
             >
-              <Video size={16} />
-              <span className="hidden lg:inline">Video Meet</span>
+              <div className="relative">
+                <Video size={16} />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-pulse border-2 border-brand-blue" />
+              </div>
+              <span>Start Call</span>
             </button>
             <button 
               onClick={() => alert('No new notifications')}

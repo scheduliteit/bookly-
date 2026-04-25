@@ -306,16 +306,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                             {apt.status}
                           </span>
                           {apt.meetingLink && (
-                            <button 
-                              onClick={() => {
-                                const room = apt.meetingLink?.split('/').pop();
-                                if (room && onJoinMeeting) onJoinMeeting(room);
-                                else window.open(apt.meetingLink, '_blank');
-                              }}
-                              className="flex items-center gap-2 px-4 py-1.5 bg-brand-blue text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all ml-auto border-none"
-                            >
-                              <Video size={12} /> Join Call
-                            </button>
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(apt.meetingLink);
+                                  alert('Link copied!');
+                                }}
+                                className="p-1 px-2 text-slate-400 hover:text-brand-blue"
+                                title="Copy Meeting Link"
+                              >
+                                <Copy size={12} />
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  const room = apt.meetingLink?.split('/').pop();
+                                  if (room && onJoinMeeting) onJoinMeeting(room);
+                                  else window.open(apt.meetingLink, '_blank');
+                                }}
+                                className="flex items-center gap-2 px-4 py-1.5 bg-brand-blue text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all border-none"
+                              >
+                                <Video size={12} /> Join Call
+                              </button>
+                            </div>
                           )}
                        </div>
                     </div>

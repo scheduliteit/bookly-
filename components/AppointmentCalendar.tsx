@@ -136,16 +136,28 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                         <span className="text-sm text-slate-500 flex items-center gap-1.5"><Clock size={14} /> {evt.duration} mins</span>
                         <span className="text-sm text-slate-500 flex items-center gap-1.5"><Globe size={14} /> {evt.service}</span>
                         {(evt as any).meetingLink && (
-                          <button 
-                            onClick={() => {
-                              const room = (evt as any).meetingLink?.split('/').pop();
-                              if (room && onJoinMeeting) onJoinMeeting(room);
-                              else window.open((evt as any).meetingLink, '_blank');
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all ml-4"
-                          >
-                            <Video size={14} /> Join Meeting
-                          </button>
+                          <div className="flex items-center gap-2 ml-auto">
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText((evt as any).meetingLink);
+                                alert('Meeting link copied to clipboard!');
+                              }}
+                              className="p-2 text-slate-400 hover:text-brand-blue transition-colors"
+                              title="Copy Meeting Link"
+                            >
+                              <Copy size={16} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const room = (evt as any).meetingLink?.split('/').pop();
+                                if (room && onJoinMeeting) onJoinMeeting(room);
+                                else window.open((evt as any).meetingLink, '_blank');
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all"
+                            >
+                              <Video size={14} /> Join Meeting
+                            </button>
+                          </div>
                         )}
                       </div>
                    </div>
