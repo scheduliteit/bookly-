@@ -226,6 +226,20 @@ export const api = {
       });
       if (!response.ok) throw new Error('Failed to delete user');
     },
+    aiArchitect: async (prompt: string, context: any): Promise<string> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/ai-architect', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prompt, context })
+      });
+      if (!response.ok) throw new Error('Failed to reach architect');
+      const data = await response.json();
+      return data.answer;
+    },
     generateInsights: async (): Promise<any[]> => {
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/generate-insights', {

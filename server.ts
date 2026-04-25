@@ -322,6 +322,38 @@ app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: 
   }
 });
 
+app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
+  try {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const { prompt, context } = req.body;
+    
+    const systemContext = `
+      You are the "Core System Architect" for EasyBookly, a high-performance scheduling platform.
+      You have absolute authority over system nodes and database health.
+      
+      CURRENT SYSTEM SNAPSHOT:
+      - Users: ${context.userCount}
+      - Appointments: ${context.appointmentCount}
+      - Clients: ${context.clientCount}
+      - Health: Optimal
+      
+      The user (Master Admin) says: ${prompt || "Run a full system diagnostic."}
+      
+      Provide a technical, high-level architect-style response. 
+      Use markdown. Keep it concise.
+    `;
+
+    const answer = await callGemini(systemContext, 'gemini-3-flash-preview');
+    res.json({ answer });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/ai/analyze-schedule', requireAuth, aiLimiter, async (req: any, res: any) => {
   const { appointments, query } = req.body;
   try {

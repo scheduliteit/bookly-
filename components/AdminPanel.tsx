@@ -4,12 +4,11 @@ import {
   Search, Filter, MoreVertical, RefreshCw, 
   ArrowUpRight, ArrowDownRight, Zap, Globe, Lock,
   Trash2, UserPlus, Wrench, AlertTriangle, CheckCircle2,
-  Settings, Loader2, Bot, Sparkles, Send, Terminal
+  Settings, Loader2, Bot, Sparkles, Send, Terminal, MessageSquare, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Client, User } from '../types';
 import { api } from '../services/api';
-import { GoogleGenAI } from "@google/genai";
 
 interface AdminPanelProps {
   users: any[];
@@ -27,44 +26,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isFloatingChatOpen, setIsFloatingChatOpen] = useState(false);
 
   const runAiAnalysis = async (customPrompt?: string) => {
     setIsAiThinking(true);
     try {
-      const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      
-      const systemContext = `
-        You are the "Core System Architect" for EasyBookly, a high-performance scheduling platform.
-        You have absolute authority over system nodes and database health.
-        
-        CURRENT SYSTEM SNAPSHOT:
-        - Total Users: ${users.length}
-        - Total Appointments: ${appointments.length}
-        - Total Clients: ${clients.length}
-        - Database Nodes: 4 Clusters (Optimal)
-        - CPU Load: 18%
-        - Memory usage: 42%
-        - Latency: 24ms
-        - Uptime: 14d 6h
-        
-        AVAILABLE TOOLS:
-        - DB_INDEX_SYNC: Rebuild Firestore indexes.
-        - SECURITY_PATCH: Close rule vulnerabilities.
-        - CACHE_FLUSH: Wipe server-side cache.
-        - AUTH_RECONCILE: Fix orphaned identity nodes.
-        
-        The user (Master Admin) says: ${customPrompt || "Run a full system diagnostic and suggest optimizations."}
-        
-        Provide a technical, high-level architect-style response. If you recommend a specific repair, mention it clearly.
-        Keep it concise and professional. Use markdown for formatting.
-      `;
+      const context = {
+        userCount: users.length,
+        appointmentCount: appointments.length,
+        clientCount: clients.length
+      };
 
-      const response = await genAI.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: systemContext,
-      });
-
-      setAiResponse(response.text || "System analysis complete. No critical anomalies detected.");
+      const response = await api.system.aiArchitect(customPrompt || "Run a full system diagnostic.", context);
+      setAiResponse(response);
     } catch (error) {
       console.error(error);
       setAiResponse("Architect Link Severed. Please check API credentials.");
@@ -602,6 +576,91 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Floating AI Assistant */}
+      <div className="fixed bottom-8 right-8 z-[150]">
+        <AnimatePresence>
+          {isFloatingChatOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="absolute bottom-20 right-0 w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[600px]"
+            >
+              <div className="p-6 bg-indigo-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                    <Bot size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black">AI Architect</p>
+                    <p className="text-[10px] text-indigo-300 font-bold uppercase">System Support Active</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsFloatingChatOpen(false)} className="text-white/50 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[300px]">
+                {aiResponse ? (
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
+                      <Bot size={16} className="text-indigo-600" />
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-2xl text-xs font-bold text-slate-700 leading-relaxed shadow-sm">
+                      {aiResponse.split('\n').map((line, i) => (
+                        <p key={i} className="mb-2 last:mb-0">{line}</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                    <Sparkles className="text-indigo-200 mb-4" size={40} />
+                    <p className="text-slate-400 text-xs font-bold">Ask me to fix nodes, analyze logs, or optimize the cluster.</p>
+                  </div>
+                )}
+                {isAiThinking && (
+                  <div className="flex gap-4 animate-pulse">
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg shrink-0" />
+                    <div className="h-10 bg-slate-100 rounded-2xl flex-1" />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-50">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={aiQuery}
+                    onChange={(e) => setAiQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && runAiAnalysis(aiQuery)}
+                    placeholder="How can I optimize the auth node?"
+                    className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:border-indigo-600 outline-none transition-all"
+                  />
+                  <button 
+                    onClick={() => runAiAnalysis(aiQuery)}
+                    disabled={isAiThinking || !aiQuery.trim()}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 w-9 bg-indigo-600 text-white rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100 disabled:opacity-30"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button
+          onClick={() => setIsFloatingChatOpen(!isFloatingChatOpen)}
+          className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95 ${isFloatingChatOpen ? 'bg-slate-900' : 'bg-indigo-600'} text-white shadow-indigo-200`}
+        >
+          {isFloatingChatOpen ? <X size={24} /> : <MessageSquare size={24} />}
+          {!isFloatingChatOpen && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full animate-bounce" />
+          )}
+        </button>
       </div>
     </div>
   );
