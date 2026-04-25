@@ -13,18 +13,24 @@ export class GeminiAssistant {
 
   private getAI() {
     if (!this.ai) {
-      // Accessing environment variable through a standard fallback mechanism for AI Studio
-      const apiKey = (process.env as any).GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
+      // Accessing environment variable through multiple possible paths for AI Studio compatibility
+      const apiKey = 
+        (typeof process !== 'undefined' ? (process.env?.API_KEY || process.env?.GEMINI_API_KEY) : undefined) || 
+        (window as any).GEMINI_API_KEY || 
+        (window as any).API_KEY ||
+        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+        (import.meta as any).env?.GEMINI_API_KEY;
+
+      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
         console.warn("[GEMINI] Warning: API Key missing from environment.");
-        throw new Error("Neural Link Offline: API Key not found.");
+        throw new Error("Neural Link Offline: API Key not found. Please ensure your intelligence core is configured.");
       }
       this.ai = new GoogleGenAI({ apiKey });
     }
     return this.ai;
   }
 
-  private async callGemini(prompt: string, model: string = 'gemini-3-flash-preview') {
+  private async callGemini(prompt: string, model: string = 'gemini-flash-latest') {
     try {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
@@ -73,8 +79,8 @@ export class GeminiAssistant {
       const prompt = `Analyze: ${JSON.stringify(sanitized)}. Query: ${query}`;
       const text = await this.callGemini(prompt);
       return { text, links: [] };
-    } catch (error) {
-      return { text: "Strategic core temporarily offline.", links: [] };
+    } catch (error: any) {
+      return { text: `Strategic core temporarily offline: ${error.message || "Unknown error"}`, links: [] };
     }
   }
 

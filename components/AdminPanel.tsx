@@ -44,8 +44,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const runAiAnalysis = async (customPrompt?: string) => {
     setIsAiThinking(true);
     try {
-      const apiKey = (process.env as any).GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
+      const apiKey = 
+        (typeof process !== 'undefined' ? (process.env?.API_KEY || process.env?.GEMINI_API_KEY) : undefined) || 
+        (window as any).GEMINI_API_KEY || 
+        (window as any).API_KEY ||
+        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+        (import.meta as any).env?.GEMINI_API_KEY;
+
+      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
         throw new Error("Neural Link Severed: API Key missing.");
       }
 
