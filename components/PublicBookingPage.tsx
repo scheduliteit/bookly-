@@ -271,7 +271,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
       {/* AI Inquiry Drawer */}
       {showAi && (
-        <div className="fixed bottom-24 right-8 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[100] animate-in slide-in-from-bottom-4">
+        <div className="fixed bottom-24 right-4 sm:right-8 w-[calc(100%-32px)] sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[100] animate-in slide-in-from-bottom-4">
            <div className="bg-brand-blue p-4 text-white">
               <h4 className="font-bold flex items-center gap-2 text-sm"><Sparkles size={14} /> EasyBookly Intelligence</h4>
               <p className="text-[10px] opacity-80">Ask anything about this session</p>
@@ -314,18 +314,18 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[640px] animate-in zoom-in-95 duration-700">
         
         {/* Left Side: Summary & Branding */}
-        <div className="w-full md:w-[360px] border-b md:border-b-0 md:border-r border-slate-100 p-10 bg-white">
-          <div className="flex items-center gap-3 mb-10">
+        <div className="w-full md:w-[360px] border-b md:border-b-0 md:border-r border-slate-100 p-6 md:p-10 bg-white">
+          <div className="flex items-center gap-3 mb-6 md:mb-10">
             <button 
               onClick={() => { 
                 if (step > 1) setStep(step - 1); 
                 else if (onBack) onBack();
                 else window.location.href = '/';
               }} 
-              className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"
+              className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all font-bold"
               title="Go Back"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={20} />
             </button>
             {onBack && step === 1 && (
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Return to App</span>
@@ -377,7 +377,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         </div>
 
         {/* Right Side: Step Contents */}
-        <div className="flex-1 p-10 bg-[#fdfdfd] overflow-y-auto custom-scroll relative">
+        <div className="flex-1 p-6 md:p-10 bg-[#fdfdfd] overflow-y-auto custom-scroll relative">
           
           {/* Step 1: Service Selection */}
           {step === 1 && (
@@ -411,7 +411,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-700">
                <h2 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Choose your time</h2>
-               <div className="flex flex-col lg:flex-row gap-12">
+               <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
                   <div className="flex-1">
                      <div className="flex justify-between items-center mb-6">
                         <h4 className="font-bold text-slate-800">May 2024</h4>
@@ -425,7 +425,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                           <span key={d} className="text-[10px] font-black text-slate-300 tracking-widest">{d}</span>
                         ))}
                      </div>
-                     <div className="grid grid-cols-7 gap-2">
+                     <div className="grid grid-cols-7 gap-1 sm:gap-2">
                         {Array.from({length: 31}).map((_, i) => {
                           const date = `2024-05-${String(i+1).padStart(2, '0')}`;
                           const isSelected = selectedDate === date;
@@ -435,7 +435,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                               key={i} 
                               disabled={!isAvailable}
                               onClick={() => setSelectedDate(date)}
-                              className={`h-12 w-full rounded-2xl text-sm font-bold transition-all flex items-center justify-center relative ${
+                              className={`h-11 sm:h-12 w-full rounded-xl sm:rounded-2xl text-sm font-bold transition-all flex items-center justify-center relative ${
                                 !isAvailable ? 'text-slate-200 cursor-not-allowed' :
                                 isSelected ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/30 scale-105' : 
                                 'bg-slate-50 hover:bg-brand-blue/10 text-brand-blue'
@@ -500,7 +500,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Full Name *</label>
                     <input 
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300"
+                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300"
                       placeholder="Jane Doe"
                       value={clientInfo.name}
                       onChange={e => setClientInfo({...clientInfo, name: e.target.value})}
@@ -510,7 +510,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address *</label>
                     <input 
                       type="email"
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300"
+                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300"
                       placeholder="jane@company.com"
                       value={clientInfo.email}
                       onChange={e => setClientInfo({...clientInfo, email: e.target.value})}
@@ -520,7 +520,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Additional Notes</label>
                     <textarea 
                       rows={4}
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 resize-none"
+                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 resize-none"
                       placeholder="Share anything that will help prepare for our meeting..."
                       value={clientInfo.note}
                       onChange={e => setClientInfo({...clientInfo, note: e.target.value})}
@@ -579,12 +579,14 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         </div>
       </div>
       
-      <div className="mt-12 flex flex-col items-center gap-6">
-        <div className="flex items-center gap-3 py-2.5 px-6 bg-white border border-slate-200 rounded-full shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all group cursor-pointer" onClick={() => window.open('https://easybookly.com', '_blank')}>
-          <Logo size="sm" />
-          <div className="h-4 w-px bg-slate-200 mx-1" />
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 group-hover:text-brand-blue transition-colors">Create your own AI Booking Page • Free</span>
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-blue group-hover:translate-x-0.5 transition-all" />
+      <div className="mt-12 flex flex-col items-center gap-6 px-4">
+        <div className="flex flex-col sm:flex-row items-center gap-3 py-4 sm:py-2.5 px-8 sm:px-6 bg-white border border-slate-200 rounded-[28px] sm:rounded-full shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all group cursor-pointer" onClick={() => window.open('https://easybookly.com', '_blank')}>
+          <div className="flex items-center gap-2">
+            <Logo size="sm" />
+            <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 group-hover:text-brand-blue transition-colors text-center">Create your own AI Booking Page • Free</span>
+          <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-blue group-hover:translate-x-0.5 transition-all hidden sm:block" />
         </div>
         
         <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-50">

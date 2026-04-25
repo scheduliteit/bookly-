@@ -1,914 +1,288 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Users, CreditCard, Activity, ShieldCheck, Database, Globe, Calendar,
-  ArrowUpRight, ArrowDownRight, Search, Filter, MoreHorizontal,
-  Server, Cpu, HardDrive, Terminal, Zap, LayoutGrid, List,
-  Settings, Bell, AlertTriangle, RefreshCw, CheckCircle2,
-  Lock, ExternalLink, Trash2, Edit3, Pause, Play, Download,
-  Cloud, Cpu as Processor, Fingerprint, ShieldAlert, Radio,
-  Command, Box, Layers, MousePointer2, ChevronRight, BarChart3,
-  Network, Share2, Shield, Settings2, Power, Terminal as TerminalIcon,
-  LogOut, UserPlus, MapPin, Clock
+  Users, Activity, Server, Shield, Database, 
+  Search, Filter, MoreVertical, RefreshCw, 
+  ArrowUpRight, ArrowDownRight, Zap, Globe, Lock
 } from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell, LineChart, Line, PieChart, Pie
-} from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
+import { Appointment, Client, User } from '../types';
 
-import { paymentService, MerchantStats } from '../services/paymentService';
-import { api } from '../services/api';
-import { BusinessStats } from '../types';
-
-type AdminTab = 'overview' | 'users' | 'nodes' | 'intelligence' | 'infrastructure';
-
-interface CommandLog {
-  id: string;
-  time: string;
-  source: string;
-  event: string;
-  level: 'info' | 'success' | 'warning' | 'error';
+interface AdminPanelProps {
+  users: any[];
+  appointments: Appointment[];
+  clients: Client[];
 }
 
-const AdminPanel: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
-  const [isLive, setIsLive] = useState(true);
-  const [simulationMode, setSimulationMode] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [systemStats, setSystemStats] = useState<any>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [dbUsers, setDbUsers] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
-  const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [terminalInput, setTerminalInput] = useState("");
-  const [aiInsights, setAiInsights] = useState<any[]>([]);
-  const [isGeneratingIntel, setIsGeneratingIntel] = useState(false);
-  const symbol = '$'; // Default for global admin view
-  const [logs, setLogs] = useState<CommandLog[]>([
-    { id: '1', time: '03:49:02', source: 'CORE', event: 'Simulation engine standby...', level: 'info' },
-    { id: '2', time: '03:48:48', source: 'NET', event: 'Global mesh routing optimized', level: 'success' },
-  ]);
+const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'system'>('overview');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [simulationMetrics, setSimulationMetrics] = useState({
-    rps: 0,
-    latency: 0,
-    cacheHit: 0,
-    activeSessions: 0,
-    revenue: 0,
-    payoutRate: 0
-  });
-
-  const fetchAllData = async () => {
-    try {
-      const [stats, users, recentActivities] = await Promise.all([
-        api.system.getStats(),
-        api.system.getUsers(),
-        api.system.getActivities()
-      ]);
-      setSystemStats(stats);
-      setDbUsers(users);
-      setActivities(recentActivities);
-    } catch (err) {
-      console.error('Failed to fetch admin data:', err);
-    } finally {
-      setIsLoadingStats(false);
-    }
+  // Mock server stats
+  const stats = {
+    cpu: 18,
+    memory: 42,
+    latency: 24,
+    uptime: '14d 6h 22m',
+    storage: 12.4
   };
 
-  useEffect(() => {
-    fetchAllData();
-
-    // Simulation Ticker
-    const tickerInterval = setInterval(() => {
-      setSimulationMetrics(prev => ({
-        rps: Math.floor(Math.random() * 400 + 100),
-        latency: Math.floor(Math.random() * 20 + 5),
-        cacheHit: Math.floor(Math.random() * 15 + 80),
-        activeSessions: Math.floor(Math.random() * 200 + 1500),
-        revenue: prev.revenue + (Math.random() * 50),
-        payoutRate: Math.floor(Math.random() * 10 + 90)
-      }));
-    }, 2000);
-
-    // Refresh data every 20 seconds for a more "live" dashboard
-    const dataInterval = setInterval(fetchAllData, 20000);
-    
-    // Simulate live log stream
-    const logInterval = setInterval(() => {
-      if (isLive) {
-        const sources = ['AUTH', 'DB', 'APP', 'PAY', 'SEC', 'GEMINI', 'MESH', 'CACHE'];
-        const events = simulationMode ? [
-          `RAW_READ: node_${Math.floor(Math.random()*1000)} - 1.2Kb`,
-          `SQL_QUERY: SELECT * FROM businesses WHERE id='${Math.random().toString(36).substring(5)}'`,
-          `CACHE_MISS: hash_${Math.random().toString(36).substring(2,6)}`,
-          `TELEMETRY_SYNC: heartbeat_pulse`,
-          `AUTH_TOKEN_GEN: RS256_EXP_3600`,
-          `FIREWALL_SCRUB: pattern match 'sqli' blocked`,
-          `MEM_USAGE: heap used ${Math.floor(Math.random()*200 + 400)}MB`,
-          `NET_SYNC: global_clocks synchronized (+1ms)`
-        ] : [
-          'Master Admin Telemetry Refreshed',
-          'Syncing total_logins from core',
-          'Client heartbeat: Active',
-          'Telemetry match: Succces',
-          'Active session count updated',
-          'Gemini 1.5 prompt cached'
-        ];
-        
-        const newLog: CommandLog = {
-          id: Math.random().toString(36).substring(2, 9),
-          time: new Date().toLocaleTimeString('en-GB'),
-          source: sources[Math.floor(Math.random() * sources.length)],
-          event: events[Math.floor(Math.random() * events.length)],
-          level: Math.random() > 0.95 ? 'warning' : 'info'
-        };
-        setLogs(prev => [newLog, ...prev.slice(0, 30)]);
-      }
-    }, simulationMode ? 500 : 3000);
-
-    return () => {
-      clearInterval(logInterval);
-      clearInterval(dataInterval);
-      clearInterval(tickerInterval);
-    };
-  }, [isLive, simulationMode]);
-
-  const handleTerminalCommand = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!terminalInput) return;
-
-    const cmd = terminalInput.toLowerCase().trim();
-    let response = `Command not recognized: ${cmd}`;
-    let level: 'info' | 'success' | 'warning' | 'error' = 'info';
-
-    if (cmd === 'clear') {
-      setLogs([]);
-      setTerminalInput("");
-      return;
-    } else if (cmd === 'simulate on') {
-      setSimulationMode(true);
-      response = `Simulation Mode: ACTIVATED. Streaming live platform metadata.`;
-      level = 'warning';
-    } else if (cmd === 'simulate off') {
-      setSimulationMode(false);
-      response = `Simulation Mode: DEACTIVATED. Returning to high-level telemetry.`;
-      level = 'info';
-    } else if (cmd === 'sync' || cmd === 'build') {
-      response = `Process initiated: global_mesh_sync. Success.`;
-      level = 'success';
-    } else if (cmd === 'whoami') {
-      response = `Authenticated: m.elsalameen@gmail.com (Master Admin)`;
-    } else if (cmd === 'health') {
-      response = `Cluster health: OPTIMAL. Nodes online: ${dbUsers.length}.`;
-      level = 'success';
-    } else if (cmd === 'help') {
-      response = `Available: simulate on/off, sync, clear, whoami, health, build`;
-    }
-
-    const newLog: CommandLog = {
-      id: Date.now().toString(),
-      time: new Date().toLocaleTimeString('en-GB'),
-      source: 'LOCAL',
-      event: `> ${terminalInput}`,
-      level: 'info'
-    };
-    
-    const respLog: CommandLog = {
-      id: (Date.now() + 1).toString(),
-      time: new Date().toLocaleTimeString('en-GB'),
-      source: 'SYS',
-      event: response,
-      level
-    };
-
-    setLogs(prev => [respLog, newLog, ...prev]);
-    setTerminalInput("");
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1000);
   };
-
-  const handleUpdateRole = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    if (!confirm(`Are you sure you want to change this node to ${newRole.toUpperCase()}?`)) return;
-    
-    try {
-      await api.system.updateUserRole(userId, newRole);
-      fetchAllData();
-    } catch (err) {
-      alert("Failed to update role");
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("This will permanently decommission this node. Proceed?")) return;
-    try {
-      await api.system.deleteUser(userId);
-      fetchAllData();
-    } catch (err) {
-      alert("Failed to delete user");
-    }
-  };
-
-  const generateIntel = async () => {
-    setIsGeneratingIntel(true);
-    try {
-      const insights = await api.system.generateInsights();
-      setAiInsights(insights);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsGeneratingIntel(false);
-    }
-  };
-
-  // Performance Data - use real data from stats if available
-  const perfData = useMemo(() => {
-    if (systemStats?.last7DaysCharts) {
-      return systemStats.last7DaysCharts.map((d: any) => ({
-        time: d.date,
-        req: d.count * 10 
-      }));
-    }
-    return [
-      { time: '00:00', cpu: 12, mem: 45, req: 120 },
-      { time: '04:00', cpu: 8, mem: 42, req: 80 },
-      { time: '08:00', cpu: 34, mem: 58, req: 450 },
-      { time: '12:00', cpu: 45, mem: 65, req: 980 },
-      { time: '16:00', cpu: 32, mem: 60, req: 720 },
-      { time: '20:00', cpu: 18, mem: 52, req: 340 },
-      { time: '23:59', cpu: 14, mem: 48, req: 210 },
-    ];
-  }, [systemStats]);
-
-  const kpis = useMemo(() => [
-    { label: 'Confirmed Bookings', value: systemStats?.completedAppointments?.toLocaleString() || '0', icon: Calendar, color: 'text-emerald-400' },
-    { label: 'Pending Requests', value: systemStats?.pendingRequests?.toLocaleString() || '0', icon: Clock, color: 'text-amber-400' },
-    { label: 'Total Revenue', value: systemStats?.totalRevenue ? `${symbol}${systemStats.totalRevenue.toLocaleString()}` : `${symbol}0`, icon: CreditCard, color: 'text-brand-blue' },
-    { label: 'Currently Live', value: systemStats?.currentlyOnline?.toLocaleString() || '0', icon: Activity, color: 'text-brand-blue' },
-  ], [systemStats, symbol]);
-
-  const handleBroadcast = () => {
-    if (!broadcastMessage) return;
-    const newLog: CommandLog = {
-      id: Date.now().toString(),
-      time: new Date().toLocaleTimeString('en-GB'),
-      source: 'ADMIN',
-      event: `BROADCAST: ${broadcastMessage}`,
-      level: 'warning'
-    };
-    setLogs(prev => [newLog, ...prev]);
-    setBroadcastMessage("");
-    alert("Broadcast sent to all active sessions.");
-  };
-
-  const renderOverview = () => (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Simulation Live Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-         {[
-           { label: 'Requests/sec', value: `${simulationMetrics.rps}`, icon: Zap, color: 'text-brand-blue' },
-           { label: 'Latency', value: `${simulationMetrics.latency}ms`, icon: Activity, color: 'text-emerald-400' },
-           { label: 'Cache Hit', value: `${simulationMetrics.cacheHit}%`, icon: HardDrive, color: 'text-amber-400' },
-           { label: 'Mesh Status', value: 'SYNCED', icon: Network, color: 'text-indigo-400' },
-           { label: 'Revenue Flow', value: `$${simulationMetrics.revenue.toFixed(0)}`, icon: CreditCard, color: 'text-brand-blue' },
-           { label: 'Payout Ready', value: `${simulationMetrics.payoutRate}%`, icon: CheckCircle2, color: 'text-emerald-400' },
-         ].map((m, i) => (
-           <div key={i} className="bg-[#0A0A0B] border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-brand-blue/30 transition-all">
-              <div>
-                 <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">{m.label}</p>
-                 <p className={`text-sm font-black transition-colors ${m.color}`}>{m.value}</p>
-              </div>
-              <m.icon size={14} className="opacity-10 group-hover:opacity-50" />
-           </div>
-         ))}
-      </div>
-
-      {/* Bento Grid Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {kpis.map((kpi, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-[#0A0A0B] border border-white/10 p-6 rounded-[2.5rem] relative overflow-hidden group hover:border-brand-blue/50 transition-all duration-500"
-          >
-            <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${kpi.color}`}>
-              <kpi.icon size={48} />
-            </div>
-            <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">{kpi.label}</p>
-            <div className="flex items-end gap-3 text-white">
-              <h3 className={`text-4xl font-black tracking-tighter ${isLoadingStats ? 'animate-pulse opacity-50' : ''}`}>
-                {kpi.value}
-              </h3>
-            </div>
-            <div className="mt-6 flex gap-1 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-               <div className={`h-full bg-brand-blue rounded-full ${isLoadingStats ? 'animate-shimmer' : ''}`} style={{ width: i === 0 ? '60%' : i === 1 ? '85%' : '95%', transition: 'width 2s' }} />
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Deep Forensic Chart */}
-        <div className="lg:col-span-2 bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-blue/50 to-transparent" />
-          <div className="flex items-center justify-between mb-10">
-            <div>
-              <h3 className="text-2xl font-black text-white tracking-tight">Platform Telemetry Matrix</h3>
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-1">Global load balancer distribution (7 Day Window)</p>
-            </div>
-            <div className="flex items-center gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
-              {['CPU', 'MEM', 'REQ'].map(l => (
-                <button key={l} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${l === 'REQ' ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'text-white/40 hover:text-white'}`}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={perfData}>
-                <defs>
-                   <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0066FF" stopOpacity={0.4}/>
-                    <stop offset="100%" stopColor="#0066FF" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 700, fill: 'rgba(255,255,255,0.3)' }}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 700, fill: 'rgba(255,255,255,0.3)' }}
-                />
-                <Tooltip 
-                  contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '16px' }}
-                  itemStyle={{ fontSize: '12px', fontWeight: 900, color: '#fff' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="req" 
-                  stroke="#0066FF" 
-                  strokeWidth={4} 
-                  fill="url(#glow)" 
-                  animationDuration={2000}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Global Node Map (Simulated visual) */}
-        <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 flex flex-col relative group overflow-hidden">
-           <div className="absolute top-0 right-0 w-1 h-1/2 bg-gradient-to-b from-transparent via-emerald-500/50 to-transparent" />
-           <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand-blue/10 rounded-full blur-[100px]" />
-           <div className="flex items-center justify-between mb-8 relative z-10">
-              <h4 className="text-xl font-black text-white">Live Operations Overlay</h4>
-              <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-emerald-400"><Activity size={18} /></div>
-           </div>
-           
-           <div className="flex-1 space-y-4 relative z-10 overflow-hidden">
-              <div className="relative h-48 w-full border border-white/5 rounded-3xl bg-black/40 overflow-hidden flex items-center justify-center">
-                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,107,255,0.05)_0%,transparent_80%)]" />
-                 {/* Visual dots representing global nodes */}
-                 {[
-                   { t: '15%', l: '20%', n: 'NYC-01' },
-                   { t: '40%', l: '45%', n: 'LON-04' },
-                   { t: '70%', l: '75%', n: 'TOK-02' },
-                   { t: '30%', l: '80%', n: 'SGP-01' },
-                   { t: '60%', l: '15%', n: 'LAX-02' }
-                 ].map((node, i) => (
-                   <motion.div 
-                     key={i}
-                     initial={{ scale: 0 }}
-                     animate={{ scale: [0, 1, 0.8, 1] }}
-                     transition={{ repeat: Infinity, duration: 4, delay: i * 0.5 }}
-                     className="absolute w-2 h-2 bg-brand-blue rounded-full shadow-[0_0_15px_rgba(0,107,255,0.8)]"
-                     style={{ top: node.t, left: node.l }}
-                   >
-                     <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[6px] font-black text-white/30 whitespace-nowrap uppercase tracking-widest">{node.n}</div>
-                   </motion.div>
-                 ))}
-                 <div className="text-[10px] font-black text-white/10 uppercase tracking-[0.4em] rotate-12 pointer-events-none">Global Mesh Topology</div>
-              </div>
-
-              {activities.length > 0 ? (
-                <div className="space-y-4 overflow-y-auto max-h-48 scrollbar-hide">
-                  {activities.map((act, i) => (
-                    <motion.div 
-                      key={act.id} 
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all flex gap-3"
-                    >
-                      <div className="w-10 h-10 bg-brand-blue/10 rounded-xl flex items-center justify-center shrink-0">
-                          <Zap size={16} className="text-brand-blue" />
-                      </div>
-                      <div className="min-w-0">
-                          <p className="text-[11px] font-black text-white truncate">{act.event}</p>
-                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest mt-0.5">{act.user} • {act.time}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-white/20">
-                   <Box size={40} className="mb-4 opacity-50" />
-                   <p className="text-[10px] font-black uppercase tracking-widest font-mono">No recent activity detected</p>
-                </div>
-              )}
-           </div>
-
-           <div className="mt-8 relative z-10 space-y-4">
-              <input 
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-                placeholder="Push global announcement..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:ring-1 ring-amber-500/30 transition-all font-mono"
-              />
-              <button 
-                onClick={handleBroadcast}
-                className="w-full py-5 bg-brand-blue text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all shadow-xl active:scale-95"
-              >
-                 Initialize Broadcast
-              </button>
-           </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderNodes = () => (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in zoom-in-95 duration-500">
-       <div className="md:col-span-3">
-          <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-10">
-             <div className="flex items-center justify-between mb-10">
-                <div>
-                   <h3 className="text-2xl font-black text-white">Cluster Topology Matrix</h3>
-                   <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Active node distribution and health telemetry</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-[10px] font-black text-emerald-400 animate-pulse uppercase tracking-[0.2em] font-mono">Real-time Sync Active</span>
-                  <button 
-                    onClick={fetchAllData}
-                    className="p-3 bg-white/5 rounded-2xl text-white/60 hover:text-white transition-all transform hover:rotate-180 duration-500"
-                  >
-                    <RefreshCw size={20} />
-                  </button>
-                </div>
-             </div>
-             
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[
-                  { name: 'Core Engine', status: 'Healthy', load: '14%', icon: Cpu, mem: '1.2GB', ping: '2ms' },
-                  { name: 'Vector Store', status: 'Healthy', load: '42%', icon: Database, mem: '4.8GB', ping: '12ms' },
-                  { name: 'Identity Relay', status: 'Healthy', load: '12%', icon: ShieldCheck, mem: '1.4GB', ping: '4ms' },
-                  { name: 'AI Controller', status: 'Healthy', load: '22%', icon: Radio, mem: '12GB', ping: '84ms' },
-                  { name: 'Image Processing', status: 'Healthy', load: '4%', icon: Layers, mem: '200MB', ping: '1ms' },
-                  { name: 'Public Traffic', status: 'Healthy', load: '31%', icon: Globe, mem: '2.1GB', ping: '0.5ms' },
-                ].map((node, i) => (
-                  <motion.div 
-                    key={i}
-                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                    className="p-6 bg-white/5 border border-white/5 rounded-[2rem] relative group cursor-crosshair"
-                  >
-                     <div className={`absolute top-6 right-6 w-2 h-2 rounded-full ${node.status === 'Healthy' ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-ping'}`} />
-                     <div className="w-12 h-12 bg-white/5 text-brand-blue rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-blue group-hover:text-white transition-all"><node.icon size={24} /></div>
-                     <h4 className="font-black text-white mb-1">{node.name}</h4>
-                     <div className="flex items-center gap-2 mb-6">
-                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{node.status} • {node.mem}</span>
-                        <div className="w-1 h-1 rounded-full bg-white/10" />
-                        <span className="text-[10px] font-black text-brand-blue font-mono">{node.ping}</span>
-                     </div>
-                     
-                     <div className="space-y-2">
-                        <div className="flex justify-between text-[8px] font-black text-white/40 uppercase tracking-widest">
-                           <span>Node Utilization</span>
-                           <span>{node.load}</span>
-                        </div>
-                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                           <motion.div 
-                             initial={{ width: 0 }}
-                             animate={{ width: node.load }}
-                             className="h-full bg-brand-blue shadow-[0_0_10px_rgba(0,107,255,0.5)]" 
-                           />
-                        </div>
-                     </div>
-                  </motion.div>
-                ))}
-             </div>
-          </div>
-       </div>
-
-       {/* Realtime Terminal */}
-       <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-8 flex flex-col h-full ring-1 ring-white/5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[#000]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,107,255,0.15)_0%,transparent_70%)]" />
-          <div className="flex items-center justify-between mb-8 relative z-10">
-             <h4 className="text-lg font-black text-white flex items-center gap-2">
-                <TerminalIcon size={18} className={`${simulationMode ? 'text-amber-400' : 'text-brand-blue'}`} /> 
-                {simulationMode ? 'RAW SIMULATION' : 'MASTER SHELL'}
-             </h4>
-             <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${simulationMode ? 'bg-amber-400 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
-                <span className="text-[8px] font-black text-white/40 tracking-widest uppercase font-mono">{simulationMode ? 'SIM_RUNNING' : 'TTY_01'}</span>
-             </div>
-          </div>
-
-          <div className="flex-1 space-y-4 font-mono text-[9px] overflow-y-auto relative z-10 scrollbar-hide flex flex-col-reverse">
-             <AnimatePresence initial={false}>
-               {logs.map((log) => (
-                 <motion.div 
-                   key={log.id} 
-                   initial={{ opacity: 0, x: -10 }} 
-                   animate={{ opacity: 1, x: 0 }} 
-                   className="flex gap-3 leading-relaxed py-0.5"
-                 >
-                    <span className="text-white/10 whitespace-nowrap uppercase tracking-tighter">{log.time}</span>
-                    <span className={`font-black shrink-0 ${log.level === 'error' ? 'text-rose-400' : log.level === 'warning' ? 'text-amber-400' : log.level === 'success' ? 'text-emerald-400' : 'text-brand-blue'}`}>
-                       [{log.source}]:
-                    </span>
-                    <span className={`break-all ${simulationMode ? 'text-white/40' : 'text-white/60'}`}>{log.event}</span>
-                 </motion.div>
-               ))}
-             </AnimatePresence>
-          </div>
-
-          <form onSubmit={handleTerminalCommand} className="mt-8 pt-6 border-t border-white/10 relative z-10">
-             <div className="relative group">
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-brand-blue font-black">{`>`}</span>
-                <input 
-                  value={terminalInput}
-                  onChange={(e) => setTerminalInput(e.target.value)}
-                  placeholder="Master authorization required..."
-                  className="w-full bg-transparent border-none outline-none pl-6 text-[10px] font-bold font-mono text-white placeholder:text-white/10"
-                />
-             </div>
-          </form>
-       </div>
-    </div>
-  );
-
-  const renderUsers = () => (
-    <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] overflow-hidden animate-in fade-in duration-500 shadow-3xl">
-      <div className="p-10 border-b border-white/5 bg-[#0D0D0E] flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-           <h3 className="text-2xl font-black text-white leading-none">Security Identities</h3>
-           <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-2">{dbUsers.length} decrypted business nodes detected</p>
-        </div>
-        <div className="flex items-center gap-4">
-           <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-brand-blue transition-colors" size={18} />
-              <input 
-                placeholder="Search nodes..."
-                className="bg-white/5 border border-white/10 pl-12 pr-6 py-4 rounded-2xl text-xs font-bold text-white outline-none focus:border-brand-blue/50 w-72 transition-all shadow-inner"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-           </div>
-           <button className="p-4 bg-white/5 border border-white/10 rounded-2xl text-white/60 hover:text-white hover:border-white/20 transition-all">
-              <Download size={20} />
-           </button>
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-             <tr className="bg-white/[0.02]">
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Business Identity</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Access Level</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Contact Node</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Core Sessions</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Last Active</th>
-                <th className="px-10 py-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Operation</th>
-             </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-             {(dbUsers.length > 0 ? dbUsers : []).filter(u => u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase())).map((user, i) => (
-                <tr key={user.id} className="hover:bg-white/[0.03] transition-all group">
-                   <td className="px-10 py-8">
-                      <div className="flex items-center gap-4">
-                         <div className="w-14 h-14 bg-[#111] border border-white/10 rounded-2xl flex items-center justify-center font-black text-brand-blue group-hover:border-brand-blue transition-all shadow-2xl relative overflow-hidden">
-                           <div className="absolute inset-0 bg-brand-blue/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                           <span className="relative z-10">{user.displayName?.[0] || user.email?.[0] || '?'}</span>
-                         </div>
-                         <div>
-                            <p className="text-base font-black text-white leading-tight">{user.displayName || 'Unnamed node'}</p>
-                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">{user.businessCategory || 'UNCLASSIFIED'}</p>
-                         </div>
-                      </div>
-                   </td>
-                   <td className="px-10 py-8">
-                      <button 
-                        onClick={() => handleUpdateRole(user.id, user.role)}
-                        className={`text-[10px] font-black px-4 py-1.5 rounded-full border transition-all ${user.role === 'admin' ? 'bg-brand-blue text-white border-brand-blue shadow-[0_0_15px_rgba(0,107,255,0.4)]' : 'bg-white/5 text-white/40 border-white/10 hover:text-white hover:bg-white/10'}`}
-                      >
-                         {user.role?.toUpperCase() || 'USER'}
-                      </button>
-                   </td>
-                   <td className="px-10 py-8 text-white/60 font-mono text-xs tracking-tight">
-                      {user.email}
-                   </td>
-                   <td className="px-10 py-8">
-                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full w-fit bg-brand-blue/10 text-brand-blue border border-brand-blue/20`}>
-                         <Zap size={10} className="animate-pulse" />
-                         <span className="text-[10px] font-black uppercase tracking-widest">{user.loginCount || 0} Sessions</span>
-                      </div>
-                   </td>
-                   <td className="px-10 py-8 text-white/40 font-mono text-[10px] uppercase tracking-wider">
-                      {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleTimeString('en-GB') : 'NEVER'}
-                   </td>
-                   <td className="px-10 py-8 text-right">
-                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                         <button className="p-3 bg-white/5 text-white/40 hover:text-white hover:bg-brand-blue rounded-xl transition-all shadow-xl"><Edit3 size={16} /></button>
-                         <button 
-                           onClick={() => handleDeleteUser(user.id)}
-                           className="p-3 bg-white/5 text-white/40 hover:text-white hover:bg-rose-500 rounded-xl transition-all shadow-xl"
-                         >
-                            <Trash2 size={16} />
-                         </button>
-                      </div>
-                   </td>
-                </tr>
-             ))}
-             {dbUsers.length === 0 && (
-               <tr>
-                 <td colSpan={5} className="text-center py-20 opacity-20 font-black uppercase tracking-widest font-mono animate-pulse">Initializing Matrix Identities...</td>
-               </tr>
-             )}
-          </tbody>
-        </table>
-      </div>
-      <div className="p-10 border-t border-white/5 flex items-center justify-between bg-[#0D0D0E]">
-         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] font-mono flex items-center gap-2">
-            <Cpu size={12} className="animate-spin-slow" /> {dbUsers.length} nodes successfully decrypted
-         </p>
-         <div className="flex gap-4">
-            <button className="px-6 py-2 bg-white/5 text-white/40 rounded-xl text-[10px] font-black uppercase tracking-widest">Prev</button>
-            <button className="px-6 py-2 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10">Next Channel</button>
-         </div>
-      </div>
-    </div>
-  );
-
-  const renderIntelligence = () => (
-    <div className="min-h-[600px] animate-in zoom-in-95 duration-700">
-       <div className="max-w-6xl mx-auto space-y-12">
-          <div className="text-center space-y-4">
-             <div className="w-24 h-24 bg-brand-blue/10 rounded-[2rem] flex items-center justify-center mx-auto ring-1 ring-brand-blue/30 relative mb-8 rotate-12 group hover:rotate-0 transition-transform">
-                <div className="absolute inset-0 bg-brand-blue blur-[40px] opacity-20" />
-                <Processor size={48} className="text-brand-blue animate-pulse" />
-             </div>
-             <h2 className="text-5xl font-black text-white tracking-tighter">Quantum Intelligence</h2>
-             <p className="text-brand-blue font-black uppercase tracking-[0.4em] text-xs">Platform Strategic Analysis System</p>
-          </div>
-
-          {aiInsights.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               {aiInsights.map((insight, i) => (
-                 <motion.div 
-                   key={i}
-                   initial={{ opacity: 0, y: 30 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   transition={{ delay: i * 0.1 }}
-                   className="bg-[#0A0A0B] border border-white/10 p-10 rounded-[3rem] hover:border-brand-blue/50 transition-all group"
-                 >
-                    <div className={`mb-6 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full w-fit ${insight.priority === 'high' ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                       Priority: {insight.priority}
-                    </div>
-                    <h4 className="text-xl font-black text-white mb-4 group-hover:text-brand-blue transition-colors">{insight.title}</h4>
-                    <p className="text-sm font-medium text-white/40 leading-relaxed mb-10">{insight.content}</p>
-                    <button className="w-full py-4 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white group-hover:bg-brand-blue group-hover:border-brand-blue transition-all">
-                       Initialize Action
-                    </button>
-                 </motion.div>
-               ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center space-y-8 bg-[#0A0A0B] border border-white/10 p-20 rounded-[4rem]">
-               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-white/20 animate-spin-slow ring-1 ring-white/10">
-                  <RefreshCw size={32} />
-               </div>
-               <div className="text-center">
-                  <h3 className="text-2xl font-black text-white mb-2">Matrix Analysis Pending</h3>
-                  <p className="text-sm font-medium text-white/20 uppercase tracking-widest">Intelligence engine requires manual override to initialize telemetry decryption.</p>
-               </div>
-               <button 
-                 onClick={generateIntel}
-                 disabled={isGeneratingIntel}
-                 className="px-12 py-5 bg-white text-brand-dark rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-brand-blue hover:text-white transition-all shadow-3xl disabled:opacity-50"
-               >
-                  {isGeneratingIntel ? 'DECRYPTING DATA...' : 'INITIALIZE INTEL SCAN'}
-               </button>
-            </div>
-          )}
-       </div>
-    </div>
-  );
-
-  const renderInfrastructure = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-8 duration-700">
-       <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-12 space-y-12">
-          <div>
-             <h3 className="text-3xl font-black text-white mb-2">Global Parameters</h3>
-             <p className="text-xs font-bold text-white/30 uppercase tracking-widest font-mono">Platform orchestration layer v4.2.0</p>
-          </div>
-          
-          <div className="space-y-10">
-             {[
-               { icon: Network, title: 'Node Registration', desc: 'Allow new cluster instances to join the matrix' },
-               { icon: Shield, title: 'Deep Protocol (WAF)', desc: 'Advanced layer 7 threat detection and mitigation' },
-               { icon: Share2, title: 'Sync-Engine', status: 'Healthy', desc: 'Real-time state synchronization across all regions' },
-             ].map((item, i) => (
-               <div key={i} className="flex items-center justify-between p-8 bg-white/5 border border-white/5 rounded-[2.5rem] hover:border-brand-blue/30 transition-all transition-duration-500 group">
-                  <div className="flex items-center gap-6">
-                     <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-white/40 group-hover:text-brand-blue transition-colors">
-                        <item.icon size={24} />
-                     </div>
-                     <div>
-                        <p className="text-base font-black text-white mb-1">{item.title}</p>
-                        <p className="text-xs font-medium text-white/30">{item.desc}</p>
-                     </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                     <input type="checkbox" className="sr-only peer" defaultChecked={i !== 1} />
-                     <div className="w-16 h-8 bg-white/5 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white/20 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-blue peer-checked:after:bg-white" />
-                  </label>
-               </div>
-             ))}
-          </div>
-       </div>
-
-       <div className="bg-[#0A0A0B] border border-white/10 rounded-[3rem] p-12 flex flex-col justify-between">
-           <div className="space-y-10">
-              <div>
-                 <h3 className="text-3xl font-black text-white mb-2">Platform Core</h3>
-                 <p className="text-xs font-bold text-white/30 uppercase tracking-widest font-mono">Deployment and kernel settings</p>
-              </div>
-
-              <div className="p-10 bg-brand-blue/10 border border-brand-blue/30 rounded-[3rem] space-y-6">
-                 <div className="flex items-center gap-4 text-brand-blue">
-                    <Processor className="animate-spin-slow" size={32} />
-                    <div>
-                       <p className="font-black text-lg">Cluster Optimization</p>
-                       <p className="text-xs font-bold opacity-70">Auto-scaling group: ENABLED</p>
-                    </div>
-                 </div>
-                 <div className="h-1 w-full bg-brand-blue/20 rounded-full">
-                    <motion.div animate={{ width: ['0%', '100%'] }} transition={{ duration: 10, repeat: Infinity }} className="h-full bg-brand-blue" />
-                 </div>
-              </div>
-
-              <div className="space-y-4">
-                 <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-1">Kernel Version Pin</label>
-                 <select className="w-full bg-white/5 border border-white/10 rounded-[2rem] px-8 py-5 text-sm font-black text-white outline-none focus:ring-1 ring-brand-blue/50 appearance-none transition-all">
-                    <option>v4.2.0 (Stable - Master)</option>
-                    <option>v4.1.9 (Legacy Support)</option>
-                    <option>v4.3.0-dev (Canary)</option>
-                 </select>
-              </div>
-           </div>
-
-           <div className="pt-12 flex items-center justify-between">
-              <button className="text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-all underline decoration-white/10">Factory Master Reset</button>
-              <button className="px-12 py-5 bg-white text-brand-dark rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-brand-blue hover:text-white transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)]">Sync Parameters</button>
-           </div>
-       </div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-[#000] text-white selection:bg-brand-blue selection:text-white font-sans antialiased">
-      <div className="max-w-[1440px] mx-auto px-8 py-16 space-y-16">
-        {/* Superior Header */}
-        <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-12 relative">
-          <div className="absolute top-0 left-0 w-[500px] h-[300px] bg-brand-blue/10 blur-[150px] -z-10" />
-          <div className="space-y-6">
-             <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-brand-blue rounded-[2rem] flex items-center justify-center shadow-[0_0_80px_-10px_rgba(0,107,255,0.6)] rotate-6 group hover:rotate-0 transition-all duration-700 cursor-pointer">
-                   <Command size={40} className="text-white" />
-                </div>
-                <div>
-                   <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-[0.6em] mb-2 font-mono">
-                      <span>Platform Control</span>
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
-                      <span className="text-emerald-400">System Ready</span>
-                   </div>
-                   <h1 className="text-6xl font-black tracking-tighter leading-none">Command Center<span className="text-white/10 italic ml-4 font-mono">v4.2</span></h1>
-                </div>
-             </div>
+    <div className="flex-1 bg-[#fcfcfc] overflow-y-auto custom-scroll">
+      {/* Header */}
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+            <Shield className="text-white" size={24} />
           </div>
-
-          <div className="flex items-center p-2 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]">
-             {(['overview', 'users', 'nodes', 'intelligence', 'infrastructure'] as AdminTab[]).map(tab => (
-               <button
-                 key={tab}
-                 onClick={() => setActiveTab(tab)}
-                 className={`px-10 py-4 rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.3em] transition-all relative overflow-hidden group ${activeTab === tab ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
-               >
-                 {activeTab === tab && (
-                   <motion.div layoutId="premium-active-tab" className="absolute inset-0 bg-brand-blue rounded-[2.5rem] -z-10 shadow-[0_0_30px_rgba(0,107,255,0.4)]" />
-                 )}
-                 {tab}
-               </button>
-             ))}
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Control</h1>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              Node v20.11.0 • Global Cloud Network
+            </p>
           </div>
-        </header>
-
-        {/* Global Intel Bar */}
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col md:flex-row items-center justify-between p-8 bg-white/[0.03] rounded-[3rem] border border-white/10 backdrop-blur-2xl group hover:border-brand-blue/30 transition-all duration-500 ring-1 ring-white/5"
-        >
-           <div className="flex items-center gap-8 mb-6 md:mb-0">
-              <div className="flex -space-x-5">
-                 {[1,2,3,4].map(i => (
-                    <div key={i} className="w-12 h-12 bg-slate-900 border-4 border-[#000] rounded-[1.25rem] flex items-center justify-center overflow-hidden shadow-2xl">
-                       <img src={`https://picsum.photos/seed/${i + 42}/48/48`} className="w-full h-full object-cover" />
-                    </div>
-                 ))}
-                 <div className="w-12 h-12 bg-brand-blue ring-4 ring-[#000] rounded-[1.25rem] flex items-center justify-center font-black text-xs text-white z-10 shadow-2xl">+14</div>
-              </div>
-              <div>
-                 <p className="text-lg font-black text-white">Advanced Intelligence Active</p>
-                 <p className="text-[10px] font-black text-brand-blue uppercase tracking-widest mt-1 animate-pulse">Scanning 1,284 nodes for economic anomalies...</p>
-              </div>
-           </div>
-           <button className="w-full md:w-auto px-12 py-5 bg-white text-brand-dark rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-brand-blue hover:text-white transition-all shadow-2xl">Launch Matrix Audit</button>
-        </motion.div>
-
-        {/* Tab Content Orchestrator */}
-        <div className="relative min-h-[600px]">
-           <AnimatePresence mode="wait">
-              {activeTab === 'overview' && (
-                <motion.div key="overview" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.5 }}>
-                   {renderOverview()}
-                </motion.div>
-              )}
-              {activeTab === 'nodes' && (
-                <motion.div key="nodes" layout initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.5 }}>
-                   {renderNodes()}
-                </motion.div>
-              )}
-              {activeTab === 'users' && (
-                <motion.div key="users" layout initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.5 }}>
-                   {renderUsers()}
-                </motion.div>
-              )}
-              {activeTab === 'infrastructure' && (
-                <motion.div key="infra" layout initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.5 }}>
-                   {renderInfrastructure()}
-                </motion.div>
-              )}
-              {activeTab === 'intelligence' && (
-                <motion.div key="intel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
-                   {renderIntelligence()}
-                </motion.div>
-              )}
-           </AnimatePresence>
         </div>
-
-        {/* Dynamic Global Dashboard Footer */}
-        <footer className="pt-24 pb-48 flex flex-col md:flex-row items-center justify-between gap-12 border-t border-white/5 relative">
-           <div className="absolute top-0 right-0 w-[400px] h-[300px] bg-brand-blue/5 blur-[120px] -z-10" />
-           <div className="flex flex-wrap items-center justify-center md:justify-start gap-12">
-              <div className="space-y-2">
-                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Protocol</p>
-                 <div className="flex items-center gap-3">
-                    <ShieldAlert size={16} className="text-emerald-500" />
-                    <span className="text-xs font-black font-mono text-white/60">KERNEL_SECURE_ENCLAVE_READY</span>
-                 </div>
-              </div>
-              <div className="space-y-2">
-                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Bandwidth</p>
-                 <div className="flex items-center gap-3">
-                    <Activity size={16} className="text-brand-blue" />
-                    <span className="text-xs font-black font-mono text-white/60">GIGABIT_FIBER_MATRIX_STABLE</span>
-                 </div>
-              </div>
-           </div>
-           
-           <div className="flex items-center gap-4 bg-white/5 p-4 rounded-[2rem] border border-white/10 group cursor-pointer hover:bg-brand-blue transition-all duration-500">
-              <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white group-hover:bg-white group-hover:text-brand-blue transition-all shadow-xl">
-                 <Power size={18} />
-              </div>
-              <div className="pr-4">
-                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest group-hover:text-white/60">System Runtime</p>
-                 <p className="text-sm font-black font-mono text-white uppercase tabular-nums">142:04:12:08</p>
-              </div>
-           </div>
-        </footer>
+        
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleRefresh}
+            className={`w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-all ${isLoading ? 'animate-spin' : ''}`}
+          >
+            <RefreshCw size={18} />
+          </button>
+          <div className="h-6 w-px bg-slate-100 mx-2" />
+          <nav className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
+            {(['overview', 'users', 'system'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-tight transition-all ${
+                  activeTab === tab 
+                  ? 'bg-white text-indigo-600 shadow-sm' 
+                  : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
-      {/* Cyberpunk Overlay Scanlines */}
-      <div className="fixed inset-0 pointer-events-none z-[1000] opacity-[0.02] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[length:100%_3px,4px_100%]" />
-      
-      {/* Subtle cursor tracker glow (Simulated) */}
-      <div className="fixed inset-0 pointer-events-none z-[50] bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(0,107,255,0.03)_0%,transparent_10%)]" />
+      <div className="p-8">
+        {activeTab === 'overview' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { label: 'Total Volume', value: `$${(appointments.reduce((acc, curr) => acc + (curr.price || 0), 0)).toLocaleString()}`, icon: Globe, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                { label: 'Active Sessions', value: appointments.length, icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                { label: 'Database Nodes', value: '4 Cluster', icon: Database, color: 'text-amber-600', bg: 'bg-amber-50' },
+                { label: 'Server Memory', value: `${stats.memory}%`, icon: Zap, color: 'text-rose-600', bg: 'bg-rose-50' }
+              ].map((stat, i) => (
+                <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+                  <div className={`w-12 h-12 ${stat.bg} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                    <stat.icon className={stat.color} size={24} />
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                  <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* System Health */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs">Resource Utilization (Real-time)</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400">Auto-scaling: Enabled</span>
+                    <div className="w-8 h-4 bg-indigo-100 rounded-full relative">
+                      <div className="absolute right-1 top-1 bottom-1 w-2 h-2 bg-indigo-600 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                   {[
+                     { label: 'Internal Processing (CPU)', value: stats.cpu, color: 'bg-indigo-600' },
+                     { label: 'Cache Storage (RAM)', value: stats.memory, color: 'bg-emerald-500' },
+                     { label: 'Network Bandwidth', value: 64, color: 'bg-amber-500' }
+                   ].map(bar => (
+                     <div key={bar.label}>
+                       <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2">
+                         <span className="text-slate-500">{bar.label}</span>
+                         <span className="text-slate-900">{bar.value}%</span>
+                       </div>
+                       <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                         <motion.div 
+                           initial={{ width: 0 }}
+                           animate={{ width: `${bar.value}%` }}
+                           transition={{ duration: 1, ease: "easeOut" }}
+                           className={`h-full ${bar.color}`} 
+                         />
+                       </div>
+                     </div>
+                   ))}
+                </div>
+              </div>
+
+              <div className="bg-indigo-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
+                <div className="relative z-10">
+                  <h3 className="font-black uppercase tracking-widest text-xs mb-6 text-indigo-300">Network Latency (ms)</h3>
+                  <div className="flex items-baseline gap-2 mb-8">
+                    <span className="text-5xl font-black">{stats.latency}</span>
+                    <span className="text-indigo-300 font-bold uppercase tracking-tighter">avg ms</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                      <span className="text-xs font-bold text-indigo-200">Core Uptime</span>
+                      <span className="text-xs font-black">{stats.uptime}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                      <span className="text-xs font-bold text-indigo-200">Encryption</span>
+                      <span className="text-xs font-black text-emerald-400">AES-256 GCM</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600 rounded-full blur-[80px] opacity-20 translate-x-10 -translate-y-10" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'users' && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
+          >
+            <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+               <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Search systems by node or ID..." 
+                    className="pl-11 pr-6 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:border-indigo-600 outline-none w-80"
+                  />
+               </div>
+               <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+                 <Filter size={14} /> Filter Logs
+               </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Account Node</th>
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Role</th>
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Engagement</th>
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Security</th>
+                    <th className="px-8 py-4 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {(users.length > 0 ? users : clients).map((item, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-600 uppercase">
+                             {(item.name || item.email || 'U').charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900">ID-{item.id.substring(0, 8)}</p>
+                            <p className="text-xs text-slate-500 font-bold tracking-tight">{item.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${item.role === 'admin' ? 'bg-brand-blue/10 text-brand-blue' : 'bg-slate-100 text-slate-600'}`}>
+                          {item.role === 'admin' ? 'Master Admin' : 'Standard Node'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-2">
+                           {item.phone || item.subscriptionPlan === 'premium' ? <Globe size={14} className="text-emerald-500" /> : <Lock size={14} className="text-slate-300" />}
+                           <p className="text-xs font-bold text-slate-700">{item.name || 'Anonymous'}</p>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5">
+                         <div className="flex items-center gap-1.5">
+                           <span className={`w-2 h-2 rounded-full ${item.lastSeenAt ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                           <span className="text-[10px] font-black text-slate-900 uppercase">
+                             {item.lastSeenAt ? 'Online' : 'Offline'}
+                           </span>
+                         </div>
+                      </td>
+                      <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button className="p-2 text-slate-400 hover:text-indigo-600"><MoreVertical size={16} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'system' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in zoom-in-95">
+             <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs mb-6">Execution Runtime Logs</h3>
+                <div className="space-y-4 font-mono text-[10px]">
+                   {[
+                     { time: '14:02:22', msg: 'Core process initialized on cluster-01', type: 'info' },
+                     { time: '14:02:25', msg: 'Auth handshake success: secure_token_v4', type: 'success' },
+                     { time: '14:02:44', msg: 'GC cycle complete: reclaimed 244MB', type: 'info' },
+                     { time: '14:03:01', msg: 'Warning: Latency spike detected on eu-west-1', type: 'warning' },
+                     { time: '14:03:10', msg: 'Re-routing traffic to secondary gateway', type: 'info' }
+                   ].map((log, i) => (
+                     <div key={i} className="flex gap-3 items-start border-b border-slate-50 pb-3">
+                        <span className="text-slate-400 shrink-0">{log.time}</span>
+                        <span className={
+                          log.type === 'success' ? 'text-emerald-600' :
+                          log.type === 'warning' ? 'text-amber-600' : 'text-slate-600'
+                        }>{log.msg}</span>
+                     </div>
+                   ))}
+                </div>
+             </div>
+
+             <div className="bg-slate-950 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+                <div className="relative z-10">
+                   <h3 className="text-indigo-400 font-black tracking-widest uppercase text-xs mb-8 flex items-center gap-2">
+                     <Server size={14} /> Node Health Infrastructure
+                   </h3>
+                   <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { label: 'Cluster-01', status: 'Healthy', color: 'bg-emerald-500' },
+                        { label: 'Cluster-02', status: 'Optimal', color: 'bg-indigo-500' },
+                        { label: 'Web-Gateway', status: 'Load 12%', color: 'bg-emerald-500' },
+                        { label: 'Auth-Node', status: 'Encrypted', color: 'bg-white' }
+                      ].map(node => (
+                        <div key={node.label} className="bg-white/5 border border-white/10 p-4 rounded-2xl">
+                          <p className="text-white font-black text-sm mb-1">{node.label}</p>
+                          <div className="flex items-center gap-2">
+                             <span className={`w-1.5 h-1.5 rounded-full ${node.color}`} />
+                             <span className="text-[10px] text-white/50 font-bold uppercase">{node.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+                <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-[60px]" />
+             </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

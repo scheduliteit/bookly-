@@ -72,6 +72,7 @@ const App: React.FC = () => {
   const [externalEvents, setExternalEvents] = useState<any[]>([]);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [legalData, setLegalData] = useState({
     privacyPolicy: "We value your privacy. Your data is used solely for scheduling and communication regarding your appointments. We do not sell your information to third parties.",
@@ -248,6 +249,11 @@ const App: React.FC = () => {
     if (user && user.onboardingCompleted) {
       const unsubApts = api.appointments.list(setAppointments);
       const unsubClients = api.clients.list(setClients);
+      
+      if (user.role === 'admin') {
+        api.system.getUsers().then(setAllUsers).catch(console.error);
+      }
+
       const unsubUser = api.user.sync(user.id, (updatedUser) => {
         setBusinessName(updatedUser.businessName);
         setBusinessCategory(updatedUser.businessCategory || 'Consulting');
@@ -634,7 +640,7 @@ const App: React.FC = () => {
                   </div>
                 );
               case 'management':
-                return <AdminPanel />;
+                return <AdminPanel users={allUsers} appointments={appointments} clients={clients} />;
               case 'earnings':
                 return <Earnings appointments={appointments} currency={currency} businessName={businessName} />;
               case 'subscription':

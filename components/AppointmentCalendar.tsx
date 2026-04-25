@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Appointment } from '../types';
-import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video, Copy } from 'lucide-react';
 import { geminiAssistant } from '../services/geminiService';
 
 interface AppointmentCalendarProps {
