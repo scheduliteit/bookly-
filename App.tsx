@@ -700,6 +700,7 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         onAddClick={() => setShowAddModal(true)}
         onOpenMobileGuide={() => setShowMobileGuide(true)}
+        onSyncNow={fetchExternalEvents}
         language={language}
         onUpdateLanguage={(l) => {
           setLanguage(l);

@@ -15,12 +15,14 @@ interface SidebarProps {
   onLogout?: () => void;
   onAddClick?: () => void;
   onOpenMobileGuide?: () => void;
+  onSyncNow?: () => void;
   language: 'en' | 'he';
   onUpdateLanguage: (lang: 'en' | 'he') => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick, onOpenMobileGuide, language, onUpdateLanguage }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick, onOpenMobileGuide, onSyncNow, language, onUpdateLanguage }) => {
   const isAdmin = user?.role === 'admin';
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isRolledDown, setIsRolledDown] = useState(true);
   const t = translations[language];
 
@@ -169,7 +171,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
               {/* Global Sync Status */}
               {connectedApps.length > 0 && (
                 <div className="mt-8 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 mx-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Sync Status</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sync Status</p>
+                    <button 
+                      onClick={() => {
+                        if (onSyncNow) {
+                          setIsSyncing(true);
+                          onSyncNow();
+                          setTimeout(() => setIsSyncing(false), 2000);
+                        }
+                      }}
+                      className="p-1 hover:bg-slate-200 rounded-md transition-all text-slate-400 hover:text-brand-blue"
+                      title="Sync Now"
+                    >
+                      <Activity size={10} className={isSyncing ? "animate-spin" : ""} />
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {connectedApps.includes('google') && (
                       <div className="flex items-center gap-2">

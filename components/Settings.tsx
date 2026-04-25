@@ -99,6 +99,31 @@ const Settings: React.FC<SettingsProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [connectedApps, onUpdateConnectedApps]);
 
+  const handleDisconnectApp = async (provider: string) => {
+    try {
+      const response = await fetch('/api/auth/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('eb_token')}`
+        },
+        body: JSON.stringify({ provider })
+      });
+      
+      if (response.ok) {
+        onUpdateConnectedApps(connectedApps.filter(app => app !== provider));
+        if (provider === 'google') {
+          setIsCalendarConnected(false);
+          localStorage.removeItem('easybookly_calendar_connected');
+        } else if (provider === 'outlook') {
+          localStorage.removeItem('easybookly_outlook_connected');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to disconnect:', error);
+    }
+  };
+
   const handleConnectCalendar = async () => {
     try {
       const response = await fetch(`/api/auth/google/url?userId=${userId}`);
@@ -383,8 +408,17 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 {connectedApps.includes('google') ? (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold">
-                    <Check size={14} /> Active
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100">
+                      <Check size={14} /> Active
+                    </div>
+                    <button 
+                      onClick={() => handleDisconnectApp('google')}
+                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                      title="Disconnect Google Calendar"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 ) : (
                   <button 
@@ -408,8 +442,17 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 {connectedApps.includes('outlook') ? (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold">
-                    <Check size={14} /> Active
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100">
+                      <Check size={14} /> Active
+                    </div>
+                    <button 
+                      onClick={() => handleDisconnectApp('outlook')}
+                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                      title="Disconnect Outlook Calendar"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 ) : (
                   <button 

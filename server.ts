@@ -148,9 +148,15 @@ app.post('/api/public/book', async (req: any, res: any) => {
   try {
     let meetingLink = undefined;
     if (locationType === 'zoom' || locationType === 'online') {
-      // Generate a unique Jitsi room name
-      const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
-      meetingLink = `https://meet.jit.si/${roomName}`;
+      // Try Zoom first if connected
+      const zoomLink = await createZoomMeeting(userId, `${service} - ${req.body.clientName}`, `${date}T${time}:00Z`, duration || 30);
+      if (locationType === 'zoom' && zoomLink) {
+        meetingLink = zoomLink;
+      } else {
+        // Fallback or explicit Jitsi
+        const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
+        meetingLink = `https://meet.jit.si/${roomName}`;
+      }
     }
 
     const docDef = { ...req.body, meetingLink };
@@ -193,8 +199,14 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
     let meetingLink = req.body.meetingLink;
 
     if (!meetingLink && (locationType === 'online' || locationType === 'zoom')) {
-      const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
-      meetingLink = `https://meet.jit.si/${roomName}`;
+      // Try Zoom first
+      const zoomLink = await createZoomMeeting(userId, `${service} - ${req.body.clientName}`, `${date}T${time}:00Z`, duration || 30);
+      if (locationType === 'zoom' && zoomLink) {
+        meetingLink = zoomLink;
+      } else {
+        const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
+        meetingLink = `https://meet.jit.si/${roomName}`;
+      }
     }
 
     const appointmentData = { ...req.body, userId, meetingLink };
@@ -202,6 +214,10 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
     // Sync to Google if connected
     const googleEventId = await pushToGoogleCalendar(userId, appointmentData);
     if (googleEventId) appointmentData.googleEventId = googleEventId;
+
+    // Sync to Outlook if connected
+    const outlookEventId = await pushToOutlookCalendar(userId, appointmentData);
+    if (outlookEventId) appointmentData.outlookEventId = outlookEventId;
 
     const docRef = await addDoc(collection(db, 'appointments'), appointmentData);
     res.status(201).json({ ...appointmentData, id: docRef.id });
@@ -221,6 +237,18 @@ app.delete('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
     if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
     if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
 
+    const appointment = docSnap.data();
+    
+    // De-sync from Google
+    if (appointment.googleEventId) {
+      await removeFromGoogleCalendar(userId, appointment.googleEventId);
+    }
+    
+    // De-sync from Outlook
+    if (appointment.outlookEventId) {
+      await removeFromOutlookCalendar(userId, appointment.outlookEventId);
+    }
+
     await deleteDoc(docRef);
     res.status(204).send();
   } catch (error: any) {
@@ -238,8 +266,26 @@ app.put('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
     if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
     if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
 
-    await updateDoc(docRef, { ...req.body, userId });
-    res.json({ ...req.body, id: req.params.id, userId });
+    const updatedData = { ...req.body, userId };
+    
+    // Sync updates to Google
+    if (docSnap.data().googleEventId) {
+      await updateGoogleCalendarEvent(userId, docSnap.data().googleEventId, updatedData);
+    } else {
+      const gId = await pushToGoogleCalendar(userId, updatedData);
+      if (gId) updatedData.googleEventId = gId;
+    }
+
+    // Sync updates to Outlook
+    if (docSnap.data().outlookEventId) {
+      await updateOutlookCalendarEvent(userId, docSnap.data().outlookEventId, updatedData);
+    } else {
+      const oId = await pushToOutlookCalendar(userId, updatedData);
+      if (oId) updatedData.outlookEventId = oId;
+    }
+
+    await updateDoc(docRef, updatedData);
+    res.json({ ...updatedData, id: req.params.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -433,6 +479,29 @@ app.post('/api/ai/summary', requireAuth, aiLimiter, async (req: any, res: any) =
   }
 });
 
+app.post('/api/auth/disconnect', requireAuth, async (req: any, res: any) => {
+  const userId = req.user.uid;
+  const { provider } = req.body;
+
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+
+  try {
+    const userRef = doc(db, 'users', userId);
+    const updates: any = {
+      connectedApps: admin.firestore.FieldValue.arrayRemove(provider)
+    };
+
+    if (provider === 'google') updates.googleCalendarTokens = admin.firestore.FieldValue.delete();
+    if (provider === 'outlook') updates.outlookCalendarTokens = admin.firestore.FieldValue.delete();
+    if (provider === 'zoom') updates.zoomTokens = admin.firestore.FieldValue.delete();
+
+    await updateDoc(userRef, updates);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // OAuth Routes
 app.get('/api/auth/google/url', (req, res) => {
   const { userId } = req.query;
@@ -585,6 +654,54 @@ const pushToGoogleCalendar = async (userId: string, appointment: any) => {
   }
 };
 
+const removeFromGoogleCalendar = async (userId: string, eventId: string) => {
+  if (!db) return;
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    let tokens = userSnap.data()?.googleCalendarTokens;
+    if (!tokens) return;
+    tokens = await refreshGoogleToken(userId, tokens);
+
+    const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+    auth.setCredentials(tokens);
+    const calendar = google.calendar({ version: 'v3', auth });
+
+    await calendar.events.delete({ calendarId: 'primary', eventId });
+  } catch (error) {
+    console.error('[GOOGLE] Failed to delete event:', error);
+  }
+};
+
+const updateGoogleCalendarEvent = async (userId: string, eventId: string, appointment: any) => {
+  if (!db) return;
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    let tokens = userSnap.data()?.googleCalendarTokens;
+    if (!tokens) return;
+    tokens = await refreshGoogleToken(userId, tokens);
+
+    const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+    auth.setCredentials(tokens);
+    const calendar = google.calendar({ version: 'v3', auth });
+
+    const startDateTime = new Date(`${appointment.date}T${appointment.time}`).toISOString();
+    const endDateTime = new Date(new Date(startDateTime).getTime() + (appointment.duration || 30) * 60000).toISOString();
+
+    await calendar.events.update({
+      calendarId: 'primary',
+      eventId,
+      requestBody: {
+        summary: `${appointment.service} - ${appointment.clientName}`,
+        description: `Updated via EasyBookly.\nService: ${appointment.service}\nClient: ${appointment.clientName}`,
+        start: { dateTime: startDateTime },
+        end: { dateTime: endDateTime },
+      }
+    });
+  } catch (error) {
+    console.error('[GOOGLE] Failed to update event:', error);
+  }
+};
+
 // Outlook OAuth
 app.get('/api/auth/outlook/url', (req, res) => {
   const { userId } = req.query;
@@ -655,6 +772,69 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) 
     </html>
   `);
 });
+
+const pushToOutlookCalendar = async (userId: string, appointment: any) => {
+  if (!db || !process.env.OUTLOOK_CLIENT_ID) return null;
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    const tokens = userSnap.data()?.outlookCalendarTokens;
+    if (!tokens) return null;
+
+    const startDateTime = new Date(`${appointment.date}T${appointment.time}`).toISOString();
+    const endDateTime = new Date(new Date(startDateTime).getTime() + (appointment.duration || 30) * 60000).toISOString();
+
+    const res = await axios.post('https://graph.microsoft.com/v1.0/me/events', {
+      subject: `${appointment.service} - ${appointment.clientName}`,
+      body: { contentType: 'HTML', content: `Booked via EasyBookly.<br/>Service: ${appointment.service}<br/>${appointment.meetingLink ? 'Video: ' + appointment.meetingLink : ''}` },
+      start: { dateTime: startDateTime, timeZone: 'UTC' },
+      end: { dateTime: endDateTime, timeZone: 'UTC' },
+    }, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+
+    return res.data.id;
+  } catch (error) {
+    console.error('[OUTLOOK] Failed to push event:', error);
+    return null;
+  }
+};
+
+const removeFromOutlookCalendar = async (userId: string, eventId: string) => {
+  if (!db || !process.env.OUTLOOK_CLIENT_ID) return;
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    const tokens = userSnap.data()?.outlookCalendarTokens;
+    if (!tokens) return;
+
+    await axios.delete(`https://graph.microsoft.com/v1.0/me/events/${eventId}`, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+  } catch (error) {
+    console.error('[OUTLOOK] Failed to delete event:', error);
+  }
+};
+
+const updateOutlookCalendarEvent = async (userId: string, eventId: string, appointment: any) => {
+  if (!db || !process.env.OUTLOOK_CLIENT_ID) return;
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    const tokens = userSnap.data()?.outlookCalendarTokens;
+    if (!tokens) return;
+
+    const startDateTime = new Date(`${appointment.date}T${appointment.time}`).toISOString();
+    const endDateTime = new Date(new Date(startDateTime).getTime() + (appointment.duration || 30) * 60000).toISOString();
+
+    await axios.patch(`https://graph.microsoft.com/v1.0/me/events/${eventId}`, {
+      subject: `${appointment.service} - ${appointment.clientName}`,
+      start: { dateTime: startDateTime, timeZone: 'UTC' },
+      end: { dateTime: endDateTime, timeZone: 'UTC' },
+    }, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+  } catch (error) {
+    console.error('[OUTLOOK] Failed to update event:', error);
+  }
+};
 
 // Zoom OAuth
 app.get('/api/auth/zoom/url', (req, res) => {
