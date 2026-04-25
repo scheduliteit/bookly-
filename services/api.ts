@@ -271,5 +271,20 @@ export const api = {
       if (!response.ok) throw new Error('Failed to fetch feedback');
       return response.json();
     }
+  },
+  admin: {
+    runArchitectAnalysis: async (systemContext: string): Promise<any> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/ai-architect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ systemContext })
+      });
+      if (!response.ok) throw new Error('Architect Link Error');
+      return response.json();
+    }
   }
 };

@@ -12,6 +12,7 @@ import { google } from 'googleapis';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
 import axios from 'axios';
+import { GoogleGenAI } from "@google/genai";
 import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -327,6 +328,26 @@ app.get('/api/availability', (req, res) => {
   res.json(["09:00", "10:00", "11:00", "12:00", "13:30", "14:30", "15:30", "16:30"]);
 });
 
+// Gemini AI Proxy Helper
+async function callGemini(prompt: string, modelName: string = 'gemini-3-flash-preview') {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error('Neural Link Config Missing: GEMINI_API_KEY not found in server environment.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt
+  });
+  
+  if (!response.text) {
+    throw new Error("No response text from AI.");
+  }
+  
+  return response.text;
+}
+
 // Gemini AI Proxy (Security Fix #3)
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -335,13 +356,28 @@ const aiLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' }
 });
 
-// Gemini AI Routes (Legacy, moved to frontend)
+// Gemini AI Routes
 app.post('/api/ai/answer-question', requireAuth, aiLimiter, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { question, context } = req.body;
+  try {
+    const prompt = `Context: ${JSON.stringify(context)}. Question: ${question}. Provide a concise, helpful answer for a business owner.`;
+    const answer = await callGemini(prompt);
+    res.json({ answer });
+  } catch (error: any) {
+    console.error('[AI] Error:', error);
+    res.status(500).json({ error: 'AI Brain fart: ' + error.message });
+  }
 });
 
 app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { stats } = req.body;
+  try {
+    const prompt = `Business Stats: ${JSON.stringify(stats)}. Provide one actionable piece of growth advice. 1-2 sentences.`;
+    const advice = await callGemini(prompt);
+    res.json({ advice });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
@@ -368,23 +404,63 @@ app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { systemContext } = req.body;
+  try {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const insight = await callGemini(systemContext);
+    res.json({ insight });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/ai/analyze-schedule', requireAuth, aiLimiter, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { appointments, query } = req.body;
+  try {
+    const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time, status: a.status }));
+    const prompt = `Analyze this schedule: ${JSON.stringify(sanitized)}. Query: ${query}. Be direct and professional.`;
+    const text = await callGemini(prompt);
+    res.json({ text, links: [] });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/ai/meeting-brief', requireAuth, aiLimiter, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { appointment } = req.body;
+  try {
+    const prompt = `Generate a 2-sentence briefing for ${appointment.clientName} regarding ${appointment.service}. Highlight previous history if any.`;
+    const brief = await callGemini(prompt);
+    res.json({ brief });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/ai/draft-reminder', requireAuth, aiLimiter, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { appointment, businessName } = req.body;
+  try {
+    const prompt = `Draft a polite one-sentence reminder for ${appointment.clientName} for their ${appointment.service} at ${businessName}.`;
+    const draft = await callGemini(prompt);
+    res.json({ draft });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/ai/summary', requireAuth, aiLimiter, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  const { appointments } = req.body;
+  try {
+    const prompt = `Summarize these appointments: ${JSON.stringify(appointments)}. 2 sentences max.`;
+    const summary = await callGemini(prompt);
+    res.json({ summary });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/auth/disconnect', requireAuth, async (req: any, res: any) => {
@@ -1310,7 +1386,41 @@ app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any) => {
-  res.status(501).json({ error: 'AI logic moved to frontend' });
+  try {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const usersSnap = await getAdminFirestore(dbId).collection('users').get();
+    const appointmentsSnap = await getAdminFirestore(dbId).collection('appointments').get();
+    
+    const stats = {
+      users: usersSnap.size,
+      appointments: appointmentsSnap.size,
+      businesses: Array.from(new Set(usersSnap.docs.map(d => d.data().businessCategory))).filter(Boolean)
+    };
+
+    const prompt = `
+      You are the Master AI Strategist for EasyBookly. 
+      Platform Statistics:
+      - Users: ${stats.users}
+      - Total Bookings: ${stats.appointments}
+      - Top Industries: ${stats.businesses.join(', ')}
+
+      Analyze this data and provide 3 high-level tactical insights for the platform administrator. 
+      Format the response as a JSON array of objects: [{ "title": "...", "content": "...", "priority": "high|medium|low" }]
+    `;
+
+    const response = await callGemini(prompt);
+    const jsonMatch = response.match(/\[.*\]/s);
+    const insights = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+
+    res.json(insights);
+  } catch (error: any) {
+    console.error('AI Insights Error:', error);
+    res.status(500).json({ error: 'Failed to generate insights: ' + error.message });
+  }
 });
 
 // Global error handler

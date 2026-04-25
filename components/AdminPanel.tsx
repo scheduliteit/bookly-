@@ -9,7 +9,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Client, User } from '../types';
 import { api } from '../services/api';
-import { GoogleGenAI } from '@google/genai';
 
 interface AdminPanelProps {
   users: any[];
@@ -44,19 +43,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const runAiAnalysis = async (customPrompt?: string) => {
     setIsAiThinking(true);
     try {
-      const apiKey = 
-        (typeof process !== 'undefined' ? (process.env?.API_KEY || process.env?.GEMINI_API_KEY) : undefined) || 
-        (window as any).GEMINI_API_KEY || 
-        (window as any).API_KEY ||
-        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-        (import.meta as any).env?.GEMINI_API_KEY;
-
-      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-        throw new Error("Neural Link Severed: API Key missing.");
-      }
-
-      const genAI = new GoogleGenAI({ apiKey });
-      const systemContext = `
+      const context = `
         You are the "Core System Architect" for EasyBookly, a high-performance scheduling platform.
         You have absolute authority over system nodes and database health.
         
@@ -72,16 +59,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
         Use markdown. Keep it concise.
       `;
 
-      const response = await genAI.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: systemContext
-      });
-
-      if (!response || !response.text) {
-        throw new Error("Empty response from Architect.");
-      }
-
-      setAiResponse(response.text);
+      const data = await api.admin.runArchitectAnalysis(context);
+      setAiResponse(data.insight);
     } catch (error: any) {
       console.error("[GEMINI] Admin Error:", error);
       setAiResponse(`Architect Link Severed. ${error.message || "Neural sync interrupted."}`);

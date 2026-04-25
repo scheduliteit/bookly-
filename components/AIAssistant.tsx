@@ -113,7 +113,13 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setIsVoiceMode(true);
-      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      const apiKey = 
+        (typeof process !== 'undefined' ? (process.env?.API_KEY || process.env?.GEMINI_API_KEY) : undefined) || 
+        (window as any).GEMINI_API_KEY || 
+        (window as any).API_KEY ||
+        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+        (import.meta as any).env?.GEMINI_API_KEY;
+
       if (!apiKey || apiKey === '' || apiKey === 'undefined') {
         throw new Error("API Key is missing for voice mode.");
       }
