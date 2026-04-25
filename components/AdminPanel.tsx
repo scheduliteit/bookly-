@@ -39,9 +39,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const runAiAnalysis = async (customPrompt?: string) => {
     setIsAiThinking(true);
     try {
-      const apiKey = (process.env as any).GEMINI_API_KEY;
+      const apiKey = (process.env as any).GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("Credentials missing. Please wait for neural sync.");
+        throw new Error("Neural Link Severed: API Key missing.");
       }
 
       const genAI = new GoogleGenAI({ apiKey });
@@ -66,10 +66,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
         contents: systemContext
       });
 
+      if (!response || !response.text) {
+        throw new Error("Empty response from Architect.");
+      }
+
       setAiResponse(response.text);
-    } catch (error) {
-      console.error(error);
-      setAiResponse("Architect Link Severed. Neural sync interrupted. Please ensure your intelligence core is configured.");
+    } catch (error: any) {
+      console.error("[GEMINI] Admin Error:", error);
+      setAiResponse(`Architect Link Severed. ${error.message || "Neural sync interrupted."}`);
     } finally {
       setIsAiThinking(false);
     }

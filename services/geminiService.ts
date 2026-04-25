@@ -13,9 +13,11 @@ export class GeminiAssistant {
 
   private getAI() {
     if (!this.ai) {
-      const apiKey = (process.env as any).GEMINI_API_KEY;
+      // Accessing environment variable through a standard fallback mechanism for AI Studio
+      const apiKey = (process.env as any).GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) {
-         // Silently fail or handle later - standard AI Studio behavior
+        console.warn("[GEMINI] Warning: API Key missing from environment.");
+        throw new Error("Neural Link Offline: API Key not found.");
       }
       this.ai = new GoogleGenAI({ apiKey });
     }
@@ -29,9 +31,14 @@ export class GeminiAssistant {
         model,
         contents: prompt
       });
+      
+      if (!response || !response.text) {
+        throw new Error("Empty response from sentinel.");
+      }
+      
       return response.text;
-    } catch (error) {
-      console.error("Gemini Frontend Error:", error);
+    } catch (error: any) {
+      console.error("[GEMINI] Frontend Error:", error);
       throw error;
     }
   }
