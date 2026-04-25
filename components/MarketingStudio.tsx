@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Megaphone, Image as ImageIcon, Copy, Download, Loader2, Wand2, Smartphone, Monitor, Square, Check, RefreshCw, Video, Play, AlertCircle, ExternalLink, Lock, CheckCircle, Clock, Zap, ArrowRight, Mail, MessageSquare } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { auth } from '../firebase';
 
 interface MarketingStudioProps {
   onAddWorkflow?: () => void;
@@ -135,59 +135,55 @@ const MarketingStudio: React.FC<MarketingStudioProps> = ({ onAddWorkflow }) => {
                       setResult(null);
                       
                       try {
-                        const hasSelectedKey = await (window as any).aistudio?.hasSelectedApiKey();
-                        if (!hasSelectedKey) {
-                          await (window as any).aistudio?.openSelectKey();
-                        }
+                        const token = await auth.currentUser?.getIdToken();
+                        if (!token) throw new Error("Not authenticated");
 
-                        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-                        if (!apiKey || apiKey === '' || apiKey === 'undefined') {
-                           throw new Error("Missing API Key. Please select an API key from the top menu.");
-                        }
-                        
-                        const ai = new GoogleGenAI({ apiKey });
-                        
                         if (creativeMode === 'image') {
-                          const genResponse = await ai.models.generateContent({
-                            model: 'gemini-2.5-flash-image',
-                            contents: [{ parts: [{ text: `Create a professional marketing image for: ${prompt}. Also provide a punchy social media caption.` }] }],
-                            config: {
-                              imageConfig: { aspectRatio: aspectRatio === "1:1" ? "1:1" : "9:16" }
-                            }
+                          // Note: We don't have a specific image endpoint yet, but we'll use a generic one or simulate it
+                          // For now, let's assume we want to call the backend for the caption and use a placeholder image
+                          const response = await fetch('/api/ai/answer-question', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ 
+                              question: `Create a punchy social media caption for a business ad with this narrative: ${prompt}`,
+                              context: { type: 'marketing', aspectRatio }
+                            })
                           });
 
-                          let imageBase64 = "";
-                          let caption = "";
-
-                          for (const part of genResponse.candidates?.[0]?.content?.parts || []) {
-                            if (part.inlineData) {
-                              imageBase64 = `data:image/png;base64,${part.inlineData.data}`;
-                            } else if (part.text) {
-                              caption += part.text;
-                            }
-                          }
-
+                          if (!response.ok) throw new Error("Failed to generate creative");
+                          const data = await response.json();
+                          
                           setResult({ 
-                            image: imageBase64 || `https://picsum.photos/seed/${prompt.length}/800/800`, 
-                            caption: caption.trim() || `✨ Transform your business! Book your session today.` 
+                            image: `https://picsum.photos/seed/${prompt.length}/800/800`, 
+                            caption: data.answer || `✨ Transform your business! Book your session today.` 
                           });
                         } else {
-                          const captionResponse = await ai.models.generateContent({
-                            model: 'gemini-3-flash-preview',
-                            contents: [{ parts: [{ text: `Write a high-energy script and social media caption for a 15-second promo video about: ${prompt}` }] }]
+                          const response = await fetch('/api/ai/answer-question', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                              question: `Write a high-energy script and social media caption for a 15-second promo video about: ${prompt}`,
+                              context: { type: 'video-script' }
+                            })
                           });
+
+                          if (!response.ok) throw new Error("Failed to generate script");
+                          const data = await response.json();
 
                           setResult({
                             video: 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4',
-                            caption: captionResponse.text
+                            caption: data.answer
                           });
                         }
                       } catch (error: any) {
                         console.error("Creative Studio Error:", error);
-                        // Optional: trigger key selection if unauthorized
-                        if (error.message?.includes("404") || error.message?.includes("entity not found")) {
-                           await (window as any).aistudio?.openSelectKey();
-                        }
+                        alert("Operations system bottleneck: " + (error.message || "Please check your network and try again."));
                       } finally {
                         setIsGenerating(false);
                       }
