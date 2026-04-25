@@ -4,11 +4,12 @@ import {
   Search, Filter, MoreVertical, RefreshCw, 
   ArrowUpRight, ArrowDownRight, Zap, Globe, Lock,
   Trash2, UserPlus, Wrench, AlertTriangle, CheckCircle2,
-  Settings, Loader2, Bot, Sparkles, Send, Terminal, MessageSquare, X
+  Settings, Loader2, Bot, Sparkles, Send, Terminal, MessageSquare, X, Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Client, User } from '../types';
 import { api } from '../services/api';
+import { GoogleGenAI } from '@google/genai';
 
 interface AdminPanelProps {
   users: any[];
@@ -38,17 +39,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const runAiAnalysis = async (customPrompt?: string) => {
     setIsAiThinking(true);
     try {
-      const context = {
-        userCount: users.length,
-        appointmentCount: appointments.length,
-        clientCount: clients.length
-      };
+      const apiKey = (process.env as any).GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Credentials missing. Please wait for neural sync.");
+      }
 
-      const response = await api.system.aiArchitect(customPrompt || "Run a full system diagnostic.", context);
-      setAiResponse(response);
+      const genAI = new GoogleGenAI({ apiKey });
+      const systemContext = `
+        You are the "Core System Architect" for EasyBookly, a high-performance scheduling platform.
+        You have absolute authority over system nodes and database health.
+        
+        CURRENT SYSTEM SNAPSHOT:
+        - Users: ${users.length}
+        - Appointments: ${appointments.length}
+        - Clients: ${clients.length}
+        - Health: Optimal
+        
+        The user (Master Admin) says: ${customPrompt || "Run a full system diagnostic."}
+        
+        Provide a technical, high-level architect-style response. 
+        Use markdown. Keep it concise.
+      `;
+
+      const response = await genAI.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: systemContext
+      });
+
+      setAiResponse(response.text);
     } catch (error) {
       console.error(error);
-      setAiResponse("Architect Link Severed. Please check API credentials.");
+      setAiResponse("Architect Link Severed. Neural sync interrupted. Please ensure your intelligence core is configured.");
     } finally {
       setIsAiThinking(false);
     }

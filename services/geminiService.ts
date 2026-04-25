@@ -1,4 +1,5 @@
 
+import { GoogleGenAI } from "@google/genai";
 import { auth } from "../firebase";
 import { Appointment, Client } from "../types";
 
@@ -8,42 +9,52 @@ export interface GroundingLink {
 }
 
 export class GeminiAssistant {
-  private async fetchAI(endpoint: string, body: any) {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Authentication required");
-    
-    const idToken = await user.getIdToken();
-    const response = await fetch(`/api/ai/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${idToken}`
-      },
-      body: JSON.stringify(body)
-    });
+  private ai: any = null;
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || "AI Service failure");
+  private getAI() {
+    if (!this.ai) {
+      const apiKey = (process.env as any).GEMINI_API_KEY;
+      if (!apiKey) {
+         // Silently fail or handle later - standard AI Studio behavior
+      }
+      this.ai = new GoogleGenAI({ apiKey });
     }
+    return this.ai;
+  }
 
-    return await response.json();
+  private async callGemini(prompt: string, model: string = 'gemini-3-flash-preview') {
+    try {
+      const ai = this.getAI();
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt
+      });
+      return response.text;
+    } catch (error) {
+      console.error("Gemini Frontend Error:", error);
+      throw error;
+    }
   }
 
   async answerClientQuestion(question: string, serviceName: string, businessName: string) {
     try {
-      const data = await this.fetchAI('answer-question', { question, serviceName, businessName });
-      return data.answer;
+      const prompt = `You are the High-Performance Virtual Concierge for ${businessName}. A client is inquiring about the "${serviceName}" experience: "${question}". Answer with extreme professionalism, warmth, and a touch of luxury. 2-3 sentences.`;
+      return await this.callGemini(prompt);
     } catch (error) {
-      console.error("Gemini Error:", error);
       return "I'm here to ensure your experience is seamless. Please feel free to book a session and we can discuss all your questions in detail.";
     }
   }
 
   async getStrategicGrowthAdvice(appointments: Appointment[]) {
     try {
-      const data = await this.fetchAI('growth-advice', { appointments });
-      return data.advice;
+      const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time }));
+      const prompt = `
+        You are a high-level Strategic Business Growth Consultant. 
+        Analyze these appointments: ${JSON.stringify(sanitized)}.
+        Identify patterns and a bold actionable strategy.
+        Response MUST be 1 sentence, high-energy.
+      `;
+      return await this.callGemini(prompt);
     } catch (error) {
       return "Focus on high-value client retention this week.";
     }
@@ -51,47 +62,38 @@ export class GeminiAssistant {
 
   async analyzeSchedule(appointments: Appointment[], clients: Client[], query: string) {
     try {
-      // Get location for grounding
-      let latLng = { latitude: 32.0853, longitude: 34.7818 }; 
-      try {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-        latLng = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-      } catch (e) { /* ignore */ }
-
-      const data = await this.fetchAI('analyze-schedule', { appointments, query, latLng });
-      return { text: data.analysis, links: data.links || [] };
+      const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time, status: a.status }));
+      const prompt = `Analyze: ${JSON.stringify(sanitized)}. Query: ${query}`;
+      const text = await this.callGemini(prompt);
+      return { text, links: [] };
     } catch (error) {
-      console.error("Gemini Error:", error);
       return { text: "Strategic core temporarily offline.", links: [] };
     }
   }
 
   async generateMeetingBrief(appointment: Appointment) {
     try {
-      const data = await this.fetchAI('meeting-brief', { appointment });
-      return data.brief;
+      const prompt = `Briefing for ${appointment.clientName} regarding ${appointment.service}.`;
+      return await this.callGemini(prompt);
     } catch (error) {
-      console.error("Gemini Error:", error);
       return "Briefing unavailable. Focus on active listening and strategic alignment.";
     }
   }
 
   async draftReminder(appointment: Appointment, businessName: string) {
     try {
-      const data = await this.fetchAI('draft-reminder', { appointment, businessName });
-      return data.draft;
+      const prompt = `Draft reminder for ${appointment.clientName} at ${businessName}. One sentence.`;
+      return await this.callGemini(prompt);
     } catch (error) {
-      console.error("Gemini Error:", error);
       return `Friendly reminder of your ${appointment.service} session at ${businessName}.`;
     }
   }
 
   async getSummary(appointments: Appointment[]) {
     try {
-      const data = await this.fetchAI('summary', { appointments });
-      return data.summary;
+      const prompt = `Summarize: ${JSON.stringify(appointments)}. 2 sentences max.`;
+      return await this.callGemini(prompt);
     } catch (error) {
-      console.error("Gemini Error:", error);
       return "Operations are steady.";
     }
   }

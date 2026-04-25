@@ -15,6 +15,7 @@ import axios from 'axios';
 import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { GoogleGenAI } from '@google/genai';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
@@ -335,17 +336,28 @@ const aiLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' }
 });
 
-const callGemini = async (prompt: string, model: string = 'gemini-2.0-flash') => {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
+let genAI: GoogleGenAI | null = null;
+const getGenAI = () => {
+  if (!genAI) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error('GEMINI_API_KEY is not defined in the environment');
+    genAI = new GoogleGenAI({ apiKey: key });
+  }
+  return genAI;
+};
 
-  const response = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      contents: [{ parts: [{ text: prompt }] }]
-    }
-  );
-  return response.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+const callGemini = async (prompt: string, modelName: string = 'gemini-2.0-flash') => {
+  try {
+    const ai = getGenAI();
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: prompt
+    });
+    return response.text;
+  } catch (error: any) {
+    console.error('[GEMINI] Error:', error);
+    throw error;
+  }
 };
 
 app.post('/api/ai/answer-question', requireAuth, aiLimiter, async (req: any, res: any) => {
@@ -427,7 +439,7 @@ app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
       Use markdown. Keep it concise.
     `;
 
-    const answer = await callGemini(systemContext, 'gemini-3-flash-preview');
+    const answer = await callGemini(systemContext, 'gemini-2.0-flash');
     res.json({ answer });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
