@@ -43,7 +43,9 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       status: apt.status,
       isExternal: false,
       date: apt.date,
-      time: apt.time
+      time: apt.time,
+      googleEventId: apt.googleEventId,
+      outlookEventId: apt.outlookEventId
     }));
 
     // Convert External events to unified format
@@ -129,6 +131,11 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                           <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
                             <ExternalLink size={8} /> {(evt as any).provider} Sync
                           </span>
+                        )}
+                        {!(evt as any).isExternal && (evt as any).googleEventId && (
+                           <span className="px-2 py-0.5 bg-brand-blue/5 text-brand-blue rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
+                             <CheckCircle2 size={8} /> Google Cloud Synced
+                           </span>
                         )}
                       </div>
                       <h4 className="text-lg font-bold text-brand-dark">{evt.time} - {evt.title}</h4>

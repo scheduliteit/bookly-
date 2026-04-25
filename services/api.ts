@@ -240,6 +240,16 @@ export const api = {
       const data = await response.json();
       return data.answer;
     },
+    getConfigStatus: async (): Promise<any> => {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/config-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch config status');
+      return response.json();
+    },
     generateInsights: async (): Promise<any[]> => {
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/generate-insights', {

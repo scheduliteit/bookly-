@@ -21,6 +21,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const [isLoading, setIsLoading] = useState(false);
   const [repairStep, setRepairStep] = useState<string | null>(null);
   const [repairProgress, setRepairProgress] = useState(0);
+  const [configStatus, setConfigStatus] = useState<any>(null);
+
+  useEffect(() => {
+    if (activeTab === 'system') {
+      api.system.getConfigStatus().then(setConfigStatus).catch(console.error);
+    }
+  }, [activeTab]);
 
   // AI Architect State
   const [aiQuery, setAiQuery] = useState('');
@@ -394,6 +401,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
                             </div>
                           </div>
                         ))}
+                     </div>
+
+                     {/* Managed Credentials Check */}
+                     <div className="mt-8 border-t border-white/10 pt-8">
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">API Configuration Status</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                           {[
+                             { id: 'google', label: 'Google Suite' },
+                             { id: 'outlook', label: 'Outlook API' },
+                             { id: 'zoom', label: 'Zoom Video' },
+                             { id: 'stripe', label: 'Stripe Gateway' },
+                             { id: 'sendgrid', label: 'SendGrid Mail' },
+                             { id: 'twilio', label: 'Twilio SMS' }
+                           ].map(cfg => (
+                             <div key={cfg.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                                <span className="text-[10px] text-white/70 font-bold">{cfg.label}</span>
+                                <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${configStatus?.[cfg.id] ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                   {configStatus?.[cfg.id] ? 'Configured' : 'Missing'}
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                        <p className="text-[9px] text-white/30 font-bold mt-4 italic">
+                          Manage these keys in your system environment variables (.env).
+                        </p>
                      </div>
                   </div>
                   <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-[60px]" />

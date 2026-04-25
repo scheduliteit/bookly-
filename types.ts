@@ -64,6 +64,8 @@ export interface Appointment {
   userId: string;
   clientId: string;
   clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
   service: string;
   date: string; // ISO string
   time: string; // HH:mm
@@ -76,6 +78,8 @@ export interface Appointment {
   meetingLink?: string;
   clientTimezone?: string;
   businessTimezone?: string;
+  googleEventId?: string;
+  outlookEventId?: string;
 }
 
 export interface BusinessStats {

@@ -154,6 +154,11 @@ app.post('/api/public/book', async (req: any, res: any) => {
     }
 
     const docDef = { ...req.body, meetingLink };
+    
+    // Sync to Google if host connected
+    const googleEventId = await pushToGoogleCalendar(userId, docDef);
+    if (googleEventId) docDef.googleEventId = googleEventId;
+
     const docRef = await addDoc(collection(db, 'appointments'), docDef);
     
     // Optional: Send notification
@@ -192,8 +197,14 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
       meetingLink = `https://meet.jit.si/${roomName}`;
     }
 
-    const docRef = await addDoc(collection(db, 'appointments'), { ...req.body, userId, meetingLink });
-    res.status(201).json({ ...req.body, id: docRef.id, userId, meetingLink });
+    const appointmentData = { ...req.body, userId, meetingLink };
+    
+    // Sync to Google if connected
+    const googleEventId = await pushToGoogleCalendar(userId, appointmentData);
+    if (googleEventId) appointmentData.googleEventId = googleEventId;
+
+    const docRef = await addDoc(collection(db, 'appointments'), appointmentData);
+    res.status(201).json({ ...appointmentData, id: docRef.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -322,6 +333,29 @@ app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: 
   }
 });
 
+app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
+  try {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const config = {
+      google: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
+      outlook: !!process.env.OUTLOOK_CLIENT_ID && !!process.env.OUTLOOK_CLIENT_SECRET,
+      zoom: !!process.env.ZOOM_CLIENT_ID && !!process.env.ZOOM_CLIENT_SECRET,
+      stripe: !!process.env.STRIPE_SECRET_KEY,
+      sendgrid: !!process.env.SENDGRID_API_KEY,
+      twilio: !!process.env.TWILIO_ACCOUNT_SID,
+      firebase: !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    };
+
+    res.json(config);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
   try {
     const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
@@ -413,7 +447,10 @@ app.get('/api/auth/google/url', (req, res) => {
     const url = client.generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent',
-      scope: ['https://www.googleapis.com/auth/calendar.readonly'],
+      scope: [
+        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/calendar.events'
+      ],
       state: userId as string,
     });
     return res.json({ url });
@@ -472,6 +509,81 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
     </html>
   `);
 });
+
+const refreshGoogleToken = async (userId: string, tokens: any) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return tokens;
+  
+  try {
+    const auth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    auth.setCredentials(tokens);
+
+    if (tokens.expiry_date && tokens.expiry_date <= Date.now() + 60000) {
+      console.log('[GOOGLE] Refreshing token for user:', userId);
+      const { credentials } = await auth.refreshAccessToken();
+      const updatedTokens = { ...tokens, ...credentials };
+      
+      if (db) {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, { googleCalendarTokens: updatedTokens });
+      }
+      return updatedTokens;
+    }
+    return tokens;
+  } catch (error) {
+    console.error('[GOOGLE] Token refresh failed:', error);
+    return tokens;
+  }
+};
+
+const pushToGoogleCalendar = async (userId: string, appointment: any) => {
+  if (!db) return null;
+  
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    if (!userSnap.exists()) return null;
+    let tokens = userSnap.data().googleCalendarTokens;
+    if (!tokens) return null;
+
+    tokens = await refreshGoogleToken(userId, tokens);
+
+    const auth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    auth.setCredentials(tokens);
+    const calendar = google.calendar({ version: 'v3', auth });
+
+    const startDateTime = new Date(`${appointment.date}T${appointment.time}`).toISOString();
+    const endDateTime = new Date(new Date(startDateTime).getTime() + (appointment.duration || 30) * 60000).toISOString();
+
+    const event = {
+      summary: `${appointment.service} - ${appointment.clientName}`,
+      description: `Appointment booked via EasyBookly.\nService: ${appointment.service}\nClient Email: ${appointment.clientEmail || 'N/A'}\n${appointment.meetingLink ? 'Video Link: ' + appointment.meetingLink : ''}`,
+      start: { dateTime: startDateTime },
+      end: { dateTime: endDateTime },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },
+          { method: 'popup', minutes: 30 }
+        ]
+      }
+    };
+
+    const res = await calendar.events.insert({
+      calendarId: 'primary',
+      requestBody: event,
+    });
+
+    return res.data.id;
+  } catch (error) {
+    console.error('[GOOGLE] Failed to push event:', error);
+    return null;
+  }
+};
 
 // Outlook OAuth
 app.get('/api/auth/outlook/url', (req, res) => {
