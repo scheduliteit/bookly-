@@ -12,6 +12,7 @@ import Pricing from './components/Pricing';
 import PublicBookingPage from './components/PublicBookingPage';
 import Settings from './components/Settings';
 import Earnings from './components/Earnings';
+import HelpCenter from './components/HelpCenter';
 import ClientCRM from './components/ClientCRM';
 import AdminPanel from './components/AdminPanel';
 import AddAppointmentModal from './components/AddAppointmentModal';
@@ -94,7 +95,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription', 'management'].includes(hash)) {
+      if (['dashboard', 'calendar', 'clients', 'marketing', 'ai-assistant', 'settings', 'subscription', 'management', 'help'].includes(hash)) {
         setActiveTab(hash);
       }
     };
@@ -658,6 +659,8 @@ const App: React.FC = () => {
                 return <AdminPanel users={allUsers} appointments={appointments} clients={clients} />;
               case 'earnings':
                 return <Earnings appointments={appointments} currency={currency} businessName={businessName} />;
+              case 'help':
+                return <HelpCenter language={language} onOpenAiAssistant={() => setActiveTab('ai-assistant')} />;
               case 'subscription':
                 return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} user={user!} />;
               case 'settings':
@@ -765,7 +768,7 @@ const App: React.FC = () => {
               </button>
             )}
             <div 
-              onClick={() => setActiveTab('ai-assistant')}
+              onClick={() => setActiveTab('help')}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 cursor-pointer transition-colors"
             >
               <span className="text-sm font-bold">{translations[language].help || 'Help'}</span>

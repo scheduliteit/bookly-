@@ -45,11 +45,12 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState("");
-  const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '', note: '' });
+  const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '', note: '', meetingLink: '', meetingPassword: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmedMeetingLink, setConfirmedMeetingLink] = useState<string | null>(null);
+  const [confirmedMeetingPassword, setConfirmedMeetingPassword] = useState<string | null>(null);
   const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string, version?: string} | null>(null);
   
   // AI Concierge State
@@ -142,9 +143,12 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         businessTimezone: businessTimezone,
         clientEmail: clientInfo.email, // Added for notification
         clientPhone: clientInfo.phone, // Added for notification
+        meetingLink: clientInfo.meetingLink,
+        meetingPassword: clientInfo.meetingPassword,
       } as any);
 
-      setConfirmedMeetingLink(result.meetingLink || null);
+      setConfirmedMeetingLink(result.meetingLink || clientInfo.meetingLink || null);
+      setConfirmedMeetingPassword(result.meetingPassword || clientInfo.meetingPassword || null);
       onBookingComplete(result);
       setIsSuccess(true);
     } catch (err: any) {
@@ -189,6 +193,54 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   }
 
   if (isSuccess) {
+    const generateGoogleCalendarUrl = () => {
+      if (!selectedService || !selectedDate || !selectedTime) return '';
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const startDate = new Date(selectedDate);
+      startDate.setHours(hours, minutes);
+      const endDate = new Date(startDate.getTime() + selectedService.duration * 60000);
+      
+      const format = (d: Date) => d.toISOString().replace(/-|:|\.\d+/g, '').split('.')[0] + 'Z';
+      const startStr = format(startDate);
+      const endStr = format(endDate);
+      
+      const details = `Booking with ${businessName}. ${confirmedMeetingLink ? `Join here: ${confirmedMeetingLink}` : ''}`;
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(selectedService.name)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(confirmedMeetingLink || 'Virtual')}`;
+    };
+
+    const downloadIcs = () => {
+      if (!selectedService || !selectedDate || !selectedTime) return;
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const startDate = new Date(selectedDate);
+      startDate.setHours(hours, minutes);
+      const endDate = new Date(startDate.getTime() + selectedService.duration * 60000);
+
+      const format = (d: Date) => d.toISOString().replace(/-|:|\.\d+/g, '').split('.')[0] + 'Z';
+      const startStr = format(startDate);
+      const endStr = format(endDate);
+
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'BEGIN:VEVENT',
+        `DTSTART:${startStr}`,
+        `DTEND:${endStr}`,
+        `SUMMARY:${selectedService.name}`,
+        `DESCRIPTION:Booking with ${businessName}`,
+        `LOCATION:${confirmedMeetingLink || 'Virtual'}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\n');
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute('download', 'booking.ics');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in" dir={t.dir}>
         <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-6">
@@ -196,6 +248,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.confirmed}</h2>
         <p className="text-slate-500 mb-8">{t.scheduledWith} {businessName}.</p>
+        
         <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-left w-full max-w-md mb-8" dir={t.dir}>
            <h3 className="font-bold text-slate-900 mb-4">{selectedService?.name}</h3>
            <div className="space-y-3">
@@ -218,8 +271,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                  <Globe2 size={16} className="text-slate-400" />
                  {timezone}
               </div>
-              
-              {selectedService?.locationType === 'online' && (
+                         {(selectedService?.locationType === 'online' || selectedService?.locationType === 'zoom') && (
                 <div className="mt-4 p-4 bg-brand-blue/5 border border-brand-blue/10 rounded-xl space-y-2">
                    <div className={`flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                       <Video size={14} /> {t.virtualMeetingRoom}
@@ -235,20 +287,38 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                         {t.copy}
                       </button>
                    </div>
+                   {confirmedMeetingPassword && (
+                     <div className={`text-[10px] font-bold text-slate-400 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
+                       {t.meetingPassword}: <span className="text-slate-600">{confirmedMeetingPassword}</span>
+                     </div>
+                   )}
                 </div>
               )}
            </div>
         </div>
-        <div className="flex gap-4">
-           <button 
-            onClick={() => alert('Download .ics file coming soon!')}
-            className="px-6 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md"
+
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+           <a 
+            href={generateGoogleCalendarUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
            >
-            {t.addToCalendar}
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" className="w-5 h-5" alt="Google" referrerPolicy="no-referrer" />
+            Add to Google Calendar
+           </a>
+           
+           <button 
+            onClick={downloadIcs}
+            className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+           >
+            <Calendar size={20} className="text-brand-blue" />
+            Download iCal File
            </button>
+
            <button 
             onClick={() => onBack ? onBack() : window.location.href = '/'} 
-            className="px-6 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all"
+            className="mt-4 text-slate-400 hover:text-slate-900 transition-colors text-sm font-bold uppercase tracking-widest"
            >
             {t.close}
            </button>
@@ -533,6 +603,32 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                       onChange={e => setClientInfo({...clientInfo, note: e.target.value})}
                     />
                   </div>
+
+                  {(selectedService?.locationType === 'online' || selectedService?.locationType === 'zoom') && (
+                    <div className="space-y-6 pt-6 border-t border-slate-100">
+                       <div className={`flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest mb-2 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                          <Video size={14} /> {t.meetingDetails}
+                       </div>
+                       <div className="space-y-2">
+                        <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.meetingLink}</label>
+                        <input 
+                          className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
+                          placeholder={t.meetingLinkPlaceholder}
+                          value={clientInfo.meetingLink}
+                          onChange={e => setClientInfo({...clientInfo, meetingLink: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.meetingPassword}</label>
+                        <input 
+                          className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
+                          placeholder={t.meetingPasswordPlaceholder}
+                          value={clientInfo.meetingPassword}
+                          onChange={e => setClientInfo({...clientInfo, meetingPassword: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  )}
                </div>
                
                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">

@@ -18,7 +18,7 @@ import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
 
 dotenv.config();
 
@@ -147,8 +147,10 @@ app.post('/api/public/book', async (req: any, res: any) => {
   const { userId, service, date, time, duration, locationType } = req.body;
   
   try {
-    let meetingLink = undefined;
-    if (locationType === 'zoom' || locationType === 'online') {
+    let meetingLink = req.body.meetingLink;
+    let meetingPassword = req.body.meetingPassword;
+    
+    if (!meetingLink && (locationType === 'zoom' || locationType === 'online')) {
       // Try Zoom first if connected
       const zoomLink = await createZoomMeeting(userId, `${service} - ${req.body.clientName}`, `${date}T${time}:00Z`, duration || 30);
       if (locationType === 'zoom' && zoomLink) {
@@ -160,7 +162,7 @@ app.post('/api/public/book', async (req: any, res: any) => {
       }
     }
 
-    const docDef = { ...req.body, meetingLink };
+    const docDef = { ...req.body, meetingLink, meetingPassword };
     
     // Sync to Google if host connected
     const googleEventId = await pushToGoogleCalendar(userId, docDef);
@@ -198,6 +200,7 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
   try {
     const { service, date, time, duration, locationType } = req.body;
     let meetingLink = req.body.meetingLink;
+    let meetingPassword = req.body.meetingPassword;
 
     if (!meetingLink && (locationType === 'online' || locationType === 'zoom')) {
       // Try Zoom first
@@ -210,7 +213,7 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
       }
     }
 
-    const appointmentData = { ...req.body, userId, meetingLink };
+    const appointmentData = { ...req.body, userId, meetingLink, meetingPassword };
     
     // Sync to Google if connected
     const googleEventId = await pushToGoogleCalendar(userId, appointmentData);
@@ -472,12 +475,12 @@ app.post('/api/auth/disconnect', requireAuth, async (req: any, res: any) => {
   try {
     const userRef = doc(db, 'users', userId);
     const updates: any = {
-      connectedApps: admin.firestore.FieldValue.arrayRemove(provider)
+      connectedApps: arrayRemove(provider)
     };
 
-    if (provider === 'google') updates.googleCalendarTokens = admin.firestore.FieldValue.delete();
-    if (provider === 'outlook') updates.outlookCalendarTokens = admin.firestore.FieldValue.delete();
-    if (provider === 'zoom') updates.zoomTokens = admin.firestore.FieldValue.delete();
+    if (provider === 'google') updates.googleCalendarTokens = deleteField();
+    if (provider === 'outlook') updates.outlookCalendarTokens = deleteField();
+    if (provider === 'zoom') updates.zoomTokens = deleteField();
 
     await updateDoc(userRef, updates);
     res.json({ success: true });
@@ -489,7 +492,9 @@ app.post('/api/auth/disconnect', requireAuth, async (req: any, res: any) => {
 // OAuth Routes
 app.get('/api/auth/google/url', (req, res) => {
   const { userId } = req.query;
-  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/callback`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host');
+  const callbackUrl = `${protocol}://${host}/auth/callback`;
   
   if (process.env.GOOGLE_CLIENT_ID && userId) {
     const client = new google.auth.OAuth2(
@@ -515,7 +520,9 @@ app.get('/api/auth/google/url', (req, res) => {
 
 app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
   const { code, state: userId } = req.query;
-  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/callback`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host');
+  const callbackUrl = `${protocol}://${host}/auth/callback`;
 
   if (process.env.GOOGLE_CLIENT_ID && code && code !== 'mock_code_123' && userId) {
     try {
@@ -531,7 +538,7 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
         const userRef = doc(db, 'users', userId as string);
         await updateDoc(userRef, { 
           googleCalendarTokens: tokens,
-          connectedApps: admin.firestore.FieldValue.arrayUnion('google')
+          connectedApps: arrayUnion('google')
         });
         console.log('[SERVER] Google Tokens saved for user:', userId);
       }
@@ -725,7 +732,7 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) 
         const userRef = doc(db, 'users', userId as string);
         await updateDoc(userRef, { 
           outlookCalendarTokens: tokens,
-          connectedApps: admin.firestore.FieldValue.arrayUnion('outlook')
+          connectedApps: arrayUnion('outlook')
         });
         console.log('[SERVER] Outlook Tokens saved for user:', userId);
       }
@@ -863,7 +870,7 @@ app.get(['/auth/zoom/callback', '/auth/zoom/callback/'], async (req, res) => {
         const userRef = doc(db, 'users', userId as string);
         await updateDoc(userRef, { 
           zoomTokens: tokens,
-          connectedApps: admin.firestore.FieldValue.arrayUnion('zoom')
+          connectedApps: arrayUnion('zoom')
         });
         console.log('[SERVER] Zoom Tokens saved for user:', userId);
       }

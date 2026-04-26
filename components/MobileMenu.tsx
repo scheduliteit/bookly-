@@ -3,7 +3,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Calendar, Users, Settings, Sparkles, Zap, 
-  Link as LinkIcon, LogOut, Plus, ShieldCheck, X, CreditCard, Activity
+  Link as LinkIcon, LogOut, Plus, ShieldCheck, X, CreditCard, Activity, HelpCircle
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -30,6 +30,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles },
     { id: 'subscription', label: 'Billing & Plan', icon: CreditCard },
     { id: 'clients', label: 'Contacts', icon: Users },
+    { id: 'help', label: 'Help Center', icon: HelpCircle },
   ];
 
   if (isAdmin) {

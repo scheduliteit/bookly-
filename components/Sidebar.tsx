@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText } from 'lucide-react';
+import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText, HelpCircle } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
 import { translations, Language } from '../services/translations';
@@ -41,6 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
     { id: 'booking-links', label: t.publicPortal, icon: Globe },
     { id: 'subscription', label: t.payouts, icon: CreditCard },
     { id: 'clients', label: t.clients, icon: Users },
+    { id: 'help', label: t.help, icon: HelpCircle },
   );
 
   return (

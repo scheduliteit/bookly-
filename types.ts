@@ -76,6 +76,7 @@ export interface Appointment {
   reminderTimestamp?: string;
   locationType?: LocationType;
   meetingLink?: string;
+  meetingPassword?: string;
   clientTimezone?: string;
   businessTimezone?: string;
   googleEventId?: string;
