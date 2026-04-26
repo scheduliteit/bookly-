@@ -180,7 +180,9 @@ export const translations: Record<Language, any> = {
     virtualMeetingRoom: "Virtual Meeting Room",
     copy: "COPY",
     linkGenFailed: "link-generation-failed",
-    sharedNotePlaceholder: "Share anything that will help prepare for our meeting..."
+    sharedNotePlaceholder: "Share anything that will help prepare for our meeting...",
+    shareBookingLink: "Share Booking Link",
+    bookingLinkSubtitle: "This is your master scheduling link for all services."
   },
   he: {
     dashboard: "לוח בקרה",
@@ -360,7 +362,9 @@ export const translations: Record<Language, any> = {
     virtualMeetingRoom: "חדר ישיבות וירטואלי",
     copy: "העתק",
     linkGenFailed: "שגיאה ביצירת קישור",
-    sharedNotePlaceholder: "שתף כל דבר שיעזור לנו להתכונן לפגישה..."
+    sharedNotePlaceholder: "שתף כל דבר שיעזור לנו להתכונן לפגישה...",
+    shareBookingLink: "שתף קישור להזמנה",
+    bookingLinkSubtitle: "זהו הקישור הראשי שלך לתיאום כל השירותים."
   },
   es: {
     dashboard: "Panel de Control",
@@ -540,7 +544,9 @@ export const translations: Record<Language, any> = {
     virtualMeetingRoom: "Sala de Reunión Virtual",
     copy: "COPIAR",
     linkGenFailed: "error-en-enlace",
-    sharedNotePlaceholder: "Comparte cualquier cosa que nos ayude a prepararnos para nuestra reunión..."
+    sharedNotePlaceholder: "Comparte cualquier cosa que nos ayude a prepararnos para nuestra reunión...",
+    shareBookingLink: "Compartir enlace de reserva",
+    bookingLinkSubtitle: "Este es su enlace maestro para todos los servicios."
   },
   fr: {
     dashboard: "Tableau de Bord",
@@ -720,7 +726,9 @@ export const translations: Record<Language, any> = {
     virtualMeetingRoom: "Salle de Réunion Virtuelle",
     copy: "COPIER",
     linkGenFailed: "erreur-génération-lien",
-    sharedNotePlaceholder: "Partagez tout ce qui nous aidera à préparer notre réunion..."
+    sharedNotePlaceholder: "Partagez tout ce qui nous aidera à préparer notre réunion...",
+    shareBookingLink: "Partager le lien de réservation",
+    bookingLinkSubtitle: "C'est votre lien principal pour tous les services."
   },
   de: {
     dashboard: "Dashboard",
@@ -900,7 +908,9 @@ export const translations: Record<Language, any> = {
     virtualMeetingRoom: "Virtueller Besprechungsraum",
     copy: "KOPIEREN",
     linkGenFailed: "link-generierung-fehlgeschlagen",
-    sharedNotePlaceholder: "Teilen Sie uns alles mit, was uns bei der Vorbereitung auf unser Treffen hilft..."
+    sharedNotePlaceholder: "Teilen Sie uns alles mit, was uns bei der Vorbereitung auf unser Treffen hilft...",
+    shareBookingLink: "Buchungslink teilen",
+    bookingLinkSubtitle: "Dies ist Ihr Haupt-Link für alle Services."
   },
   ar: {
     dashboard: "لوحة التحكم",
@@ -1080,6 +1090,8 @@ export const translations: Record<Language, any> = {
     virtualMeetingRoom: "غرفة اجتماع افتراضية",
     copy: "نسخ",
     linkGenFailed: "فشل-توليد-الرابط",
-    sharedNotePlaceholder: "شارك أي شيء سيساعدنا في التحضير لاجتماعنا..."
+    sharedNotePlaceholder: "شارك أي شيء سيساعدنا في التحضير لاجتماعنا...",
+    shareBookingLink: "مشاركة رابط الحجز",
+    bookingLinkSubtitle: "هذا هو رابط الجدولة الرئيسي لجميع الخدمات."
   }
 };

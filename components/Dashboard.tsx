@@ -102,6 +102,40 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
         </div>
       </motion.div>
 
+      {/* Share Booking Link Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white border-2 border-brand-blue/10 rounded-[40px] p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8"
+      >
+        <div className="flex items-center gap-6">
+           <div className="w-16 h-16 bg-brand-blue/10 rounded-[28px] flex items-center justify-center text-brand-blue shrink-0">
+             <LinkIcon size={32} />
+           </div>
+           <div>
+             <h3 className="text-xl font-black text-brand-dark tracking-tight">{t.shareBookingLink}</h3>
+             <p className="text-sm text-slate-400 font-medium">{t.bookingLinkSubtitle}</p>
+           </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+           <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 flex items-center gap-4 min-w-[200px] lg:min-w-[400px]">
+              <Globe size={18} className="text-slate-300" />
+              <span className="text-sm font-bold text-slate-600 truncate">
+                {window.location.origin}/book/{user.id}
+              </span>
+           </div>
+           <button 
+             onClick={() => handleCopyLink('master-link')}
+             className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all flex items-center justify-center gap-3 shrink-0"
+           >
+             {copiedId === 'master-link' ? <Check size={18} /> : <Copy size={18} />}
+             {copiedId === 'master-link' ? t.linkCopied : t.copyLink}
+           </button>
+        </div>
+      </motion.div>
+
       {/* VIRAL HYPE PANEL - The Free Revolution */}
       <ViralHypePanel onExplore={() => setActiveTab?.('ai-assistant')} />
 
