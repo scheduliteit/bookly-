@@ -5,6 +5,7 @@ import { Send, Bot, User, Sparkles, Loader2, Mic, MicOff, BrainCircuit, Globe, C
 import { geminiAssistant, GroundingLink } from '../services/geminiService';
 import { Appointment, Client } from '../types';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
+import { translations, Language } from '../services/translations';
 
 // Base64 utilities (keeping these as they are used for audio)
 function encode(bytes: Uint8Array) {
@@ -57,10 +58,11 @@ function createBlob(data: Float32Array) {
   };
 }
 
-const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> = ({ appointments, clients }) => {
+const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[], language: Language }> = ({ appointments, clients, language }) => {
+  const t = translations[language];
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', content: "Neural sync complete. I am your EasyBookly AI. How can I optimize your workflow today?" }
+    { role: 'assistant', content: t.aiGreeting }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -83,7 +85,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
       const response = await geminiAssistant.analyzeSchedule(appointments, clients, userMsg);
       setMessages(prev => [...prev, { role: 'assistant', content: response.text, links: response.links }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Protocol error. Neural sync interrupted." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: t.aiError }]);
     } finally {
       setIsLoading(false);
     }
@@ -230,7 +232,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
           {/* Tooltip */}
           {!isOpen && (
             <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-brand-dark text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg whitespace-nowrap shadow-xl transition-all pointer-events-none">
-              AI Assistant Ready
+              {t.aiTooltip}
             </div>
           )}
         </button>
@@ -251,10 +253,10 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
                   <Cpu className="text-brand-blue" size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-tight">EasyBookly Core</h3>
+                  <h3 className="font-bold text-sm tracking-tight">{t.aiHeader}</h3>
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">Neural Link Active</span>
+                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">{t.aiStatus}</span>
                   </div>
                 </div>
               </div>
@@ -304,7 +306,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Analyze data, schedule, prep..."
+                  placeholder={t.aiPlaceholder}
                   className="w-full bg-slate-100 border-none rounded-2xl px-5 py-3 pr-12 text-xs font-bold outline-none focus:ring-2 focus:ring-brand-blue/20 placeholder:text-slate-400"
                 />
                 <button
@@ -315,7 +317,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[] }> 
                   <Send size={14} />
                 </button>
               </div>
-              <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-widest">Powered by Google Gemini Intelligence</p>
+              <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-widest">{t.aiPowered}</p>
             </div>
           </motion.div>
         )}

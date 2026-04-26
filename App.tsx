@@ -64,6 +64,7 @@ const App: React.FC = () => {
 
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('USD');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('easybookly_lang') as Language) || 'en');
+  const t = translations[language];
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [businessName, setBusinessName] = useState('');
   const [businessCategory, setBusinessCategory] = useState('Consulting');
@@ -412,6 +413,8 @@ const App: React.FC = () => {
     return (
       <LandingPage 
         isLoggedIn={false}
+        language={language}
+        onUpdateLanguage={setLanguage}
         onStart={(mode) => { 
           if (isFreeMode) {
             setAuthMode(mode || 'register');
@@ -448,7 +451,7 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <Login key={authMode} onLogin={handleLogin} initialMode={authMode} preFillEmail={registrationEmail} />;
+    return <Login key={authMode} onLogin={handleLogin} initialMode={authMode} preFillEmail={registrationEmail} language={language} />;
   }
 
   // Force subscription plan selection before onboarding or dashboard
@@ -474,7 +477,7 @@ const App: React.FC = () => {
   }
 
   if (!user?.onboardingCompleted && user) {
-    return <Onboarding onComplete={(data) => { updateUserSettings({ businessName: data.name, businessCategory: data.category, onboardingCompleted: true }); }} />;
+    return <Onboarding language={language} onComplete={(data) => { updateUserSettings({ businessName: data.name, businessCategory: data.category, onboardingCompleted: true }); }} />;
   }
 
   if (isPublicView) {
@@ -550,7 +553,7 @@ const App: React.FC = () => {
                   />
                 );
               case 'clients':
-                return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} onAddClient={() => setShowAddModal(true)} />;
+                return <ClientCRM clients={clients} appointments={appointments} onDeleteClient={(id) => api.clients.delete(id)} onAddClient={() => setShowAddModal(true)} language={language} />;
               case 'marketing':
                 return <MarketingStudio onAddWorkflow={() => { setSettingsTab('services'); setActiveTab('settings'); }} />;
               case 'ai-assistant':
@@ -560,9 +563,9 @@ const App: React.FC = () => {
                       <div className="w-20 h-20 bg-brand-blue/10 text-brand-blue rounded-3xl flex items-center justify-center mx-auto animate-bounce">
                         <Bot size={40} />
                       </div>
-                      <h2 className="text-2xl font-black text-brand-dark">AI Companion is Active</h2>
-                      <p className="text-slate-500 font-medium">Click the floating robot in the corner to chat with your business intelligence.</p>
-                      <button onClick={() => setActiveTab('dashboard')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all">Back to Dashboard</button>
+                      <h2 className="text-2xl font-black text-brand-dark">{t.aiCompanionActive}</h2>
+                      <p className="text-slate-500 font-medium">{t.aiCompanionSubtitle}</p>
+                      <button onClick={() => setActiveTab('dashboard')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-bold shadow-lg hover:bg-brand-dark transition-all">{t.backToDashboard}</button>
                     </div>
                   </div>
                 );
@@ -572,10 +575,10 @@ const App: React.FC = () => {
                     <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                       <div>
                         <div className="flex items-center gap-2 text-[10px] font-black text-brand-blue uppercase tracking-[0.3em] mb-1">
-                          <Globe size={12} /> Live Assets
+                          <Globe size={12} /> {t.liveAssets}
                         </div>
-                        <h2 className="text-4xl font-black text-brand-dark tracking-tight">Booking Portals</h2>
-                        <p className="text-slate-500 font-medium">Your client-facing scheduling interfaces.</p>
+                        <h2 className="text-4xl font-black text-brand-dark tracking-tight">{t.bookingPortals}</h2>
+                        <p className="text-slate-500 font-medium">{t.bookingPortalsSubtitle}</p>
                       </div>
                     </header>
                     
@@ -586,10 +589,9 @@ const App: React.FC = () => {
                               <LinkIcon size={32} />
                            </div>
                            <div>
-                             <h3 className="text-2xl font-black text-brand-dark mb-2">Main Booking Page</h3>
+                             <h3 className="text-2xl font-black text-brand-dark mb-2">{t.mainBookingPage}</h3>
                              <p className="text-slate-500 leading-relaxed font-medium">
-                               This is your master scheduling link. Clients can browse all your active services, 
-                               check availability in their own timezone, and book instantly.
+                               {t.mainBookingPageSubtitle}
                              </p>
                            </div>
                            
@@ -601,7 +603,7 @@ const App: React.FC = () => {
                                onClick={() => {
                                  const url = `${window.location.origin}/book/${user?.id || 'default'}`;
                                  navigator.clipboard.writeText(url);
-                                 showToast("Link copied!");
+                                 showToast(t.copyLinkToast);
                                }}
                                className="p-2 text-brand-blue hover:bg-white rounded-xl transition-all shadow-sm"
                              >
@@ -615,7 +617,7 @@ const App: React.FC = () => {
                             onClick={() => setIsPublicView(true)}
                             className="py-4 bg-brand-blue text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-blue/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
                            >
-                            <Globe size={18} /> Preview Live
+                            <Globe size={18} /> {t.previewLive}
                            </button>
                            <button 
                             onClick={() => {
@@ -624,7 +626,7 @@ const App: React.FC = () => {
                             }}
                             className="py-4 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2"
                            >
-                            Open in New Tab
+                            {t.openInNewTab}
                            </button>
                         </div>
                       </div>
@@ -694,8 +696,8 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className={`flex h-screen bg-[#fcfcfc] overflow-hidden font-sans selection:bg-brand-blue/10 selection:text-brand-blue ${language === 'he' ? 'font-hebrew' : ''}`}
-      dir={language === 'he' ? 'rtl' : 'ltr'}
+      className={`flex h-screen bg-[#fcfcfc] overflow-hidden font-sans selection:bg-brand-blue/10 selection:text-brand-blue ${(language === 'he' || language === 'ar') ? 'font-hebrew' : ''}`}
+      dir={translations[language].dir}
     >
       <Sidebar 
         activeTab={activeTab} 
@@ -766,7 +768,7 @@ const App: React.FC = () => {
               onClick={() => setActiveTab('ai-assistant')}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 cursor-pointer transition-colors"
             >
-              <span className="text-sm font-bold">{language === 'he' ? 'עזרה' : 'Help'}</span>
+              <span className="text-sm font-bold">{translations[language].help || 'Help'}</span>
             </div>
             <button 
               onClick={() => {
@@ -795,7 +797,7 @@ const App: React.FC = () => {
               <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs group-hover:bg-slate-200 transition-all">
                 {businessName.charAt(0)}
               </div>
-              <span className="text-sm font-bold text-slate-700">{language === 'he' ? 'חשבון' : 'Account'}</span>
+              <span className="text-sm font-bold text-slate-700">{translations[language].account || 'Account'}</span>
             </div>
           </div>
         </header>
@@ -812,7 +814,7 @@ const App: React.FC = () => {
           <Plus size={24} strokeWidth={3} />
         </button>
 
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
+        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} user={user} language={language} />
       </main>
 
       <MobileMenu 
@@ -870,7 +872,7 @@ const App: React.FC = () => {
         </button>
       )}
 
-      <AIAssistant appointments={appointments} clients={clients} />
+      <AIAssistant appointments={appointments} clients={clients} language={language} />
     </div>
   );
 };

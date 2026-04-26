@@ -3,19 +3,22 @@ import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '../firebase';
 import Logo from './Logo';
+import { Language, translations } from '../services/translations';
 
 interface LoginProps {
   onLogin: (email: string, uid: string, displayName: string | null) => void;
   initialMode?: 'register' | 'login';
   preFillEmail?: string;
+  language: Language;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEmail }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEmail, language }) => {
   const [email, setEmail] = useState(preFillEmail || '');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = translations[language];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +83,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans selection:bg-brand-blue/10 selection:text-brand-blue">
+    <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans selection:bg-brand-blue/10 selection:text-brand-blue" dir={t.dir}>
       {/* Left Panel: Welcoming Hero */}
       <div className="hidden md:flex md:w-1/2 bg-brand-blue p-16 flex-col justify-between relative overflow-hidden">
         {/* Abstract background shapes */}
@@ -91,10 +94,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
           <Logo size="lg" className="text-white mb-20" />
           <div className="space-y-6 max-w-lg">
             <h1 className="text-6xl font-black text-white leading-[0.9] tracking-tight">
-              The world's <span className="text-brand-dark">simplest</span> way to book.
+              {t.loginTitle}
             </h1>
             <p className="text-xl text-white/80 font-medium leading-relaxed">
-              Join 10,000+ professionals who use EasyBookly to automate their schedule and grow their business.
+              {t.loginSubtitle}
             </p>
           </div>
         </div>
@@ -108,17 +111,17 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
                 </div>
               ))}
             </div>
-            <p className="text-sm text-white/60 font-bold uppercase tracking-widest">Trusted by experts</p>
+            <p className="text-sm text-white/60 font-bold uppercase tracking-widest">{t.trustedByExperts}</p>
           </div>
           
           <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
             <div>
               <p className="text-3xl font-black text-white">99.9%</p>
-              <p className="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">Uptime Reliability</p>
+              <p className="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">{t.uptimeReliability}</p>
             </div>
             <div>
               <p className="text-3xl font-black text-white">24/7</p>
-              <p className="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">AI Concierge</p>
+              <p className="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">{t.aiAssistant}</p>
             </div>
           </div>
         </div>
@@ -133,10 +136,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
 
           <div className="space-y-2">
             <h2 className="text-3xl font-black text-brand-dark tracking-tight">
-              {isRegistering ? 'Create your account' : 'Welcome back'}
+              {isRegistering ? t.createAccount : t.welcomeBack}
             </h2>
             <p className="text-slate-500 font-medium">
-              {isRegistering ? 'Activate your professional business engine.' : 'Log in to manage your business.'}
+              {isRegistering ? t.activateEngine : t.logInManage}
             </p>
           </div>
 
@@ -152,35 +155,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t.emailAddress}</label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors" size={18} />
+                  <Mail className={`absolute ${t.dir === 'rtl' ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors`} size={18} />
                   <input 
                     type="email" 
                     required
                     placeholder="name@company.com"
-                    className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl text-sm focus:border-brand-blue outline-none transition-all font-bold placeholder:text-slate-300"
+                    className={`w-full ${t.dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} py-4 bg-white border-2 border-slate-100 rounded-2xl text-sm focus:border-brand-blue outline-none transition-all font-bold placeholder:text-slate-300`}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  {email.toLowerCase() === 'm.elsalameen@gmail.com' && (
-                    <div className="absolute -bottom-6 left-1 flex items-center gap-2">
-                       <ShieldCheck size={10} className="text-brand-blue animate-pulse" />
-                       <span className="text-[8px] font-black text-brand-blue uppercase tracking-widest">Master Admin ID Recognized</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t.password}</label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors" size={18} />
+                  <Lock className={`absolute ${t.dir === 'rtl' ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors`} size={18} />
                   <input 
                     type="password" 
                     required
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl text-sm focus:border-brand-blue outline-none transition-all font-bold placeholder:text-slate-300"
+                    className={`w-full ${t.dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} py-4 bg-white border-2 border-slate-100 rounded-2xl text-sm focus:border-brand-blue outline-none transition-all font-bold placeholder:text-slate-300`}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -192,13 +189,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
                 disabled={isLoading}
                 className="w-full py-5 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-dark shadow-2xl shadow-brand-blue/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {isLoading ? 'Processing...' : (isRegistering ? 'Get Started' : 'Sign In')} <ArrowRight size={18} />
+                {isLoading ? t.processing : (isRegistering ? t.getStarted : t.signIn)} <ArrowRight size={18} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
               </button>
             </form>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black"><span className="bg-[#fcfcfc] px-4 text-slate-300">Or continue with</span></div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black"><span className="bg-[#fcfcfc] px-4 text-slate-300">{t.orContinueWith}</span></div>
             </div>
 
             <button 
@@ -212,12 +209,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
           </div>
 
           <p className="text-center text-sm font-bold text-slate-400">
-            {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
+            {isRegistering ? t.alreadyHaveAccount : t.dontHaveAccount}{' '}
             <button 
               onClick={() => setIsRegistering(!isRegistering)}
               className="text-brand-blue font-black hover:underline"
             >
-              {isRegistering ? 'Log in' : 'Create account'}
+              {isRegistering ? t.logIn : t.createAccountBtn}
             </button>
           </p>
 

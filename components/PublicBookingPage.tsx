@@ -9,6 +9,7 @@ import { geminiAssistant } from '../services/geminiService';
 import { paymentService } from '@/services/paymentService';
 import PaymentErrorModal from '@/components/PaymentErrorModal';
 import { Language, translations } from '../services/translations';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface PublicBookingPageProps {
   userId?: string;
@@ -189,49 +190,49 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in" dir={t.dir}>
         <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-6">
           <Check size={32} />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Confirmed</h2>
-        <p className="text-slate-500 mb-8">You are scheduled with {businessName}.</p>
-        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-left w-full max-w-md mb-8">
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.confirmed}</h2>
+        <p className="text-slate-500 mb-8">{t.scheduledWith} {businessName}.</p>
+        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-left w-full max-w-md mb-8" dir={t.dir}>
            <h3 className="font-bold text-slate-900 mb-4">{selectedService?.name}</h3>
            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-sm text-slate-600">
+              <div className={`flex items-center gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                  <Calendar size={16} className="text-slate-400" />
-                 {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                 {new Date(selectedDate).toLocaleDateString(language === 'en' ? 'en-US' : language, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
               </div>
               <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3 text-sm text-slate-600">
+                <div className={`flex items-center gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                    <Clock size={16} className="text-slate-400" />
-                   {formatInTimezone(selectedTime, selectedDate, timezone)}, {selectedService?.duration} min
+                   {formatInTimezone(selectedTime, selectedDate, timezone)}, {selectedService?.duration} {t.minutes}
                 </div>
                 {businessTimezone !== timezone && (
-                  <div className="ml-7 text-[10px] text-slate-400 font-medium">
+                  <div className={`${t.dir === 'rtl' ? 'mr-7' : 'ml-7'} text-[10px] text-slate-400 font-medium`}>
                     ({selectedTime} {businessTimezone} - Business Time)
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-sm text-slate-600">
+              <div className={`flex items-center gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                  <Globe2 size={16} className="text-slate-400" />
                  {timezone}
               </div>
               
               {selectedService?.locationType === 'online' && (
                 <div className="mt-4 p-4 bg-brand-blue/5 border border-brand-blue/10 rounded-xl space-y-2">
-                   <div className="flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest">
-                      <Video size={14} /> Virtual Meeting Room
+                   <div className={`flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                      <Video size={14} /> {t.virtualMeetingRoom}
                    </div>
-                   <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-600 truncate mr-4">{confirmedMeetingLink || 'link-generation-failed'}</span>
+                   <div className={`flex items-center justify-between ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                      <span className="text-xs font-bold text-slate-600 truncate mr-4">{confirmedMeetingLink || t.linkGenFailed}</span>
                       <button 
                         onClick={() => {
                           if (confirmedMeetingLink) navigator.clipboard.writeText(confirmedMeetingLink);
                         }}
                         className="text-[10px] font-black text-brand-blue uppercase bg-white px-3 py-1 rounded-md border border-brand-blue/10 hover:bg-brand-blue/5 transition-all"
                       >
-                        COPY
+                        {t.copy}
                       </button>
                    </div>
                 </div>
@@ -243,13 +244,13 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
             onClick={() => alert('Download .ics file coming soon!')}
             className="px-6 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md"
            >
-            Add to Calendar
+            {t.addToCalendar}
            </button>
            <button 
             onClick={() => onBack ? onBack() : window.location.href = '/'} 
             className="px-6 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all"
            >
-            Close
+            {t.close}
            </button>
         </div>
       </div>
@@ -258,9 +259,14 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
   return (
     <div 
-      className={`min-h-screen bg-[#f9fafb] flex flex-col items-center justify-center p-4 ${language === 'he' ? 'font-hebrew' : ''}`}
-      dir={language === 'he' ? 'rtl' : 'ltr'}
+      className={`min-h-screen bg-[#f9fafb] flex flex-col items-center justify-center p-4 ${language === 'he' || language === 'ar' ? 'font-sans' : ''}`}
+      dir={t.dir}
     >
+      {/* Floating Language Switcher for Public Users */}
+      <div className="fixed top-8 right-8 z-[110]">
+         <LanguageSwitcher currentLanguage={language} onUpdateLanguage={setLanguage} />
+      </div>
+
       {/* AI Float Button */}
       <button 
         onClick={() => setShowAi(!showAi)}
@@ -271,14 +277,14 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
       {/* AI Inquiry Drawer */}
       {showAi && (
-        <div className="fixed bottom-24 right-4 sm:right-8 w-[calc(100%-32px)] sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[100] animate-in slide-in-from-bottom-4">
+        <div className={`fixed bottom-24 ${t.dir === 'rtl' ? 'left-4 sm:left-8' : 'right-4 sm:right-8'} w-[calc(100%-32px)] sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[100] animate-in slide-in-from-bottom-4`} dir={t.dir}>
            <div className="bg-brand-blue p-4 text-white">
-              <h4 className="font-bold flex items-center gap-2 text-sm"><Sparkles size={14} /> EasyBookly Intelligence</h4>
-              <p className="text-[10px] opacity-80">Ask anything about this session</p>
+              <h4 className="font-bold flex items-center gap-2 text-sm"><Sparkles size={14} /> {t.aiIntelligence}</h4>
+              <p className="text-[10px] opacity-80">{t.aiInquirySubtitle}</p>
            </div>
            <div className="h-64 overflow-y-auto p-4 space-y-4 text-xs scroll-smooth">
               {aiMessages.length === 0 && (
-                <p className="text-slate-400 italic">"What should I prepare for the meeting?"</p>
+                <p className="text-slate-400 italic">"{t.typeQuestion}"</p>
               )}
               {aiMessages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -287,17 +293,17 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                    </div>
                 </div>
               ))}
-              {isAiTyping && <div className="text-slate-400 text-[10px] animate-pulse">Assistant is thinking...</div>}
+              {isAiTyping && <div className="text-slate-400 text-[10px] animate-pulse">{t.aiThinking}</div>}
            </div>
            <div className="p-3 border-t border-slate-100 flex gap-2">
               <input 
                 className="flex-1 bg-slate-50 rounded-lg px-3 py-2 text-xs outline-none"
-                placeholder="Type your question..."
+                placeholder={t.typeQuestion}
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && askAi()}
               />
-              <button onClick={askAi} className="p-2 bg-brand-blue text-white rounded-lg"><Send size={14} /></button>
+              <button onClick={askAi} className="p-2 bg-brand-blue text-white rounded-lg"><Send size={14} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
            </div>
         </div>
       )}
@@ -314,7 +320,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[640px] animate-in zoom-in-95 duration-700">
         
         {/* Left Side: Summary & Branding */}
-        <div className="w-full md:w-[360px] border-b md:border-b-0 md:border-r border-slate-100 p-6 md:p-10 bg-white">
+        <div className={`w-full md:w-[360px] border-b md:border-b-0 ${t.dir === 'rtl' ? 'md:border-l' : 'md:border-r'} border-slate-100 p-6 md:p-10 bg-white`}>
           <div className="flex items-center gap-3 mb-6 md:mb-10">
             <button 
               onClick={() => { 
@@ -323,53 +329,53 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                 else window.location.href = '/';
               }} 
               className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all font-bold"
-              title="Go Back"
+              title={t.goBack}
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={20} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
             </button>
             {onBack && step === 1 && (
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Return to App</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.returnToApp}</span>
             )}
           </div>
           
           <div className="space-y-6">
-            <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-4 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
               <Logo size="lg" showText={false} />
-              <div>
+              <div className={t.dir === 'rtl' ? 'text-right' : 'text-left'}>
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{businessName}</p>
-                <h1 className="text-2xl font-black text-slate-900">{selectedService?.name || 'Schedule Time'}</h1>
+                <h1 className="text-2xl font-black text-slate-900">{selectedService?.name || t.scheduleTime}</h1>
               </div>
             </div>
 
             {selectedService && (
               <div className="space-y-5 pt-4 border-t border-slate-50">
-                <div className="flex items-center gap-3 text-slate-600 font-bold text-sm">
+                <div className={`flex items-center gap-3 text-slate-600 font-bold text-sm ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                   <Clock size={18} className="text-slate-300" />
-                  {selectedService.duration} Minutes
+                  {selectedService.duration} {t.minutes}
                 </div>
-                <div className="flex items-center gap-3 text-slate-600 font-bold text-sm">
+                <div className={`flex items-center gap-3 text-slate-600 font-bold text-sm ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                   <Video size={18} className="text-slate-300" />
-                  Integrated Video Call (Built-in)
+                  {t.integratedVideo}
                 </div>
                 {selectedDate && (
-                  <div className="flex items-start gap-3 text-brand-blue font-bold text-sm animate-in fade-in">
+                  <div className={`flex items-start gap-3 text-brand-blue font-bold text-sm animate-in fade-in ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : ''}`}>
                     <Calendar size={18} className="text-brand-blue/40" />
                     <div>
-                      <span>{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                      <span>{new Date(selectedDate).toLocaleDateString(language === 'en' ? 'en-US' : language, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                       {selectedTime && <span className="block text-brand-dark opacity-70 mt-0.5">{selectedTime}</span>}
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-3 text-emerald-600 font-bold text-sm">
+                <div className={`flex items-center gap-3 text-emerald-600 font-bold text-sm ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                   <Zap size={18} className="text-emerald-400" />
-                  {symbol}{selectedService.price} Standard Fee
+                  {symbol}{selectedService.price} {t.standardFee}
                 </div>
               </div>
             )}
             
             <div className="pt-10">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-3">Service Timezone</p>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-bold text-slate-600">
+              <p className={`text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-3 ${t.dir === 'rtl' ? 'text-right' : ''}`}>{t.serviceTimezone}</p>
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-bold text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                 <Globe2 size={12} /> {timezone}
               </div>
             </div>
@@ -382,47 +388,48 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
           {/* Step 1: Service Selection */}
           {step === 1 && (
             <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">What session works for you?</h2>
-                <p className="text-sm text-slate-500 mt-1">Select the event type you'd like to book with us.</p>
+              <div className={t.dir === 'rtl' ? 'text-right' : 'text-left'}>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{t.whatSessionWorks}</h2>
+                <p className="text-sm text-slate-500 mt-1">{t.selectEventType}</p>
               </div>
               <div className="grid grid-cols-1 gap-4">
                  {services.map(s => (
                    <button 
                     key={s.name} 
                     onClick={() => { setSelectedService(s); setStep(2); }}
-                    className="p-8 bg-white border border-slate-200 rounded-2xl hover:border-brand-blue hover:shadow-xl hover:shadow-brand-blue/5 transition-all text-left group flex items-center justify-between"
+                    className={`p-8 bg-white border border-slate-200 rounded-2xl hover:border-brand-blue hover:shadow-xl hover:shadow-brand-blue/5 transition-all group flex items-center justify-between ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : 'text-left'}`}
                    >
-                     <div className="flex items-center gap-6">
+                     <div className={`flex items-center gap-6 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: s.color }} />
                         <div>
                           <h3 className="text-lg font-bold text-slate-900 group-hover:text-brand-blue transition-colors">{s.name}</h3>
-                          <p className="text-sm text-slate-400 font-medium">{s.duration} min • {symbol}{s.price}</p>
+                          <p className="text-sm text-slate-400 font-medium">{s.duration} {t.minutes} • {symbol}{s.price}</p>
                         </div>
                      </div>
-                     <ChevronRight className="text-slate-300 group-hover:text-brand-blue group-hover:translate-x-1 transition-all" size={24} />
+                     <ChevronRight className={`text-slate-300 group-hover:text-brand-blue transition-all ${t.dir === 'rtl' ? 'rotate-180 group-hover:-translate-x-1' : 'group-hover:translate-x-1'}`} size={24} />
                    </button>
                  ))}
               </div>
             </div>
           )}
-
           {/* Step 2: Date & Time Selection */}
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-700">
-               <h2 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Choose your time</h2>
-               <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+               <h2 className={`text-2xl font-black text-slate-900 mb-8 tracking-tight ${t.dir === 'rtl' ? 'text-right' : ''}`}>{t.chooseYourTime}</h2>
+               <div className={`flex flex-col lg:flex-row gap-8 lg:gap-12 ${t.dir === 'rtl' ? 'lg:flex-row-reverse' : ''}`}>
                   <div className="flex-1">
-                     <div className="flex justify-between items-center mb-6">
-                        <h4 className="font-bold text-slate-800">May 2024</h4>
-                        <div className="flex gap-2">
-                           <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowLeft size={16} /></button>
-                           <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowRight size={16} /></button>
+                     <div className={`flex justify-between items-center mb-6 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                        <h4 className="font-bold text-slate-800">
+                          {new Date(selectedDate || Date.now()).toLocaleDateString(language, { month: 'long', year: 'numeric' })}
+                        </h4>
+                        <div className={`flex gap-2 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                           <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowLeft size={16} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
+                           <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowRight size={16} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
                         </div>
                      </div>
-                     <div className="grid grid-cols-7 gap-2 text-center mb-4">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                          <span key={d} className="text-[10px] font-black text-slate-300 tracking-widest">{d}</span>
+                     <div className={`grid grid-cols-7 gap-2 text-center mb-4 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                        {(t.dir === 'rtl' ? (language === 'he' ? ['ש', 'ו', 'ה', 'ד', 'ג', 'ב', 'א'] : ['ج', 'خ', 'ر', 'ث', 'ن', 'ح', 'س']) : ['S', 'M', 'T', 'W', 'T', 'F', 'S']).map(d => (
+                           <span key={d} className="text-[10px] font-black text-slate-300 tracking-widest">{d}</span>
                         ))}
                      </div>
                      <div className="grid grid-cols-7 gap-1 sm:gap-2">
@@ -451,7 +458,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
                   {selectedDate && (
                     <div className="w-full lg:w-56 space-y-3 animate-in fade-in zoom-in-95">
-                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                       <p className={`text-xs font-black text-slate-400 uppercase tracking-widest mb-6 ${t.dir === 'rtl' ? 'text-right' : ''}`}>{new Date(selectedDate).toLocaleDateString(language, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
                        <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2 custom-scroll">
                           {(availableSlots.length > 0 ? availableSlots : ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']).map(time => {
                              const clientTime = formatInTimezone(time, selectedDate, timezone);
@@ -460,9 +467,9 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                                <div key={time} className="flex flex-col gap-2">
                                   <button 
                                    onClick={() => { setSelectedTime(time); }}
-                                   className={`w-full py-4 px-4 border-2 font-black rounded-2xl text-left transition-all flex justify-between items-center ${selectedTime === time ? 'bg-slate-800 text-white border-slate-800 scale-[0.98]' : 'border-brand-blue/30 text-brand-blue hover:border-brand-blue'}`}
+                                   className={`w-full py-4 px-4 border-2 font-black rounded-2xl transition-all flex justify-between items-center ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : 'text-left'} ${selectedTime === time ? 'bg-slate-800 text-white border-slate-800 scale-[0.98]' : 'border-brand-blue/30 text-brand-blue hover:border-brand-blue'}`}
                                   >
-                                     <div className="flex flex-col text-left">
+                                     <div className={`flex flex-col ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                                         <span className="text-sm">{clientTime}</span>
                                         {isDifferentTz && (
                                           <span className="text-[10px] opacity-60 font-medium">({time} Business Local)</span>
@@ -475,7 +482,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                                      onClick={() => setStep(3)}
                                      className="w-full py-4 bg-brand-blue text-white font-black rounded-2xl text-sm shadow-xl shadow-brand-blue/20 animate-in slide-in-from-top-2"
                                     >
-                                      Confirm Time
+                                      {t.confirmTime}
                                     </button>
                                   )}
                                </div>
@@ -490,38 +497,38 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
           {/* Step 3: Confirmation Details */}
           {step === 3 && (
-            <div className="max-w-md mx-auto space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
+            <div className={`max-w-md mx-auto space-y-10 animate-in fade-in slide-in-from-right-8 duration-700 ${t.dir === 'rtl' ? 'text-right' : ''}`}>
                <div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Complete your booking</h2>
-                  <p className="text-sm text-slate-500 mt-1">We'll send you a calendar invite with all the details.</p>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">{t.completeBooking}</h2>
+                  <p className="text-sm text-slate-500 mt-1">{t.calendarInviteNotice}</p>
                </div>
 
                <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Full Name *</label>
+                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.fullName}</label>
                     <input 
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300"
+                      className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
                       placeholder="Jane Doe"
                       value={clientInfo.name}
                       onChange={e => setClientInfo({...clientInfo, name: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address *</label>
+                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.emailAddress}</label>
                     <input 
                       type="email"
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300"
+                      className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
                       placeholder="jane@company.com"
                       value={clientInfo.email}
                       onChange={e => setClientInfo({...clientInfo, email: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Additional Notes</label>
+                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.additionalNotes}</label>
                     <textarea 
                       rows={4}
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 resize-none"
-                      placeholder="Share anything that will help prepare for our meeting..."
+                      className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 resize-none ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
+                      placeholder={t.sharedNotePlaceholder}
                       value={clientInfo.note}
                       onChange={e => setClientInfo({...clientInfo, note: e.target.value})}
                     />
@@ -530,26 +537,26 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                
                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                     By confirming this booking, you agree to our <span onClick={() => setShowLegalModal('terms')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Terms of Service</span> and <span onClick={() => setShowLegalModal('privacy')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">Privacy Policy</span>. Your data is handled securely via EasyBookly.
+                     {t.agreeToTerms} <span onClick={() => setShowLegalModal('terms')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">{t.termsOfService}</span> {language === 'en' ? 'and' : ''} <span onClick={() => setShowLegalModal('privacy')} className="text-brand-blue font-bold cursor-pointer transition-all hover:underline">{t.privacyPolicy}</span>. {t.dataSecureNotice}
                    </p>
                 </div>
 
                 <AnimatePresence>
                   {showLegalModal && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" dir={t.dir}>
                        <motion.div 
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         className="bg-white rounded-[32px] w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
                        >
-                          <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                          <div className={`p-8 border-b border-slate-100 flex items-center justify-between ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
                              <h3 className="text-2xl font-black text-brand-dark tracking-tight">
-                                {showLegalModal === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+                                {showLegalModal === 'terms' ? t.termsOfService : t.privacyPolicy}
                              </h3>
                              <button onClick={() => setShowLegalModal(null)} className="p-2 hover:bg-slate-50 rounded-full text-slate-400"><X size={24} /></button>
                           </div>
-                          <div className="p-10 overflow-y-auto custom-scroll">
+                          <div className={`p-10 overflow-y-auto custom-scroll ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                              <div className="prose prose-slate max-w-none">
                                 <p className="text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">
                                    {showLegalModal === 'terms' ? legalData.termsOfService : legalData.privacyPolicy}
@@ -559,7 +566,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                              </div>
                           </div>
                           <div className="p-8 border-t border-slate-50 bg-slate-50/50">
-                             <button onClick={() => setShowLegalModal(null)} className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-blue/20">I UNDERSTAND</button>
+                             <button onClick={() => setShowLegalModal(null)} className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-blue/20">{t.iUnderstand}</button>
                           </div>
                        </motion.div>
                     </div>
@@ -571,8 +578,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                 disabled={isSubmitting || !clientInfo.name || !clientInfo.email}
                 className="w-full py-5 bg-brand-blue text-white rounded-3xl font-black text-lg shadow-2xl shadow-brand-blue/30 hover:bg-brand-dark transition-all active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                >
-                 {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : 'Complete Booking'}
-                 {!isSubmitting && <ArrowRight size={20} />}
+                 {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : t.completeBookingBtn}
+                 {!isSubmitting && <ArrowRight size={20} className={t.dir === 'rtl' ? 'rotate-180' : ''} />}
                </button>
             </div>
           )}
@@ -580,17 +587,17 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       </div>
       
       <div className="mt-12 flex flex-col items-center gap-6 px-4">
-        <div className="flex flex-col sm:flex-row items-center gap-3 py-4 sm:py-2.5 px-8 sm:px-6 bg-white border border-slate-200 rounded-[28px] sm:rounded-full shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all group cursor-pointer" onClick={() => window.open('https://easybookly.com', '_blank')}>
-          <div className="flex items-center gap-2">
+        <div className={`flex flex-col sm:flex-row items-center gap-3 py-4 sm:py-2.5 px-8 sm:px-6 bg-white border border-slate-200 rounded-[28px] sm:rounded-full shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all group cursor-pointer ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`} onClick={() => window.open('https://easybookly.com', '_blank')}>
+          <div className={`flex items-center gap-2 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
             <Logo size="sm" />
             <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 group-hover:text-brand-blue transition-colors text-center">Create your own AI Booking Page • Free</span>
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-blue group-hover:translate-x-0.5 transition-all hidden sm:block" />
+          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 group-hover:text-brand-blue transition-colors text-center">{t.createOwnPage}</span>
+          <ChevronRight size={14} className={`text-slate-300 group-hover:text-brand-blue transition-all hidden sm:block ${t.dir === 'rtl' ? 'rotate-180 group-hover:-translate-x-0.5' : 'group-hover:translate-x-0.5'}`} />
         </div>
         
-        <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-50">
-          <ShieldCheck size={14} /> Verified Secure • SSL Encrypted
+        <div className={`flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-50 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+          <ShieldCheck size={14} /> {t.verifiedSecure}
         </div>
       </div>
     </div>

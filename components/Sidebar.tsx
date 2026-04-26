@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
-import { translations } from '../services/translations';
+import { translations, Language } from '../services/translations';
 
 interface SidebarProps {
   activeTab: string;
@@ -16,8 +16,8 @@ interface SidebarProps {
   onAddClick?: () => void;
   onOpenMobileGuide?: () => void;
   onSyncNow?: () => void;
-  language: 'en' | 'he';
-  onUpdateLanguage: (lang: 'en' | 'he') => void;
+  language: Language;
+  onUpdateLanguage: (lang: Language) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout, connectedApps, onAddClick, onOpenMobileGuide, onSyncNow, language, onUpdateLanguage }) => {
@@ -29,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
   const menuItems = [];
 
   if (isAdmin) {
-    menuItems.push({ id: 'management', label: 'Management', icon: ShieldCheck });
+    menuItems.push({ id: 'management', label: t.dashboard, icon: ShieldCheck });
   }
 
   menuItems.push(
@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
     { id: 'marketing', label: t.marketing, icon: Zap },
     { id: 'ai-assistant', label: t.aiAssistant, icon: Sparkles },
     { id: 'booking-links', label: t.publicPortal, icon: Globe },
-    { id: 'subscription', label: 'Billing & Plan', icon: CreditCard },
+    { id: 'subscription', label: t.payouts, icon: CreditCard },
     { id: 'clients', label: t.clients, icon: Users },
   );
 
@@ -99,7 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                    onClick={onAddClick}
                    className="w-full flex items-center gap-3 px-4 py-2.5 bg-brand-blue text-white rounded-full font-bold text-sm shadow-md hover:bg-blue-700 transition-all mb-8"
                  >
-                    <Plus size={18} strokeWidth={3} /> Create
+                    <Plus size={18} strokeWidth={3} /> {t.create}
                  </button>
               </motion.div>
 
@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
 
               <motion.button
                 variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
-                onClick={() => { setActiveTab('settings'); /* trigger legal tab if I could but let's just go to settings */ }}
+                onClick={() => { setActiveTab('settings'); }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm ${
                   activeTab === 'settings'
                     ? 'bg-slate-50 text-brand-dark'
@@ -129,17 +129,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                 }`}
               >
                 <FileText size={18} strokeWidth={2.5} className={`${activeTab === 'settings' ? 'text-brand-dark' : 'text-slate-400'}`} />
-                Legal & Compliance
+                {t.legal}
               </motion.button>
 
               <motion.button
                 variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
-                onClick={() => onUpdateLanguage(language === 'en' ? 'he' : 'en')}
+                onClick={() => {
+                  const langs: Language[] = ['en', 'he', 'es', 'fr', 'de', 'ar'];
+                  const currentIndex = langs.indexOf(language);
+                  const nextIndex = (currentIndex + 1) % langs.length;
+                  onUpdateLanguage(langs[nextIndex]);
+                }}
                 className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all font-bold text-xs text-slate-500 bg-slate-50 hover:bg-slate-100 mt-2"
               >
                 <div className="flex items-center gap-3">
                   <Globe size={16} />
-                  <span>{language === 'en' ? 'עברית' : 'English'}</span>
+                  <span>{t.language}</span>
                 </div>
                 <div className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[8px] uppercase tracking-tighter">
                   {language.toUpperCase()}
@@ -152,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                 className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm text-brand-blue bg-brand-blue/5 hover:bg-brand-blue/10 border border-brand-blue/10 mt-4"
               >
                 <Smartphone size={18} strokeWidth={2.5} />
-                Install Mobile App
+                {t.installMobile}
               </motion.button>
 
               {/* Early Access Info */}
@@ -160,10 +165,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                 <motion.div variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }} className="mt-6 px-4 py-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10 mx-1">
                    <div className="flex items-center gap-2 mb-2">
                       <Sparkles size={12} className="text-brand-blue" />
-                      <span className="text-[9px] font-black text-brand-blue uppercase tracking-widest">Early Access Active</span>
+                      <span className="text-[9px] font-black text-brand-blue uppercase tracking-widest">{t.earlyAccessActive}</span>
                    </div>
                    <p className="text-[10px] font-bold text-slate-500 leading-tight italic">
-                     Enjoy global premium AI and Full White-labeling free during our beta phase. (Value: $11/mo)
+                     {t.earlyAccessDesc}
                    </p>
                 </motion.div>
               )}
@@ -172,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
               {connectedApps.length > 0 && (
                 <div className="mt-8 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 mx-2">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sync Status</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.syncStatus}</p>
                     <button 
                       onClick={() => {
                         if (onSyncNow) {
@@ -191,14 +196,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                     {connectedApps.includes('google') && (
                       <div className="flex items-center gap-2">
                         <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" className="w-3.5 h-3.5" alt="Google" />
-                        <span className="text-[11px] font-bold text-slate-600">Google Active</span>
+                        <span className="text-[11px] font-bold text-slate-600">{t.googleActive}</span>
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full ml-auto animate-pulse" />
                       </div>
                     )}
                     {connectedApps.includes('outlook') && (
                       <div className="flex items-center gap-2">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/d/df/Microsoft_Office_Outlook_%282018%E2%80%93present%29.svg" className="w-3.5 h-3.5" alt="Outlook" />
-                        <span className="text-[11px] font-bold text-slate-600">Outlook Active</span>
+                        <span className="text-[11px] font-bold text-slate-600">{t.outlookActive}</span>
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full ml-auto animate-pulse" />
                       </div>
                     )}
@@ -213,7 +218,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm ${activeTab === 'settings' ? 'bg-slate-50 text-brand-dark' : 'text-slate-500 hover:bg-slate-50'}`}
               >
                 <Settings size={18} />
-                Settings
+                {t.settings}
               </button>
               
               <div className="mt-4 pt-4 border-t border-slate-50">
@@ -225,8 +230,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                     {onLogout ? 'S' : 'U'}
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-black text-brand-dark truncate">{user?.email || 'User Account'}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Free Early Access</p>
+                    <p className="text-sm font-black text-brand-dark truncate">{user?.email || t.userAccount}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.welcome}</p>
                   </div>
                 </div>
                 <button 
@@ -234,7 +239,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all font-bold text-sm text-rose-500 hover:bg-rose-50 mt-2"
                 >
                   <LogOut size={18} />
-                  Sign Out
+                  {t.signOut}
                 </button>
               </div>
             </div>

@@ -6,16 +6,21 @@ import {
   Crown, Rocket, Star, Heart, Activity, DollarSign, Timer, CreditCard, X, Users
 } from 'lucide-react';
 import Logo from './Logo';
+import LanguageSwitcher from './LanguageSwitcher';
+import { Language, translations } from '../services/translations';
 
 interface LandingPageProps {
   onStart: (mode?: 'register' | 'login') => void;
   onLogin: () => void;
   isLoggedIn: boolean;
+  language: Language;
+  onUpdateLanguage: (lang: Language) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn, language, onUpdateLanguage }) => {
   const [showMagic, setShowMagic] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+  const t = translations[language];
 
   const monthlyStarter = 13;
   const annualStarter = 7.5; // $90 / 12
@@ -23,23 +28,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
   const annualElite = 15; // $180 / 12
 
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-brand-blue/10 selection:text-brand-blue overflow-x-hidden">
+    <div className="min-h-screen bg-white font-sans selection:bg-brand-blue/10 selection:text-brand-blue overflow-x-hidden" dir={t.dir}>
       
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Logo size="md" />
           <div className="hidden md:flex items-center gap-10">
-            {['Product', 'Features', 'Pricing', 'AI Assistant'].map(item => (
-              <a key={item} href={`#${item.toLowerCase()}`} className="text-sm font-black text-slate-400 hover:text-brand-blue transition-all uppercase tracking-widest">{item}</a>
+            {[t.product, t.features, t.pricing, t.aiAssistant].map((item, idx) => (
+              <a key={idx} href={`#${item.toLowerCase()}`} className="text-sm font-black text-slate-400 hover:text-brand-blue transition-all uppercase tracking-widest">{item}</a>
             ))}
           </div>
           <div className="flex items-center gap-4">
+            <LanguageSwitcher currentLanguage={language} onUpdateLanguage={onUpdateLanguage} />
             <button onClick={onLogin} className="hidden sm:block text-sm font-black text-slate-900 uppercase tracking-widest px-6 py-2 hover:bg-slate-50 rounded-full transition-all">
-              {isLoggedIn ? 'Dashboard' : 'Login'}
+              {isLoggedIn ? t.dashboard : t.login}
             </button>
             <button onClick={() => onStart('register')} className="px-8 py-3 bg-brand-blue text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all active:scale-95">
-              {isLoggedIn ? 'Dashboard' : 'Get Started'}
+              {isLoggedIn ? t.dashboard : t.getStarted}
             </button>
           </div>
         </div>
@@ -58,7 +64,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-3 px-5 py-2 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-brand-blue/10"
             >
-              <Sparkles size={14} className="animate-pulse" /> The World's First AI-Native Scheduler
+              <Sparkles size={14} className="animate-pulse" /> {t.heroTag}
             </motion.div>
             
             <motion.h1 
@@ -67,8 +73,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               transition={{ delay: 0.1 }}
               className="text-7xl md:text-[9.5rem] font-black text-brand-dark leading-[0.85] tracking-tighter"
             >
-              AI <span className="text-brand-blue">AGENT.</span><br />
-              BOOKINGS <span className="text-slate-200">SOLVED.</span>
+              {language === 'he' || language === 'ar' ? (
+                <> {t.heroTitle1} <br/> {t.heroTitle2} </>
+              ) : (
+                <> {t.heroTitle1}<br /> {t.heroTitle2} </>
+              )}
             </motion.h1>
 
             <motion.p 
@@ -77,7 +86,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               transition={{ delay: 0.2 }}
               className="text-xl md:text-2xl text-slate-500 font-medium max-w-2xl leading-relaxed"
             >
-              The professional scheduling OS for high-performance consultants. EasyBookly automates your briefings with an AI concierge, secure global payouts, and a brand experience that builds trust instantly.
+              {t.heroSubtitle}
             </motion.p>
 
             <motion.div 
@@ -90,14 +99,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                 onClick={() => onStart()}
                 className="w-full sm:w-auto px-12 py-6 bg-brand-blue text-white rounded-[32px] font-black text-xl shadow-2xl shadow-brand-blue/30 hover:bg-brand-dark transition-all transform hover:-translate-y-1 flex items-center justify-center gap-4"
               >
-                {isLoggedIn ? 'Access Your Dashboard' : 'Access Your Dashboard'} <ArrowRight size={24} />
+                {t.accessDashboard} <ArrowRight size={24} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
               </button>
               <button 
                 onClick={() => setShowMagic(true)}
                 className="flex items-center gap-4 text-brand-dark font-black uppercase tracking-widest text-sm hover:scale-105 transition-all p-4"
               >
-                <div className="w-14 h-14 bg-brand-dark rounded-full flex items-center justify-center text-white"><Play size={20} fill="currentColor" /></div>
-                Watch the Magic
+                <div className="w-14 h-14 bg-brand-dark rounded-full flex items-center justify-center text-white"><Play size={20} fill="currentColor" className={t.dir === 'rtl' ? 'rotate-180' : ''} /></div>
+                {t.watchMagic}
               </button>
             </motion.div>
 
@@ -112,8 +121,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                   <div className="w-12 h-12 rounded-2xl border-4 border-white bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">BETA</div>
                </div>
                <div>
-                  <div className="flex gap-1 text-emerald-500 items-center"><Check size={14} strokeWidth={4} /><span className="text-[10px] font-black uppercase tracking-widest leading-none">Global Beta Access Active</span></div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">Join the future of autonomous scheduling</p>
+                  <div className="flex gap-1 text-emerald-500 items-center"><Check size={14} strokeWidth={4} /><span className="text-[10px] font-black uppercase tracking-widest leading-none">{t.globalBetaActive}</span></div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">{t.joinFuture}</p>
                </div>
             </motion.div>
           </div>
@@ -123,7 +132,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
       {/* Proof Section - Logo Wall */}
       <section className="py-20 bg-slate-50/50 border-y border-slate-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
-           <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mb-12">Built for high-performance professionals</p>
+           <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mb-12">{t.builtForProfessionals}</p>
            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-30 grayscale hover:grayscale-0 transition-all duration-1000">
               {['Architects', 'Consultants', 'Engineers', 'Coaches', 'Designers'].map(name => (
                 <span key={name} className="text-2xl font-black tracking-tighter text-slate-900">{name}</span>
@@ -141,7 +150,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
                  Gemini 1.5 Integration
               </div>
-              <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tighter">Your Assistant <br/> Never <span className="text-brand-blue">Sleeps.</span></h2>
+              <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tighter">{t.aiAssistantTitle}</h2>
               <div className="space-y-6">
               {['Automate bookings with an AI concierge', 'Accept payments globally (USD/EUR/GBP)', 'Zero maintenance, maximum performance'].map(text => (
                    <div key={text} className="flex items-center gap-4 text-white/70 font-bold">
@@ -154,7 +163,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                 onClick={() => onStart()}
                 className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
               >
-                Start Free Trial
+                {t.startFreeTrial}
               </button>
            </div>
            
@@ -207,8 +216,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
       <section id="features" className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24 max-w-3xl mx-auto space-y-6">
-            <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">Why founders are quitting <span className="text-slate-300 line-through">others</span> for us.</h2>
-            <p className="text-xl text-slate-500 font-medium">We didn't just build a calendar. We built an autonomous booking engine.</p>
+            <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">{t.whyFounders}</h2>
+            <p className="text-xl text-slate-500 font-medium">{t.autonomousEngine}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -340,12 +349,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
       <section className="bg-brand-dark py-32 text-white relative overflow-hidden px-6">
         <div className="max-w-4xl mx-auto text-center space-y-12 relative z-10">
             <div className="w-20 h-20 bg-brand-blue mx-auto rounded-3xl flex items-center justify-center shadow-2xl shadow-brand-blue/20 rotate-12 mb-10"><Zap size={40} fill="currentColor" /></div>
-            <h2 className="text-5xl md:text-8xl font-black leading-[0.8] tracking-tighter">THE FUTURE OF BOOKING IS <span className="text-brand-blue">HERE.</span></h2>
+            <h2 className="text-5xl md:text-8xl font-black leading-[0.8] tracking-tighter">{t.itIsHere}</h2>
             <p className="text-xl text-white/60 font-medium max-w-xl mx-auto">
-               Dont let another meeting slip through the cracks. Join the disruption and start booking sessions with global precision today.
+               {t.dontLetMeetingSlip}
             </p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-6 pt-10">
-               <button onClick={() => onStart()} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">Begin Today</button>
+               <button onClick={() => onStart()} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">{t.beginToday}</button>
             </div>
             
             <div className="pt-24 grid grid-cols-1 md:grid-cols-4 gap-10 text-left border-t border-white/5">
@@ -410,8 +419,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn 
                    </div>
                    
                    <div className="max-w-2xl space-y-6">
-                      <h3 className="text-4xl md:text-5xl font-black text-white leading-tight">Observe the <span className="text-brand-blue">Automation Engine.</span></h3>
-                      <p className="text-lg md:text-xl text-white/50 font-medium">EasyBookly isn't just a UI—it's a symphony of AI agents, payment hooks, and CRM logic working in perfect unison to make you money while you sleep.</p>
+                      <h3 className="text-4xl md:text-5xl font-black text-white leading-tight">{t.magicObserve}</h3>
+                      <p className="text-lg md:text-xl text-white/50 font-medium">{t.magicDesc}</p>
                    </div>
 
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl">

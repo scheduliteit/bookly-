@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download } from 'lucide-react';
 import { paymentService, MerchantStats, Transaction } from '../services/paymentService';
 import { Service } from '../types';
+import { translations, Language } from '../services/translations';
 
 interface SettingsProps {
   businessName: string;
@@ -19,8 +19,8 @@ interface SettingsProps {
   onUpdateTimezone: (tz: string) => void;
   userId: string;
   initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization';
-  language: 'en' | 'he';
-  onUpdateLanguage: (lang: 'en' | 'he') => void;
+  language: Language;
+  onUpdateLanguage: (lang: Language) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -180,21 +180,23 @@ const Settings: React.FC<SettingsProps> = ({
     { day: 'Saturday', hours: 'Unavailable', active: false },
   ];
 
+  const t = translations[language];
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Management</h2>
+          <h2 className="text-2xl font-bold text-brand-dark tracking-tight">{t.settings}</h2>
           <p className="text-sm text-slate-500">Configure your business identity and rules.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
           {[
-            { id: 'profile', label: 'Profile' },
-            { id: 'services', label: 'Event Types' },
-            { id: 'availability', label: 'Availability' },
-            { id: 'payouts', label: 'Payments' },
-            { id: 'localization', label: 'Localization' },
-            { id: 'legal', label: 'Legal' }
+            { id: 'profile', label: t.profile },
+            { id: 'services', label: t.services },
+            { id: 'availability', label: t.availability },
+            { id: 'payouts', label: t.payouts },
+            { id: 'localization', label: t.localization },
+            { id: 'legal', label: t.legal }
           ].map((tab) => (
             <button 
               key={tab.id}
@@ -572,19 +574,23 @@ const Settings: React.FC<SettingsProps> = ({
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     <Languages size={14} /> Application Language
                   </label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button 
-                      onClick={() => onUpdateLanguage('en')}
-                      className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${language === 'en' ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
-                    >
-                      English (US)
-                    </button>
-                    <button 
-                      onClick={() => onUpdateLanguage('he')}
-                      className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${language === 'he' ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
-                    >
-                      עברית (IL)
-                    </button>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {[
+                      { id: 'en', label: 'English' },
+                      { id: 'he', label: 'עברית' },
+                      { id: 'es', label: 'Español' },
+                      { id: 'fr', label: 'Français' },
+                      { id: 'de', label: 'Deutsch' },
+                      { id: 'ar', label: 'العربية' }
+                    ].map((lang) => (
+                      <button 
+                        key={lang.id}
+                        onClick={() => onUpdateLanguage(lang.id as Language)}
+                        className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${language === lang.id ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 

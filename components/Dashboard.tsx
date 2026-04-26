@@ -27,10 +27,10 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide, onJoinMeeting }) => {
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [aiInsight, setAiInsight] = useState("Analyzing your business performance...");
-  const [isAdviceLoading, setIsAdviceLoading] = useState(false);
   const t = translations[language];
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [aiInsight, setAiInsight] = useState(t.analyzing);
+  const [isAdviceLoading, setIsAdviceLoading] = useState(false);
   const symbol = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }[currency];
 
   useEffect(() => {
@@ -61,12 +61,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
       .reduce((sum, a) => sum + (a.price || 0), 0);
     
     return [
-      { label: 'Confirmed Bookings', value: confirmed, icon: Calendar, color: 'text-brand-blue', bg: 'bg-brand-blue/10' },
+      { label: t.calendar, value: confirmed, icon: Calendar, color: 'text-brand-blue', bg: 'bg-brand-blue/10' },
       { label: 'Pending Requests', value: pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-      { label: 'Total Revenue', value: `${symbol}${revenue}`, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-      { label: 'Total Clients', value: clients.length, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+      { label: t.revenue, value: `${symbol}${revenue}`, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+      { label: t.clients, value: clients.length, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     ];
-  }, [appointments, clients, symbol]);
+  }, [appointments, clients, symbol, t]);
 
   return (
     <div className="space-y-12 animate-in fade-in duration-1000 pb-32 max-w-7xl mx-auto">
@@ -82,22 +82,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
              <span className="text-[10px] font-black uppercase tracking-widest">{new Date().toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
           <h1 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">
-            {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, <span className="text-brand-blue">{businessName}</span>.
+            {new Date().getHours() < 12 ? t.morning : new Date().getHours() < 18 ? t.afternoon : t.evening}, <span className="text-brand-blue">{businessName}</span>.
           </h1>
-          <p className="text-slate-500 font-medium text-lg">System status: <span className="text-emerald-500 font-bold">Operational</span> • 0 incidents in last 24h</p>
+          <p className="text-slate-500 font-medium text-lg">{t.status}: <span className="text-emerald-500 font-bold">{t.operational}</span> • 0 incidents in last 24h</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <button 
             onClick={onOpenPublicView} 
             className="flex-1 md:flex-none px-8 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-brand-blue hover:text-brand-blue transition-all flex items-center justify-center gap-3 shadow-sm"
           >
-            <Globe size={18} /> Public Portal
+            <Globe size={18} /> {t.portal}
           </button>
           <button 
             onClick={onAddEventType} 
             className="flex-1 md:flex-none px-10 py-4 bg-brand-blue text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-brand-dark hover:shadow-[0_20px_40px_-10px_rgba(0,107,255,0.3)] transition-all flex items-center justify-center gap-3 active:scale-95"
           >
-            <Plus size={18} strokeWidth={3} /> New Instance
+            <Plus size={18} strokeWidth={3} /> {t.newService}
           </button>
         </div>
       </motion.div>
@@ -156,16 +156,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
             <div className="flex-1 text-center lg:text-left space-y-8">
                <div className="flex flex-col md:flex-row md:items-center gap-6">
                   <div className="px-4 py-1.5 bg-brand-blue text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em]">
-                    Strategic Insight
+                    {t.insight}
                   </div>
                   <div className="flex items-center gap-3">
                      <Activity size={16} className="text-emerald-500" />
-                     <span className="text-emerald-400 text-xs font-bold">Heuristic analysis complete</span>
+                     <span className="text-emerald-400 text-xs font-bold">{t.operational}</span>
                   </div>
                </div>
                
                <h2 className={`text-3xl md:text-5xl text-white font-black leading-[1.05] tracking-tight ${isAdviceLoading ? 'animate-pulse opacity-40' : ''}`}>
-                 {isAdviceLoading ? 'Synchronizing neural weights with ecosystem activity...' : aiInsight}
+                 {isAdviceLoading ? t.analyzing : aiInsight}
                </h2>
                
                <div className="flex flex-wrap justify-center lg:justify-start gap-8 pt-4">
@@ -173,14 +173,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                     <p className="text-brand-blue text-lg font-black uppercase tracking-widest leading-none">
                        {appointments.length > 0 ? (90 + (appointments.length % 10)).toFixed(1) : '50.0'}%
                     </p>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Confidence Score</p>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{t.confidence}</p>
                   </div>
                   <div className="w-px h-10 bg-white/10" />
                   <div className="space-y-1">
                     <p className="text-emerald-500 text-lg font-black uppercase tracking-widest leading-none">
                        +{Math.max(5, Number((appointments.length * 1.2).toFixed(1)))}%
                     </p>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Projected Growth</p>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{t.growth}</p>
                   </div>
                </div>
             </div>
@@ -205,7 +205,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
         <div className="lg:col-span-2 space-y-8">
           <div className="flex items-center justify-between mb-2">
             <div className="space-y-1">
-               <h3 className="text-2xl font-black text-brand-dark tracking-tight">Active Deployment Units</h3>
+               <h3 className="text-2xl font-black text-brand-dark tracking-tight">{t.activeUnits}</h3>
                <p className="text-sm text-slate-400 font-medium tracking-tight">Operational endpoints for client scheduling.</p>
             </div>
             <button 
@@ -248,7 +248,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                         className="flex items-center gap-3 text-brand-blue text-xs font-black uppercase tracking-widest hover:text-brand-dark transition-all"
                        >
                          {copiedId === service.name ? <CheckCircle size={18} /> : <Copy size={18} />}
-                         {copiedId === service.name ? 'Link Pulled' : 'Copy Endpoint'}
+                         {copiedId === service.name ? t.linkCopied : t.copyLink}
                        </button>
                        <button onClick={onOpenPublicView} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl hover:bg-brand-blue/10 hover:text-brand-blue transition-all flex items-center justify-center">
                          <ExternalLink size={18} />
@@ -277,7 +277,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
         {/* Real-time Activity Stream Pillar */}
         <div className="space-y-8">
           <div className="space-y-1">
-             <h3 className="text-2xl font-black text-brand-dark tracking-tight">Active Stream</h3>
+             <h3 className="text-2xl font-black text-brand-dark tracking-tight">{t.stream}</h3>
              <p className="text-sm text-slate-400 font-medium tracking-tight">Real-time engagement telemetry.</p>
           </div>
           
@@ -356,23 +356,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
           {/* Quick-Access Deployment Grid */}
           <div className="bg-brand-dark p-10 rounded-[40px] text-white space-y-10 relative overflow-hidden shadow-2xl shadow-slate-900/40">
             <div className="absolute top-0 left-0 w-full h-full bg-brand-blue/5 pointer-events-none" />
-            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] relative z-10">Instant Commands</h4>
+            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] relative z-10">{t.commands}</h4>
             <div className="grid grid-cols-2 gap-4 relative z-10">
               <button onClick={onAddEventType} className="p-6 bg-white/5 hover:bg-white/10 rounded-[24px] flex flex-col items-center gap-3 transition-all border border-white/5 group">
                 <LayoutGrid size={24} className="text-brand-blue group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">New Service</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">{t.newService}</span>
               </button>
               <button onClick={() => setActiveTab?.('ai-assistant')} className="p-6 bg-white/5 hover:bg-white/10 rounded-[24px] flex flex-col items-center gap-3 transition-all border border-white/5 group">
                 <Sparkles size={24} className="text-amber-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">AI Sync</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">{t.aiAssistant}</span>
               </button>
               <button onClick={onOpenPublicView} className="p-6 bg-white/5 hover:bg-white/10 rounded-[24px] flex flex-col items-center gap-3 transition-all border border-white/5 group">
                 <Globe size={24} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">Portal</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">{t.portal}</span>
               </button>
               <button onClick={() => setActiveTab?.('earnings')} className="p-6 bg-white/5 hover:bg-white/10 rounded-[24px] flex flex-col items-center gap-3 transition-all border border-white/5 group">
                 <Activity size={24} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">Earnings</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">{t.payouts}</span>
               </button>
             </div>
           </div>
