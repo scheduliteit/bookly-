@@ -551,6 +551,8 @@ const App: React.FC = () => {
                     connectedApps={connectedApps} 
                     currency={currency} 
                     onJoinMeeting={setActiveMeetingRoom}
+                    onSyncNow={fetchExternalEvents}
+                    language={language}
                   />
                 );
               case 'clients':

@@ -639,7 +639,7 @@ const pushToGoogleCalendar = async (userId: string, appointment: any) => {
 
     const event = {
       summary: `${appointment.service} - ${appointment.clientName}`,
-      description: `Appointment booked via EasyBookly.\nService: ${appointment.service}\nClient Email: ${appointment.clientEmail || 'N/A'}\n${appointment.meetingLink ? 'Video Link: ' + appointment.meetingLink : ''}`,
+      description: `Appointment booked via EasyBookly.\nService: ${appointment.service}\nClient Email: ${appointment.clientEmail || 'N/A'}\n${appointment.meetingLink ? 'Video Link: ' + appointment.meetingLink : ''}${appointment.meetingPassword ? '\nMeeting Password: ' + appointment.meetingPassword : ''}`,
       start: { dateTime: startDateTime },
       end: { dateTime: endDateTime },
       reminders: {

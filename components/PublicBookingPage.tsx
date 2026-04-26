@@ -143,6 +143,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         businessTimezone: businessTimezone,
         clientEmail: clientInfo.email, // Added for notification
         clientPhone: clientInfo.phone, // Added for notification
+        note: clientInfo.note,
         meetingLink: clientInfo.meetingLink,
         meetingPassword: clientInfo.meetingPassword,
       } as any);

@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { Appointment } from '../types';
-import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video, Copy, X, Lock } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video, Copy, X, Lock, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
+import { translations, Language } from '../services/translations';
 
 interface AppointmentCalendarProps {
   appointments: Appointment[];
@@ -15,6 +16,8 @@ interface AppointmentCalendarProps {
   connectedApps: string[];
   currency?: 'ILS' | 'USD' | 'EUR' | 'GBP';
   onJoinMeeting?: (room: string) => void;
+  onSyncNow?: () => Promise<void>;
+  language?: Language;
 }
 
 const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
@@ -26,10 +29,21 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   onNavigate,
   connectedApps,
   currency,
-  onJoinMeeting
+  onJoinMeeting,
+  onSyncNow,
+  language = 'en'
 }) => {
   const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const t = translations[language] || translations.en;
+
+  const handleSync = async () => {
+    if (!onSyncNow) return;
+    setIsSyncing(true);
+    await onSyncNow();
+    setIsSyncing(false);
+  };
 
   const filterAppointments = () => {
     const now = new Date();
@@ -46,23 +60,41 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       date: apt.date,
       time: apt.time,
       googleEventId: apt.googleEventId,
-      outlookEventId: apt.outlookEventId
+      outlookEventId: apt.outlookEventId,
+      meetingLink: apt.meetingLink,
+      meetingPassword: apt.meetingPassword,
+      notes: (apt as any).note,
     }));
 
     // Convert External events to unified format
-    const syncEvents = externalEvents.map(e => ({
-      id: e.id,
-      title: e.title,
-      start: e.start,
-      service: 'External Focus',
-      duration: Math.round((new Date(e.end).getTime() - new Date(e.start).getTime()) / 60000),
-      status: 'confirmed',
-      isExternal: true,
-      provider: e.provider,
-      color: e.color,
-      date: e.start.split('T')[0],
-      time: e.start.split('T')[1].substring(0, 5)
-    }));
+    const syncEvents = externalEvents.map(e => {
+      const startDate = new Date(e.start);
+      const endDate = new Date(e.end);
+      
+      // Handle all-day events or missing end dates
+      const duration = !isNaN(endDate.getTime()) && !isNaN(startDate.getTime())
+        ? Math.round((endDate.getTime() - startDate.getTime()) / 60000)
+        : 30;
+
+      // Safe split for ISO strings
+      const isoParts = e.start.includes('T') ? e.start.split('T') : [e.start, '00:00:00'];
+      const datePart = isoParts[0];
+      const timePart = isoParts[1].substring(0, 5);
+
+      return {
+        id: e.id,
+        title: e.title,
+        start: e.start,
+        service: 'External Focus',
+        duration,
+        status: 'confirmed',
+        isExternal: true,
+        provider: e.provider,
+        color: e.color,
+        date: datePart,
+        time: timePart
+      };
+    });
 
     const allEvents = [...easyBooklyEvents, ...syncEvents];
 
@@ -77,16 +109,26 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const filtered = filterAppointments();
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20" dir={t.dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
-        <div>
+        <div className={t.dir === 'rtl' ? 'text-right' : 'text-left'}>
           <h2 className="text-2xl font-bold text-brand-dark">Scheduled Events</h2>
           <p className="text-sm text-slate-500">View and manage your meetings.</p>
         </div>
         <div className="flex items-center gap-3">
+          {connectedApps.length > 0 && onSyncNow && (
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className={`flex items-center gap-2 px-4 py-2 border-2 border-slate-100 rounded-full text-sm font-bold text-slate-600 hover:border-brand-blue hover:text-brand-blue transition-all disabled:opacity-50 ${isSyncing ? 'bg-slate-50' : 'bg-white'}`}
+            >
+              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+              {isSyncing ? t.syncing : t.syncNow}
+            </button>
+          )}
           <button 
             onClick={() => alert('Exporting calendar data...')}
-            className="px-4 py-2 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200"
+            className="px-4 py-2 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all"
           >
             Export
           </button>
@@ -173,7 +215,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                 
                 <div className="flex items-center gap-4 mt-4 md:mt-0">
                    <button 
-                     onClick={() => alert(`Details for ${evt.title}: ${evt.service} at ${evt.time}`)}
+                     onClick={() => setSelectedApt(evt as any)}
                      className="px-4 py-2 border border-slate-200 rounded-full text-xs font-bold text-brand-blue hover:bg-brand-blue/5 transition-all"
                    >
                      Details
@@ -211,6 +253,121 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
             Troubleshoot
           </button>
       </div>
+
+      {/* Appointment Details Modal */}
+      {selectedApt && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={() => setSelectedApt(null)}>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={`h-2 w-full ${selectedApt.isExternal ? 'bg-slate-200' : 'bg-brand-blue'}`} />
+            <div className="p-8 md:p-12 space-y-8">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <h3 className="text-3xl font-black text-brand-dark leading-tight">{(selectedApt as any).title}</h3>
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{(selectedApt as any).service}</p>
+                </div>
+                <button onClick={() => setSelectedApt(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Time</p>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <CalendarIcon size={16} className="text-slate-300" />
+                    {new Date((selectedApt as any).date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} at {(selectedApt as any).time}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</p>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <Clock size={16} className="text-slate-300" />
+                    {(selectedApt as any).duration} {t.minutes}
+                  </div>
+                </div>
+              </div>
+
+              {(selectedApt as any).notes && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Notes</p>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600 font-medium leading-relaxed">
+                    {(selectedApt as any).notes}
+                  </div>
+                </div>
+              )}
+
+              {(selectedApt as any).meetingLink && (
+                <div className="space-y-4 pt-4 border-t border-slate-100">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-brand-blue uppercase tracking-widest">{t.meetingDetails}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-brand-blue/5 border border-brand-blue/10 rounded-xl px-4 py-3 flex items-center gap-3 overflow-hidden">
+                        <Video size={18} className="text-brand-blue/40" />
+                        <span className="text-xs font-bold text-brand-blue truncate">{(selectedApt as any).meetingLink}</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          if ((selectedApt as any).meetingLink) {
+                            navigator.clipboard.writeText((selectedApt as any).meetingLink);
+                            alert('Meeting link copied!');
+                          }
+                        }}
+                        className="p-3.5 bg-brand-blue text-white rounded-xl shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all"
+                      >
+                        <Copy size={18} />
+                      </button>
+                    </div>
+                  </div>
+                  {(selectedApt as any).meetingPassword && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <Lock size={16} className="text-slate-400" />
+                      <p className="text-xs font-bold text-slate-500">
+                        {t.meetingPassword}: <span className="text-brand-dark ml-1">{(selectedApt as any).meetingPassword}</span>
+                      </p>
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => {
+                      const link = (selectedApt as any).meetingLink;
+                      const room = link?.split('/').pop();
+                      if (room && onJoinMeeting && (link.includes('jitsi') || link.includes('whereby'))) onJoinMeeting(room);
+                      else window.open(link, '_blank');
+                    }}
+                    className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all flex items-center justify-center gap-3"
+                  >
+                    <Video size={18} /> Join Meeting Now
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-4">
+                 {!selectedApt.isExternal && (
+                   <button 
+                    onClick={() => {
+                      onUpdateAppointment?.({...selectedApt, status: 'cancelled'});
+                      setSelectedApt(null);
+                    }}
+                    className="flex-1 py-4 border border-rose-100 text-rose-500 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-rose-50 transition-all"
+                   >
+                     Cancel Event
+                   </button>
+                 )}
+                 <button 
+                  onClick={() => setSelectedApt(null)}
+                  className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-all"
+                 >
+                   Close
+                 </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

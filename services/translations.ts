@@ -203,7 +203,10 @@ export const translations: Record<Language, any> = {
     meetingLink: "Meeting Link",
     meetingPassword: "Meeting Password",
     meetingLinkPlaceholder: "https://zoom.us/j/...",
-    meetingPasswordPlaceholder: "Password or access code"
+    meetingPasswordPlaceholder: "Password or access code",
+    syncNow: "Sync Now",
+    syncing: "Syncing...",
+    calendarSynced: "Calendar Synced"
   },
   he: {
     dashboard: "לוח בקרה",
@@ -406,7 +409,10 @@ export const translations: Record<Language, any> = {
     meetingLink: "קישור לפגישה",
     meetingPassword: "סיסמה לפגישה",
     meetingLinkPlaceholder: "https://zoom.us/j/...",
-    meetingPasswordPlaceholder: "סיסמה או קוד גישה"
+    meetingPasswordPlaceholder: "סיסמה או קוד גישה",
+    syncNow: "סנכרן עכשיו",
+    syncing: "מסנכרן...",
+    calendarSynced: "היומן סונכרן"
   },
   es: {
     dashboard: "Panel de Control",
@@ -609,7 +615,10 @@ export const translations: Record<Language, any> = {
     meetingLink: "Enlace de la Reunión",
     meetingPassword: "Contraseña de la Reunión",
     meetingLinkPlaceholder: "https://zoom.us/j/...",
-    meetingPasswordPlaceholder: "Contraseña o código de acceso"
+    meetingPasswordPlaceholder: "Contraseña o código de acceso",
+    syncNow: "Sincronizar Ahora",
+    syncing: "Sincronizando...",
+    calendarSynced: "Calendario Sincronizado"
   },
   fr: {
     dashboard: "Tableau de Bord",
@@ -812,7 +821,10 @@ export const translations: Record<Language, any> = {
     meetingLink: "Lien de la Réunion",
     meetingPassword: "Mot de passe de la Réunion",
     meetingLinkPlaceholder: "https://zoom.us/j/...",
-    meetingPasswordPlaceholder: "Mot de passe ou code d'accès"
+    meetingPasswordPlaceholder: "Mot de passe ou code d'accès",
+    syncNow: "Synchroniser Maintenant",
+    syncing: "Synchronisation...",
+    calendarSynced: "Calendrier Synchronisé"
   },
   de: {
     dashboard: "Dashboard",
