@@ -267,10 +267,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                   </div>
                 )}
               </div>
-              <div className={`flex items-center gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                 <Globe2 size={16} className="text-slate-400" />
-                 {timezone}
-              </div>
+
                          {(selectedService?.locationType === 'online' || selectedService?.locationType === 'zoom') && (
                 <div className="mt-4 p-4 bg-brand-blue/5 border border-brand-blue/10 rounded-xl space-y-2">
                    <div className={`flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
@@ -443,12 +440,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
               </div>
             )}
             
-            <div className="pt-10">
-              <p className={`text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-3 ${t.dir === 'rtl' ? 'text-right' : ''}`}>{t.serviceTimezone}</p>
-              <div className={`inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-bold text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                <Globe2 size={12} /> {timezone}
-              </div>
-            </div>
+
           </div>
         </div>
 
