@@ -17,6 +17,7 @@ import ClientCRM from './components/ClientCRM';
 import AdminPanel from './components/AdminPanel';
 import AddAppointmentModal from './components/AddAppointmentModal';
 import MobileMenu from './components/MobileMenu';
+import DiagnosticTool from './components/DiagnosticTool';
 import Onboarding from './components/Onboarding';
 import LandingPage from './components/LandingPage';
 import FeedbackModal from './components/FeedbackModal';

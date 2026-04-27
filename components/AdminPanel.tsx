@@ -4,11 +4,12 @@ import {
   Search, Filter, MoreVertical, RefreshCw, 
   ArrowUpRight, ArrowDownRight, Zap, Globe, Lock,
   Trash2, UserPlus, Wrench, AlertTriangle, CheckCircle2,
-  Settings, Loader2, Bot, Sparkles, Send, Terminal, MessageSquare, X, Cpu
+  Settings, Loader2, Bot, Sparkles, Send, Terminal, MessageSquare, X, Cpu, ClipboardCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Client, User } from '../types';
 import { api } from '../services/api';
+import DiagnosticTool from './DiagnosticTool';
 
 interface AdminPanelProps {
   users: any[];
@@ -17,7 +18,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'system' | 'repairs' | 'ai-architect' | 'feedback'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'system' | 'repairs' | 'ai-architect' | 'feedback' | 'audit'>('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [repairStep, setRepairStep] = useState<string | null>(null);
   const [repairProgress, setRepairProgress] = useState(0);
@@ -152,7 +153,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
           </button>
           <div className="h-6 w-px bg-slate-100 mx-2" />
           <nav className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 overflow-x-auto no-scrollbar">
-            {(['overview', 'users', 'system', 'feedback', 'repairs', 'ai-architect'] as const).map(tab => (
+            {(['overview', 'users', 'system', 'feedback', 'repairs', 'ai-architect', 'audit'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -167,6 +168,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
                     <Sparkles size={12} className={activeTab === tab ? 'text-indigo-600' : 'text-slate-400'} />
                     AI Architect
                   </span>
+                ) : tab === 'audit' ? (
+                    <span className="flex items-center gap-2">
+                        <ClipboardCheck size={12} className={activeTab === tab ? 'text-indigo-600' : 'text-slate-400'} />
+                        Audit
+                    </span>
                 ) : tab}
               </button>
             ))}
@@ -675,6 +681,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
                    </div>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === 'audit' && (
+            <motion.div 
+              key="audit"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <DiagnosticTool />
             </motion.div>
           )}
         </AnimatePresence>

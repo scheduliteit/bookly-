@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download, Bell, Info } from 'lucide-react';
+import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download, Bell, Info, Search } from 'lucide-react';
 import { paymentService, MerchantStats, Transaction } from '../services/paymentService';
 import { Service } from '../types';
 import { translations, Language } from '../services/translations';
+import DiagnosticTool from './DiagnosticTool';
 
 interface SettingsProps {
   businessName: string;
@@ -25,7 +26,7 @@ interface SettingsProps {
   };
   onUpdateReminderSettings: (settings: any) => void;
   userId: string;
-  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders';
+  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit';
   language: Language;
   onUpdateLanguage: (lang: Language) => void;
 }
@@ -50,7 +51,7 @@ const Settings: React.FC<SettingsProps> = ({
   language,
   onUpdateLanguage
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders'>(initialTab || 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
 
   useEffect(() => {
@@ -206,7 +207,8 @@ const Settings: React.FC<SettingsProps> = ({
             { id: 'availability', label: t.availability },
             { id: 'payouts', label: t.payouts },
             { id: 'localization', label: t.localization },
-            { id: 'legal', label: t.legal }
+            { id: 'legal', label: t.legal },
+            { id: 'audit', label: t.audit }
           ].map((tab) => (
             <button 
               key={tab.id}
@@ -897,6 +899,12 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'audit' && (
+        <div className="animate-in slide-in-from-bottom-4">
+          <DiagnosticTool />
         </div>
       )}
     </div>

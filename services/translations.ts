@@ -209,7 +209,8 @@ export const translations: Record<Language, any> = {
     meetingPasswordPlaceholder: "Password or access code",
     syncNow: "Sync Now",
     syncing: "Syncing...",
-    calendarSynced: "Calendar Synced"
+    calendarSynced: "Calendar Synced",
+    audit: "Audit"
   },
   he: {
     dashboard: "לוח בקרה",
@@ -418,7 +419,8 @@ export const translations: Record<Language, any> = {
     meetingPasswordPlaceholder: "סיסמה או קוד גישה",
     syncNow: "סנכרן עכשיו",
     syncing: "מסנכרן...",
-    calendarSynced: "היומן סונכרן"
+    calendarSynced: "היומן סונכרן",
+    audit: "ביקורת מערכת"
   },
   es: {
     dashboard: "Panel de Control",
