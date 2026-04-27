@@ -8,33 +8,64 @@ import crypto from 'crypto';
 import dns from 'dns';
 import https from 'https';
 import { promisify } from 'util';
-import { google } from 'googleapis';
-import twilio from 'twilio';
-import sgMail from '@sendgrid/mail';
-import axios from 'axios';
-import { GoogleGenAI } from "@google/genai";
+// import { google } from 'googleapis';
+// import twilio from 'twilio';
+// import sgMail from '@sendgrid/mail';
+// import axios from 'axios';
+// import { GoogleGenAI } from "@google/genai";
 import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
+// Lazy load references
+let google: any = null;
+let twilio: any = null;
+let sgMail: any = null;
+let axios: any = null;
+let GoogleGenAI: any = null;
+
+const ensureServices = async () => {
+  if (!google) google = (await import('googleapis')).google;
+  if (!twilio) twilio = (await import('twilio')).default;
+  if (!sgMail) sgMail = (await import('@sendgrid/mail')).default;
+  if (!axios) axios = (await import('axios')).default;
+  if (!GoogleGenAI) GoogleGenAI = (await import('@google/genai')).GoogleGenAI;
+
+  if (sgMail && process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  }
+  
+  if (twilio && !twilioClient && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    try {
+      twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    } catch (e) {
+      console.warn('[SERVER] Twilio lazy init failed:', e);
+    }
+  }
+};
+
 dotenv.config();
 
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  console.log('[SERVER] SendGrid initialized');
-}
-
-// Initialize Twilio
-let twilioClient: any = null;
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-  try {
-    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    console.log('[SERVER] Twilio client initialized');
-  } catch (error) {
-    console.error('[SERVER] Twilio initialization failed:', error);
+// Initialize SendGrid lazily
+const sendEmail = async (msg: any) => {
+  if (!sgMail) sgMail = (await import('@sendgrid/mail')).default;
+  if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    return sgMail.send(msg);
   }
-}
+};
+
+// Initialize Twilio lazily
+let twilioClient: any = null;
+const getTwilio = async () => {
+  if (twilioClient) return twilioClient;
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    if (!twilio) twilio = (await import('twilio')).default;
+    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    return twilioClient;
+  }
+  return null;
+};
 
 // Firebase Configuration
 const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
@@ -42,29 +73,6 @@ const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'fire
 // Firebase Admin Initialization (Security Fix #6)
 let adminApp: admin.app.App | null = null;
 let db: any;
-
-try {
-  if (admin.apps.length > 0) {
-    adminApp = admin.app();
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log('[SERVER] Firebase Admin initialized with Service Account');
-  } else {
-    // We don't call initializeApp here if we don't have credentials to avoid ADC errors
-    console.warn('[SERVER] FIREBASE_SERVICE_ACCOUNT_JSON missing. Admin features (token verification) will be limited.');
-  }
-
-  if (adminApp) {
-    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-    db = getAdminFirestore(adminApp, dbId);
-    console.log('[SERVER] Admin Firestore initialized successfully');
-  }
-} catch (error) {
-  console.error('[SERVER] Failed to initialize Firebase Admin:', error);
-}
 
 // Unified Firestore Field Values
 let firestoreValues: any = {
@@ -74,49 +82,73 @@ let firestoreValues: any = {
 };
 
 // Fallback to Web SDK if Admin fails or is not available
-if (!db) {
+const initDb = async () => {
+  if (db) return;
+  
   try {
-    console.log('[SERVER] Falling back to Firebase Web SDK for Firestore');
-    const { initializeApp: initializeWebApp } = await import('firebase/app');
-    const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
-    
-    // Update unitied values for Web SDK
-    firestoreValues = {
-      arrayUnion,
-      arrayRemove,
-      delete: deleteField
-    };
-    
-    const webApp = initializeWebApp(firebaseConfig);
-    const webDb = getWebFirestore(webApp, firebaseConfig.firestoreDatabaseId);
-    
-    // Create a compatibility wrapper for Admin-style calls used in the server
-    db = {
-      collection: (colName: string) => ({
-        doc: (docId: string) => ({
-          get: () => getDoc(doc(webDb, colName, docId)).then(s => ({ exists: s.exists(), data: () => s.data(), id: s.id })),
-          update: (data: any) => updateDoc(doc(webDb, colName, docId), data),
-          delete: () => deleteDoc(doc(webDb, colName, docId)),
-        }),
-        where: (field: string, op: any, value: any) => {
-          const q = query(collection(webDb, colName), where(field, op === '==' ? '==' : op, value));
-          return {
-            get: () => getDocs(q).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
-            where: (f2: string, o2: any, v2: any) => {
-               const q2 = query(q, where(f2, o2 === '==' ? '==' : o2, v2));
-               return { get: () => getDocs(q2).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })) };
-            }
-          };
-        },
-        add: (data: any) => addDoc(collection(webDb, colName), data).then(d => ({ id: d.id })),
-        get: () => getDocs(collection(webDb, colName)).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
-      })
-    };
-    console.log('[SERVER] Web SDK Firestore wrapper initialized');
-  } catch (webError) {
-    console.error('[SERVER] Failed fallback to Web SDK:', webError);
+    if (admin.apps.length > 0) {
+      adminApp = admin.app();
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log('[SERVER] Firebase Admin initialized with Service Account');
+    }
+
+    if (adminApp) {
+      const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+      db = getAdminFirestore(adminApp, dbId);
+      console.log('[SERVER] Admin Firestore initialized successfully');
+    }
+  } catch (error) {
+    console.error('[SERVER] Failed to initialize Firebase Admin:', error);
   }
-}
+
+  if (!db) {
+    try {
+      console.log('[SERVER] Falling back to Firebase Web SDK for Firestore');
+      const { initializeApp: initializeWebApp } = await import('firebase/app');
+      const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
+      
+      // Update unified values for Web SDK
+      firestoreValues = {
+        arrayUnion,
+        arrayRemove,
+        delete: deleteField
+      };
+      
+      const webApp = initializeWebApp(firebaseConfig);
+      const webDb = getWebFirestore(webApp, firebaseConfig.firestoreDatabaseId);
+      
+      // Create a compatibility wrapper for Admin-style calls used in the server
+      db = {
+        collection: (colName: string) => ({
+          doc: (docId: string) => ({
+            get: () => getDoc(doc(webDb, colName, docId)).then(s => ({ exists: s.exists(), data: () => s.data(), id: s.id })),
+            update: (data: any) => updateDoc(doc(webDb, colName, docId), data),
+            delete: () => deleteDoc(doc(webDb, colName, docId)),
+          }),
+          where: (field: string, op: any, value: any) => {
+            const q = query(collection(webDb, colName), where(field, op === '==' ? '==' : op, value));
+            return {
+              get: () => getDocs(q).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
+              where: (f2: string, o2: any, v2: any) => {
+                 const q2 = query(q, where(f2, o2 === '==' ? '==' : o2, v2));
+                 return { get: () => getDocs(q2).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })) };
+              }
+            };
+          },
+          add: (data: any) => addDoc(collection(webDb, colName), data).then(d => ({ id: d.id })),
+          get: () => getDocs(collection(webDb, colName)).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
+        })
+      };
+      console.log('[SERVER] Web SDK Firestore wrapper initialized');
+    } catch (webError) {
+      console.error('[SERVER] Failed fallback to Web SDK:', webError);
+    }
+  }
+};
 
 const app = express();
 const PORT = 3000;
@@ -167,6 +199,13 @@ const requireAuth = async (req: any, res: any, next: any) => {
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };
+
+// Ensure services are initialized
+app.use(async (req, res, next) => {
+  await initDb();
+  await ensureServices();
+  next();
+});
 
 app.use((req, res, next) => {
   // Only log actual API calls, ignore static assets and Vite modules
@@ -1625,6 +1664,8 @@ app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any)
 
 // Reminder Service (Automated Workflows)
 const checkAndSendReminders = async () => {
+  await initDb();
+  await ensureServices();
   if (!db) return;
   console.log('[REMINDERS] Checking for upcoming appointments...');
   
