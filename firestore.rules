@@ -75,7 +75,7 @@ service cloud.firestore {
              data.clientId is string &&
              data.date is string && data.date.size() <= 16 &&
              data.time is string &&
-             data.status == 'pending';
+             data.status in ['pending', 'confirmed'];
     }
 
     // --- Rules ---

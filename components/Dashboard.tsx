@@ -41,8 +41,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
       setAiInsight(res);
       setIsAdviceLoading(false);
     };
-    if (appointments.length > 0) fetchAi();
-  }, [appointments]);
+    if (appointments.length > 0) {
+      fetchAi();
+    } else {
+      setAiInsight("Awaiting first client engagement to compute growth metrics.");
+    }
+  }, [appointments, t.analyzing]);
 
   const handleCopyLink = (name: string) => {
     // Use the user's ID for the booking link
@@ -100,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
              <span className="text-[10px] font-black uppercase tracking-widest">{new Date().toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
           <h1 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">
-            {new Date().getHours() < 12 ? t.morning : new Date().getHours() < 18 ? t.afternoon : t.evening}, <span className="text-brand-blue">{businessName}</span>.
+            {new Date().getHours() < 12 ? t.morning : new Date().getHours() < 18 ? t.afternoon : t.evening}, <span className="text-brand-blue">{businessName || 'Elite Partner'}</span>.
           </h1>
           <p className="text-slate-500 font-medium text-lg">{t.status}: <span className="text-emerald-500 font-bold">{t.operational}</span> • 0 incidents in last 24h</p>
         </div>

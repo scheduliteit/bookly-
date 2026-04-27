@@ -364,10 +364,19 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                 </button>
               </div>
               <button 
-                onClick={() => onBack ? onBack() : window.location.href = '/'} 
-                className="py-5 text-slate-400 hover:text-slate-900 transition-colors text-xs font-black uppercase tracking-[0.3em]"
+                onClick={() => {
+                  if (onBack) onBack();
+                  else window.location.href = '/';
+                }} 
+                className="py-6 px-10 bg-slate-900 text-white rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:scale-105 transition-all"
               >
-                {t.close}
+                {t.returnToApp || 'Return to App'}
+              </button>
+              <button 
+                onClick={() => setIsSuccess(false)} 
+                className="py-4 text-slate-400 hover:text-slate-900 transition-colors text-[10px] font-black uppercase tracking-[0.3em]"
+              >
+                {t.close || 'Close'}
               </button>
             </div>
           </div>
@@ -451,21 +460,26 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                 else if (onBack) onBack();
                 else window.location.href = '/';
               }} 
-              className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all font-bold"
+              className="group flex items-center gap-3 py-2 px-3 -ml-3 rounded-2xl hover:bg-slate-50 transition-all text-left"
               title={t.goBack}
             >
-              <ArrowLeft size={20} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
+              <div className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-slate-900 transition-all bg-white font-bold">
+                <ArrowLeft size={20} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
+              </div>
+              {onBack && step === 1 && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-brand-blue uppercase tracking-widest">{t.returnToApp}</span>
+                  <span className="text-xs font-medium text-slate-400 capitalize whitespace-nowrap">Dashboard</span>
+                </div>
+              )}
             </button>
-            {onBack && step === 1 && (
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.returnToApp}</span>
-            )}
           </div>
           
           <div className="space-y-6">
             <div className={`flex items-center gap-4 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
               <Logo size="lg" showText={false} />
               <div className={t.dir === 'rtl' ? 'text-right' : 'text-left'}>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{businessName}</p>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{businessName || 'Business Portal'}</p>
                 <h1 className="text-2xl font-black text-slate-900">{selectedService?.name || t.scheduleTime}</h1>
               </div>
             </div>
@@ -524,7 +538,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                 <p className="text-sm text-slate-500 mt-1">{t.selectEventType}</p>
               </div>
               <div className="grid grid-cols-1 gap-4">
-                 {services.map(s => (
+                 {services.length > 0 ? services.map(s => (
                    <button 
                     key={s.name} 
                     onClick={() => { setSelectedService(s); setStep(2); }}
@@ -539,7 +553,25 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                      </div>
                      <ChevronRight className={`text-slate-300 group-hover:text-brand-blue transition-all ${t.dir === 'rtl' ? 'rotate-180 group-hover:-translate-x-1' : 'group-hover:translate-x-1'}`} size={24} />
                    </button>
-                 ))}
+                 )) : (
+                   <div className="py-20 text-center space-y-6 bg-slate-50/50 rounded-[32px] border-2 border-dashed border-slate-100">
+                      <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm text-slate-300">
+                         <CalendarDays size={40} strokeWidth={1} />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-lg font-black text-slate-900">No events found</p>
+                        <p className="text-sm text-slate-400 font-medium">Please check back later or contact us directly.</p>
+                      </div>
+                      {onBack && (
+                         <button 
+                           onClick={onBack}
+                           className="px-8 py-3 bg-white border border-slate-200 text-brand-blue font-black text-xs uppercase tracking-widest rounded-full hover:bg-brand-blue hover:text-white hover:border-brand-blue transition-all shadow-sm"
+                         >
+                           {t.backToDashboard}
+                         </button>
+                      )}
+                   </div>
+                 )}
               </div>
             </div>
           )}
