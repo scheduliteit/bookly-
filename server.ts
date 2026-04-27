@@ -36,22 +36,29 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
   }
 }
 
+// Firebase Configuration
+const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
+
 // Firebase Admin Initialization (Security Fix #6)
 let adminApp: admin.app.App | null = null;
 try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  if (admin.apps.length > 0) {
+    adminApp = admin.app();
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
     console.log('[SERVER] Firebase Admin initialized with Service Account');
   } else {
-    // Attempt ADC (Application Default Credentials) initialization
+    // Explicitly use the projectId from our configuration as a fallback
     try {
-      adminApp = admin.initializeApp();
-      console.log('[SERVER] Firebase Admin initialized with ADC');
+      adminApp = admin.initializeApp({
+        projectId: firebaseConfig.projectId
+      });
+      console.log('[SERVER] Firebase Admin initialized with Project ID:', firebaseConfig.projectId);
     } catch (adcError) {
-      console.warn('[SERVER] FIREBASE_SERVICE_ACCOUNT_JSON missing and ADC failed. Auth verification will be mocked.');
+      console.warn('[SERVER] Firebase Admin initialization failed. Auth verification will be mocked.');
     }
   }
 } catch (error) {
@@ -61,15 +68,17 @@ try {
 console.log('[SERVER] Starting with NODE_ENV:', process.env.NODE_ENV);
 console.log('[SERVER] NETLIFY env:', process.env.NETLIFY);
 
-const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
-
 // Initialize Firebase for server-side use
 const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
 let db: any;
 try {
-  console.log('[SERVER] Initializing Firebase Admin for Firestore');
-  // We prioritize using the Admin SDK for all server-side operations to bypass security rules
-  db = getAdminFirestore(dbId);
+  console.log('[SERVER] Initializing Firestore Admin with DB:', dbId);
+  // Pass the app explicitly to ensure it uses the correctly initialized project
+  if (adminApp) {
+    db = getAdminFirestore(adminApp, dbId);
+  } else {
+    db = getAdminFirestore(dbId);
+  }
   console.log('[SERVER] Admin Firestore initialized successfully');
 } catch (error) {
   console.error('[SERVER] Failed to initialize Admin Firestore on server:', error);
