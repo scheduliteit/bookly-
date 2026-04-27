@@ -442,8 +442,16 @@ app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
 app.post('/api/ai/analyze-schedule', requireAuth, aiLimiter, async (req: any, res: any) => {
   const { appointments, query } = req.body;
   try {
-    const sanitized = appointments?.map((a: any) => ({ service: a.service, date: a.date, time: a.time, status: a.status }));
-    const prompt = `Analyze this schedule: ${JSON.stringify(sanitized)}. Query: ${query}. Be direct and professional.`;
+    const sanitized = appointments?.map((a: any) => ({ 
+      service: a.service || a.title || 'Untitled Session', 
+      date: a.date, 
+      time: a.time, 
+      status: a.status || 'confirmed',
+      client: a.clientName || 'Private'
+    }));
+    const prompt = `You are a professional business assistant for EasyBookly. Analyze this schedule of appointments: ${JSON.stringify(sanitized)}.
+Current Query: ${query}
+If the service name is missing, refer to it as a "Scheduled Session". Provide helpful insights about the user's availability or specific appointment details. Be direct, optimistic, and professional.`;
     const text = await callGemini(prompt);
     res.json({ text, links: [] });
   } catch (error: any) {
@@ -454,7 +462,9 @@ app.post('/api/ai/analyze-schedule', requireAuth, aiLimiter, async (req: any, re
 app.post('/api/ai/meeting-brief', requireAuth, aiLimiter, async (req: any, res: any) => {
   const { appointment } = req.body;
   try {
-    const prompt = `Generate a 2-sentence briefing for ${appointment.clientName} regarding ${appointment.service}. Highlight previous history if any.`;
+    const service = appointment.service || appointment.title || 'Scheduled Session';
+    const client = appointment.clientName || 'Private Client';
+    const prompt = `Generate a 2-sentence briefing for ${client} regarding ${service}. Highlight previous history if any. Be strategic and professional.`;
     const brief = await callGemini(prompt);
     res.json({ brief });
   } catch (error: any) {
@@ -465,7 +475,9 @@ app.post('/api/ai/meeting-brief', requireAuth, aiLimiter, async (req: any, res: 
 app.post('/api/ai/draft-reminder', requireAuth, aiLimiter, async (req: any, res: any) => {
   const { appointment, businessName } = req.body;
   try {
-    const prompt = `Draft a polite one-sentence reminder for ${appointment.clientName} for their ${appointment.service} at ${businessName}.`;
+    const service = appointment.service || appointment.title || 'upcoming session';
+    const client = appointment.clientName || 'valued client';
+    const prompt = `Draft a polite one-sentence reminder for ${client} for their ${service} at ${businessName}.`;
     const draft = await callGemini(prompt);
     res.json({ draft });
   } catch (error: any) {
@@ -476,7 +488,12 @@ app.post('/api/ai/draft-reminder', requireAuth, aiLimiter, async (req: any, res:
 app.post('/api/ai/summary', requireAuth, aiLimiter, async (req: any, res: any) => {
   const { appointments } = req.body;
   try {
-    const prompt = `Summarize these appointments: ${JSON.stringify(appointments)}. 2 sentences max.`;
+    const sanitized = appointments?.map((a: any) => ({ 
+      service: a.service || a.title || 'Session', 
+      date: a.date, 
+      time: a.time 
+    }));
+    const prompt = `Summarize these appointments: ${JSON.stringify(sanitized)}. Provide a quick 2-sentence executive summary of the business workload.`;
     const summary = await callGemini(prompt);
     res.json({ summary });
   } catch (error: any) {

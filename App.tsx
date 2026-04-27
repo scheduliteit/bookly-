@@ -877,7 +877,7 @@ const App: React.FC = () => {
         </button>
       )}
 
-      <AIAssistant appointments={appointments} clients={clients} language={language} />
+      <AIAssistant appointments={appointments} clients={clients} externalEvents={externalEvents} language={language} />
     </div>
   );
 };

@@ -58,7 +58,12 @@ function createBlob(data: Float32Array) {
   };
 }
 
-const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[], language: Language }> = ({ appointments, clients, language }) => {
+const AIAssistant: React.FC<{ 
+  appointments: Appointment[], 
+  clients: Client[], 
+  externalEvents?: any[],
+  language: Language 
+}> = ({ appointments, clients, externalEvents = [], language }) => {
   const t = translations[language];
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([
@@ -67,6 +72,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[], la
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isDeepStrategy, setIsDeepStrategy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<any>(null);
 
@@ -78,14 +84,74 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[], la
     if (!input.trim() || isLoading) return;
     const userMsg = input;
     setInput("");
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    
+    const displayMsg = isDeepStrategy ? `[Deep Strategy] ${userMsg}` : userMsg;
+    setMessages(prev => [...prev, { role: 'user', content: displayMsg }]);
     setIsLoading(true);
     
     try {
-      const response = await geminiAssistant.analyzeSchedule(appointments, clients, userMsg);
-      setMessages(prev => [...prev, { role: 'assistant', content: response.text, links: response.links }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: t.aiError }]);
+      // Create unified events for the assistant
+      const allEvents = [
+        ...appointments.map(a => ({ ...a, source: 'EasyBookly' })),
+        ...externalEvents.map(e => ({
+          id: e.id,
+          service: 'External Focus',
+          title: e.title,
+          date: e.start.split('T')[0],
+          time: (e.start.includes('T') ? e.start.split('T')[1] : '00:00').substring(0, 5),
+          status: 'confirmed',
+          source: e.provider || 'Calendar'
+        }))
+      ];
+
+      if (isDeepStrategy) {
+        // Deep Strategy uses Direct Gemini API with Grounding
+        if (typeof (window as any).aistudio !== 'undefined') {
+          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+            await (window as any).aistudio.openSelectKey();
+          }
+        }
+
+        let apiKey = (window as any).GEMINI_API_KEY || (window as any).API_KEY;
+        if (!apiKey) {
+          apiKey = typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || process.env.API_KEY) : undefined;
+        }
+
+        if (!apiKey) {
+          throw new Error("API Key required for Deep Strategy mode.");
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: [
+            { role: 'user', parts: [{ text: `System Context: You are a elite business strategy consultant for EasyBookly. 
+              Schedule Data: ${JSON.stringify(allEvents)}. 
+              Task: Analyze the request with deep strategic foresight. Use Google Search to find relevant market trends or competitors if needed.
+              Current Request: ${userMsg}` }] }
+          ],
+          config: {
+            tools: [{ googleSearch: {} }]
+          }
+        });
+
+        const groundingLinks = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+          uri: chunk.web?.uri || "",
+          title: chunk.web?.title || "Reference Source"
+        })).filter((l: any) => l.uri) || [];
+
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: response.text || "Strategic insight complete.", 
+          links: groundingLinks 
+        }]);
+      } else {
+        const response = await geminiAssistant.analyzeSchedule(allEvents as any, clients, userMsg);
+        setMessages(prev => [...prev, { role: 'assistant', content: response.text, links: response.links }]);
+      }
+    } catch (error: any) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `${t.aiError} ${error.message || ""}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +205,7 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[], la
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } },
-          systemInstruction: `You are the EasyBookly Intelligence Core. Answer questions about the schedule briefly. Access to ${appointments.length} appointments.`,
+          systemInstruction: `You are the EasyBookly Intelligence Core. Answer questions about the schedule briefly. Access to ${appointments.length + externalEvents.length} total events.`,
         },
         callbacks: {
           onopen: () => {
@@ -255,20 +321,48 @@ const AIAssistant: React.FC<{ appointments: Appointment[], clients: Client[], la
                 <div>
                   <h3 className="font-bold text-sm tracking-tight">{t.aiHeader}</h3>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">{t.aiStatus}</span>
+                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isDeepStrategy ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-60">
+                      {isDeepStrategy ? t.activeDeepStrategy : t.aiStatus}
+                    </span>
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={toggleVoiceMode}
-                className={`p-2 rounded-xl transition-all ${isVoiceMode ? 'bg-rose-500 text-white animate-pulse' : 'hover:bg-white/10 text-white/60 hover:text-white'}`}
-              >
-                {isVoiceMode ? <MicOff size={18}/> : <Mic size={18}/>}
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsDeepStrategy(!isDeepStrategy)}
+                  title={t.deepStrategy}
+                  className={`p-2 rounded-xl transition-all ${isDeepStrategy ? 'bg-amber-400 text-brand-dark shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'hover:bg-white/10 text-white/60 hover:text-white'}`}
+                >
+                  <Zap size={18}/>
+                </button>
+                <button 
+                  onClick={toggleVoiceMode}
+                  className={`p-2 rounded-xl transition-all ${isVoiceMode ? 'bg-rose-500 text-white animate-pulse' : 'hover:bg-white/10 text-white/60 hover:text-white'}`}
+                >
+                  {isVoiceMode ? <MicOff size={18}/> : <Mic size={18}/>}
+                </button>
+              </div>
             </header>
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 custom-scroll">
+              {isDeepStrategy && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-2 shadow-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-amber-100 rounded-xl text-amber-600">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-black text-amber-900 uppercase tracking-wider">{t.activeDeepStrategy}</h4>
+                      <p className="text-[10px] text-amber-700 font-medium leading-normal mt-1">{t.deepStrategyDesc}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-2xl rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-none shadow-sm'} p-4 text-xs font-medium leading-relaxed`}>

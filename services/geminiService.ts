@@ -50,7 +50,7 @@ export class GeminiAssistant {
     }
   }
 
-  async analyzeSchedule(appointments: Appointment[], clients: Client[], query: string) {
+  async analyzeSchedule(appointments: any[], clients: Client[], query: string) {
     try {
       const data = await this.callBackendAI('analyze-schedule', { appointments, query });
       return { text: data.text, links: data.links || [] };
