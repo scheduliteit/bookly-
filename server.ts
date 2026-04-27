@@ -25,7 +25,7 @@ let axios: any = null;
 let GoogleGenAI: any = null;
 
 const ensureServices = async () => {
-  if (!google) google = (await import('googleapis')).google;
+  // if (!google) google = (await import('googleapis')).google; // REMOVED to save space
   if (!twilio) twilio = (await import('twilio')).default;
   if (!sgMail) sgMail = (await import('@sendgrid/mail')).default;
   if (!axios) axios = (await import('axios')).default;
@@ -45,6 +45,68 @@ const ensureServices = async () => {
 };
 
 dotenv.config();
+
+// Google Calendar Helper using Axios (Lighter than googleapis)
+const googleAuth = {
+  getAuthUrl: (userId: string, callbackUrl: string) => {
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      redirect_uri: callbackUrl,
+      response_type: 'code',
+      scope: 'openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+      access_type: 'offline',
+      prompt: 'consent',
+      state: userId
+    });
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  },
+  getTokens: async (code: string, callbackUrl: string) => {
+    const response = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code,
+      redirect_uri: callbackUrl,
+      grant_type: 'authorization_code'
+    });
+    return response.data;
+  },
+  refreshTokens: async (refreshToken: string) => {
+    const response = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    });
+    return response.data;
+  }
+};
+
+const googleCalendar = {
+  listEvents: async (tokens: any, params: any) => {
+    const response = await axios.get('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      params
+    });
+    return response.data;
+  },
+  insertEvent: async (tokens: any, event: any) => {
+    const response = await axios.post('https://www.googleapis.com/calendar/v3/calendars/primary/events', event, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+    return response.data;
+  },
+  updateEvent: async (tokens: any, eventId: string, event: any) => {
+    const response = await axios.put(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, event, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+    return response.data;
+  },
+  deleteEvent: async (tokens: any, eventId: string) => {
+    await axios.delete(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+  }
+};
 
 // Initialize SendGrid lazily
 const sendEmail = async (msg: any) => {
@@ -458,21 +520,16 @@ app.get('/api/availability', async (req, res) => {
       // Google Calendar
       if (userData.googleCalendarTokens) {
         try {
-          const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
-          auth.setCredentials(userData.googleCalendarTokens);
-          const calendar = google.calendar({ version: 'v3', auth });
-          
           const timeMin = new Date(`${selectedDate}T00:00:00Z`).toISOString();
           const timeMax = new Date(`${selectedDate}T23:59:59Z`).toISOString();
           
-          const gRes = await calendar.events.list({
-            calendarId: 'primary',
+          const gRes = await googleCalendar.listEvents(userData.googleCalendarTokens, {
             timeMin,
             timeMax,
             singleEvents: true,
           });
           
-          (gRes.data.items || []).forEach((item: any) => {
+          (gRes.items || []).forEach((item: any) => {
             if (item.start?.dateTime) {
               busySlots.push({
                 start: new Date(item.start.dateTime),
@@ -714,23 +771,7 @@ app.get('/api/auth/google/url', (req, res) => {
   const callbackUrl = `${appUrl}/auth/callback`;
   
   if (process.env.GOOGLE_CLIENT_ID && userId) {
-    const client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      callbackUrl
-    );
-    const url = client.generateAuthUrl({
-      access_type: 'offline',
-      prompt: 'consent',
-      scope: [
-        'openid',
-        'email',
-        'profile',
-        'https://www.googleapis.com/auth/calendar.readonly',
-        'https://www.googleapis.com/auth/calendar.events'
-      ],
-      state: userId as string,
-    });
+    const url = googleAuth.getAuthUrl(userId as string, callbackUrl);
     return res.json({ url });
   }
 
@@ -747,12 +788,7 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
 
   if (process.env.GOOGLE_CLIENT_ID && code && code !== 'mock_code_123' && userId) {
     try {
-      const client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        callbackUrl
-      );
-      const { tokens } = await client.getToken(code as string);
+      const tokens = await googleAuth.getTokens(code as string, callbackUrl);
       
       // Save tokens to Firestore
       if (db) {
@@ -795,15 +831,9 @@ const refreshGoogleToken = async (userId: string, tokens: any) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return tokens;
   
   try {
-    const auth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET
-    );
-    auth.setCredentials(tokens);
-
     if (tokens.expiry_date && tokens.expiry_date <= Date.now() + 60000) {
       console.log('[GOOGLE] Refreshing token for user:', userId);
-      const { credentials } = await auth.refreshAccessToken();
+      const credentials = await googleAuth.refreshTokens(tokens.refresh_token);
       const updatedTokens = { ...tokens, ...credentials };
       
       if (db) {
@@ -830,13 +860,6 @@ const pushToGoogleCalendar = async (userId: string, appointment: any) => {
 
     tokens = await refreshGoogleToken(userId, tokens);
 
-    const auth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET
-    );
-    auth.setCredentials(tokens);
-    const calendar = google.calendar({ version: 'v3', auth });
-
     const startDateTime = new Date(`${appointment.date}T${appointment.time}`).toISOString();
     const endDateTime = new Date(new Date(startDateTime).getTime() + (appointment.duration || 30) * 60000).toISOString();
 
@@ -854,12 +877,9 @@ const pushToGoogleCalendar = async (userId: string, appointment: any) => {
       }
     };
 
-    const res = await calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: event,
-    });
+    const res = await googleCalendar.insertEvent(tokens, event);
 
-    return res.data.id;
+    return res.id;
   } catch (error) {
     console.error('[GOOGLE] Failed to push event:', error);
     return null;
@@ -874,11 +894,7 @@ const removeFromGoogleCalendar = async (userId: string, eventId: string) => {
     if (!tokens) return;
     tokens = await refreshGoogleToken(userId, tokens);
 
-    const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
-    auth.setCredentials(tokens);
-    const calendar = google.calendar({ version: 'v3', auth });
-
-    await calendar.events.delete({ calendarId: 'primary', eventId });
+    await googleCalendar.deleteEvent(tokens, eventId);
   } catch (error) {
     console.error('[GOOGLE] Failed to delete event:', error);
   }
@@ -892,22 +908,14 @@ const updateGoogleCalendarEvent = async (userId: string, eventId: string, appoin
     if (!tokens) return;
     tokens = await refreshGoogleToken(userId, tokens);
 
-    const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
-    auth.setCredentials(tokens);
-    const calendar = google.calendar({ version: 'v3', auth });
-
     const startDateTime = new Date(`${appointment.date}T${appointment.time}`).toISOString();
     const endDateTime = new Date(new Date(startDateTime).getTime() + (appointment.duration || 30) * 60000).toISOString();
 
-    await calendar.events.update({
-      calendarId: 'primary',
-      eventId,
-      requestBody: {
-        summary: `${appointment.service} - ${appointment.clientName}`,
-        description: `Updated via EasyBookly.\nService: ${appointment.service}\nClient: ${appointment.clientName}`,
-        start: { dateTime: startDateTime },
-        end: { dateTime: endDateTime },
-      }
+    await googleCalendar.updateEvent(tokens, eventId, {
+      summary: `${appointment.service} - ${appointment.clientName}`,
+      description: `Updated via EasyBookly.\nService: ${appointment.service}\nClient: ${appointment.clientName}`,
+      start: { dateTime: startDateTime },
+      end: { dateTime: endDateTime },
     });
   } catch (error) {
     console.error('[GOOGLE] Failed to update event:', error);
@@ -1201,15 +1209,7 @@ app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
     // 1. Google Calendar
     if (userData.googleCalendarTokens) {
       try {
-        const auth = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET
-        );
-        auth.setCredentials(userData.googleCalendarTokens);
-        
-        const calendar = google.calendar({ version: 'v3', auth });
-        const googleRes = await calendar.events.list({
-          calendarId: 'primary',
+        const eventsData = await googleCalendar.listEvents(userData.googleCalendarTokens, {
           timeMin: thirtyDaysAgo.toISOString(),
           timeMax: ninetyDaysAhead.toISOString(),
           maxResults: 250,
@@ -1217,7 +1217,7 @@ app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
           orderBy: 'startTime',
         });
 
-        const events = googleRes.data.items || [];
+        const events = eventsData.items || [];
         events.forEach((event: any) => {
           if (event.start?.dateTime || event.start?.date) {
             const start = new Date(event.start.dateTime || event.start.date);

@@ -6,19 +6,6 @@
 [functions]
   node_bundler = "esbuild"
   included_files = ["firebase-applet-config.json"]
-  external_node_modules = [
-    "firebase",
-    "firebase-admin",
-    "googleapis",
-    "twilio",
-    "@sendgrid/mail",
-    "stripe",
-    "axios",
-    "@google/genai",
-    "vite",
-    "esbuild",
-    "lightningcss"
-  ]
 
 [functions.api]
   format = "esm"
