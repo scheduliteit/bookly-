@@ -1,6 +1,13 @@
 
 export type Currency = 'ILS' | 'USD' | 'EUR' | 'GBP';
 
+export interface ReminderSettings {
+  enabled: boolean;
+  channels: ('email' | 'whatsapp' | 'sms')[];
+  timing: number; // minutes before appointment
+  messageTemplate?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -33,6 +40,7 @@ export interface User {
   googleCalendarTokens?: any;
   outlookCalendarTokens?: any;
   language?: string;
+  reminderSettings?: ReminderSettings;
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';
@@ -81,6 +89,9 @@ export interface Appointment {
   businessTimezone?: string;
   googleEventId?: string;
   outlookEventId?: string;
+  isExternal?: boolean;
+  provider?: 'google' | 'outlook' | 'native';
+  title?: string;
 }
 
 export interface BusinessStats {

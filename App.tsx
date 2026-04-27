@@ -71,6 +71,12 @@ const App: React.FC = () => {
   const [businessCategory, setBusinessCategory] = useState('Consulting');
   const [subscriptionPlan, setSubscriptionPlan] = useState<'basic' | 'premium' | undefined>(undefined);
   const [connectedApps, setConnectedApps] = useState<string[]>([]);
+  const [reminderSettings, setReminderSettings] = useState<any>({
+    enabled: true,
+    channels: ['email'],
+    timing: 60, // 1 hour before
+    messageTemplate: "Hi {clientName}, just a reminder for your {serviceName} at {businessName} on {date} at {time}."
+  });
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [externalEvents, setExternalEvents] = useState<any[]>([]);
@@ -181,6 +187,12 @@ const App: React.FC = () => {
             setLegalData(userData.legalData || legalData);
             setCurrency(userData.currency || 'USD');
             setSubscriptionPlan(planToSet);
+            setReminderSettings(userData.reminderSettings || {
+              enabled: true,
+              channels: ['email'],
+              timing: 60,
+              messageTemplate: "Hi {clientName}, just a reminder for your {serviceName} at {businessName} on {date} at {time}."
+            });
           } else {
             console.log("New user detected, creating profile...");
             
@@ -265,6 +277,7 @@ const App: React.FC = () => {
         setServices(updatedUser.services || []);
         setLegalData(updatedUser.legalData || legalData);
         setCurrency(updatedUser.currency || 'USD');
+        setReminderSettings(updatedUser.reminderSettings || reminderSettings);
         if (updatedUser.language && updatedUser.language !== language) {
           setLanguage(updatedUser.language as Language);
           localStorage.setItem('easybookly_lang', updatedUser.language);
@@ -680,6 +693,8 @@ const App: React.FC = () => {
                     onUpdateCurrency={(val) => updateUserSettings({ currency: val })}
                     timezone={timezone}
                     onUpdateTimezone={(val) => updateUserSettings({ timezone: val })}
+                    reminderSettings={reminderSettings}
+                    onUpdateReminderSettings={(val) => updateUserSettings({ reminderSettings: val })}
                     userId={user!.id}
                     initialTab={settingsTab}
                     language={language}

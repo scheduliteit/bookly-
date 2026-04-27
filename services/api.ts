@@ -160,9 +160,10 @@ export const api = {
     }
   },
   system: {
-    checkAvailability: async (date: string): Promise<string[]> => {
-      // For now, keep it simple or implement logic based on appointments
-      return ["09:00", "10:00", "11:00", "12:00", "13:30", "14:30", "15:30", "16:30"];
+    checkAvailability: async (userId: string, date: string): Promise<string[]> => {
+      const response = await fetch(`/api/availability?userId=${userId}&date=${date}`);
+      if (!response.ok) return [];
+      return response.json();
     },
     getStats: async (): Promise<any> => {
       const token = await auth.currentUser?.getIdToken();

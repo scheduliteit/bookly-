@@ -109,14 +109,14 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   }, [initialBusinessName, userId]);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && userId) {
       const fetchSlots = async () => {
-        const slots = await api.system.checkAvailability(selectedDate);
+        const slots = await api.system.checkAvailability(userId, selectedDate);
         setAvailableSlots(slots);
       };
       fetchSlots();
     }
-  }, [selectedDate]);
+  }, [selectedDate, userId]);
 
   const handleBook = async () => {
     if (!selectedService) return;

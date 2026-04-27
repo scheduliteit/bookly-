@@ -38,7 +38,19 @@
           }
         },
         "currency": { "type": "string", "enum": ["USD", "EUR", "GBP", "ILS"] },
-        "subscriptionPlan": { "type": "string", "enum": ["basic", "premium"] }
+        "subscriptionPlan": { "type": "string", "enum": ["basic", "premium"] },
+        "reminderSettings": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "channels": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["email", "whatsapp", "sms"] }
+            },
+            "timing": { "type": "number" },
+            "messageTemplate": { "type": "string" }
+          }
+        }
       },
       "required": ["id", "email"]
     },

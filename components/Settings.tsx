@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download } from 'lucide-react';
+import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download, Bell, Info } from 'lucide-react';
 import { paymentService, MerchantStats, Transaction } from '../services/paymentService';
 import { Service } from '../types';
 import { translations, Language } from '../services/translations';
@@ -17,8 +17,15 @@ interface SettingsProps {
   onUpdateCurrency: (cur: 'USD' | 'EUR' | 'GBP' | 'ILS') => void;
   timezone: string;
   onUpdateTimezone: (tz: string) => void;
+  reminderSettings: {
+    enabled: boolean;
+    channels: string[];
+    timing: number;
+    messageTemplate: string;
+  };
+  onUpdateReminderSettings: (settings: any) => void;
   userId: string;
-  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization';
+  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders';
   language: Language;
   onUpdateLanguage: (lang: Language) => void;
 }
@@ -36,12 +43,14 @@ const Settings: React.FC<SettingsProps> = ({
   onUpdateCurrency,
   timezone,
   onUpdateTimezone,
+  reminderSettings,
+  onUpdateReminderSettings,
   userId,
   initialTab,
   language,
   onUpdateLanguage
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization'>(initialTab || 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
 
   useEffect(() => {
@@ -193,6 +202,7 @@ const Settings: React.FC<SettingsProps> = ({
           {[
             { id: 'profile', label: t.profile },
             { id: 'services', label: t.services },
+            { id: 'reminders', label: 'Reminders' },
             { id: 'availability', label: t.availability },
             { id: 'payouts', label: t.payouts },
             { id: 'localization', label: t.localization },
@@ -386,6 +396,133 @@ const Settings: React.FC<SettingsProps> = ({
                    <div className="w-3 h-3 bg-emerald-500 rounded-full" />
                 </div>
              </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'reminders' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-brand-dark">Automated Reminders</h3>
+                <p className="text-xs text-slate-500 mt-1">Configure when and how clients receive appointment notifications.</p>
+              </div>
+              <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
+                <Bell size={20} />
+              </div>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
+                    <Zap size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-brand-dark">Enable Reminders</p>
+                    <p className="text-xs text-slate-500">Automatically send notifications before sessions</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={reminderSettings.enabled}
+                    onChange={(e) => onUpdateReminderSettings({ ...reminderSettings, enabled: e.target.checked })}
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-blue"></div>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <Smartphone size={14} /> Notification Channels
+                  </label>
+                  <div className="space-y-3">
+                    {[
+                      { id: 'email', label: 'Email', icon: <Mail size={16} /> },
+                      { id: 'whatsapp', label: 'WhatsApp', icon: <MessageSquare size={16} /> },
+                      { id: 'sms', label: 'SMS', icon: <SmartphoneNfc size={16} /> }
+                    ].map((channel) => (
+                      <label key={channel.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:border-brand-blue/30 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="text-slate-400">{channel.icon}</div>
+                          <span className="text-sm font-bold text-brand-dark">{channel.label}</span>
+                        </div>
+                        <input 
+                          type="checkbox"
+                          checked={reminderSettings.channels.includes(channel.id)}
+                          onChange={(e) => {
+                            const newChannels = e.target.checked 
+                              ? [...reminderSettings.channels, channel.id]
+                              : reminderSettings.channels.filter((c: string) => c !== channel.id);
+                            onUpdateReminderSettings({ ...reminderSettings, channels: newChannels });
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <Clock size={14} /> Reminder Timing
+                  </label>
+                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl space-y-4">
+                    <p className="text-xs text-slate-500 font-medium italic">Send reminder how many minutes before?</p>
+                    <div className="flex items-center gap-4">
+                      <select 
+                        value={reminderSettings.timing}
+                        onChange={(e) => onUpdateReminderSettings({ ...reminderSettings, timing: Number(e.target.value) })}
+                        className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-brand-blue"
+                      >
+                        <option value="15">15 minutes before</option>
+                        <option value="30">30 minutes before</option>
+                        <option value="60">1 hour before</option>
+                        <option value="120">2 hours before</option>
+                        <option value="1440">24 hours before</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-4">
+                    <Info size={20} className="text-amber-500 shrink-0" />
+                    <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
+                      <strong>Pro Tip:</strong> Most businesses find that sending a reminder <strong>1 hour</strong> before the session reduces no-shows by up to 40%.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <FileText size={14} /> Message Template
+                </label>
+                <textarea 
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand-blue outline-none transition-all min-h-[120px] resize-none"
+                  value={reminderSettings.messageTemplate}
+                  onChange={(e) => onUpdateReminderSettings({ ...reminderSettings, messageTemplate: e.target.value })}
+                  placeholder="Set your custom reminder message..."
+                />
+                <div className="flex flex-wrap gap-2">
+                  {['{clientName}', '{serviceName}', '{businessName}', '{date}', '{time}', '{link}'].map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md border border-slate-200">{tag}</span>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="pt-6 border-t border-slate-100 flex justify-end">
+                <button 
+                  onClick={() => alert('Settings saved to cloud!')}
+                  className="px-8 py-3 bg-brand-blue text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition-all flex items-center gap-2"
+                >
+                  <Save size={18} /> Save Notification Rules
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

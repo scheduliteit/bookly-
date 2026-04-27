@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Appointment } from '../types';
-import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video, Copy, X, Lock, RefreshCw } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video, Copy, X, Lock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
@@ -33,9 +33,12 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   onSyncNow,
   language = 'en'
 }) => {
-  const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
+
   const t = translations[language] || translations.en;
 
   const handleSync = async () => {
@@ -45,7 +48,23 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     setIsSyncing(false);
   };
 
-  const filterAppointments = () => {
+  const getWeekDays = (date: Date) => {
+    const startOfWeek = new Date(date);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day; // Adjust to Sunday or Monday? Hebrew/Arabic might prefer different
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      return d;
+    });
+  };
+
+  const weekDays = getWeekDays(currentWeek);
+
+  const filterAppointments = (mode?: 'list' | 'grid') => {
     const now = new Date();
     
     // Convert EasyBookly appointments to a unified format
@@ -71,12 +90,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       const startDate = new Date(e.start);
       const endDate = new Date(e.end);
       
-      // Handle all-day events or missing end dates
       const duration = !isNaN(endDate.getTime()) && !isNaN(startDate.getTime())
         ? Math.round((endDate.getTime() - startDate.getTime()) / 60000)
         : 30;
 
-      // Safe split for ISO strings
       const isoParts = e.start.includes('T') ? e.start.split('T') : [e.start, '00:00:00'];
       const datePart = isoParts[0];
       const timePart = isoParts[1].substring(0, 5);
@@ -98,10 +115,15 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
     const allEvents = [...easyBooklyEvents, ...syncEvents];
 
+    if (mode === 'grid' || viewMode === 'grid') {
+      return allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    }
+
     return allEvents.filter(evt => {
       const evtDate = new Date(evt.start);
       if (localActiveTab === 'upcoming') return evtDate >= now;
       if (localActiveTab === 'past') return evtDate < now;
+      if (localActiveTab === 'pending') return evt.status === 'pending';
       return false;
     }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   };
@@ -116,6 +138,20 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           <p className="text-sm text-slate-500">View and manage your meetings.</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white text-brand-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <LayoutGrid size={14} /> Grid
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'list' ? 'bg-white text-brand-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <CalendarIcon size={14} /> List
+            </button>
+          </div>
           {connectedApps.length > 0 && onSyncNow && (
             <button 
               onClick={handleSync}
@@ -135,8 +171,95 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-8 border-b border-slate-100 mb-6">
+      {viewMode === 'grid' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => {
+                  const d = new Date(currentWeek);
+                  d.setDate(d.getDate() - 7);
+                  setCurrentWeek(d);
+                }}
+                className="p-2 hover:bg-slate-50 rounded-full transition-all"
+              >
+                <ChevronDown size={20} className="rotate-90" />
+              </button>
+              <h3 className="font-bold text-brand-dark min-w-[200px] text-center">
+                {weekDays[0].toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' })} - {weekDays[6].toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </h3>
+              <button 
+                onClick={() => {
+                  const d = new Date(currentWeek);
+                  d.setDate(d.getDate() + 7);
+                  setCurrentWeek(d);
+                }}
+                className="p-2 hover:bg-slate-50 rounded-full transition-all"
+              >
+                <ChevronDown size={20} className="-rotate-90" />
+              </button>
+            </div>
+            <button 
+              onClick={() => setCurrentWeek(new Date())}
+              className="text-xs font-bold text-brand-blue hover:underline"
+            >
+              Today
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-4">
+            {weekDays.map((day, idx) => {
+              const dayStr = day.toISOString().split('T')[0];
+              const dayEvents = filterAppointments().filter(e => e.date === dayStr);
+              const isToday = new Date().toISOString().split('T')[0] === dayStr;
+
+              return (
+                <div key={idx} className="space-y-3">
+                  <div className={`text-center p-3 rounded-2xl border ${isToday ? 'bg-brand-blue/5 border-brand-blue/20' : 'bg-white border-slate-100'}`}>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-brand-blue' : 'text-slate-400'}`}>
+                      {day.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' })}
+                    </p>
+                    <p className={`text-xl font-black ${isToday ? 'text-brand-blue' : 'text-brand-dark'}`}>
+                      {day.getDate()}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 min-h-[400px] bg-slate-50/50 rounded-2xl p-2 border border-dashed border-slate-200">
+                    {dayEvents.map(evt => (
+                      <motion.div 
+                        key={evt.id}
+                        layoutId={evt.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={() => setSelectedApt(evt as any)}
+                        className={`p-3 rounded-xl border shadow-sm cursor-pointer hover:scale-[1.02] transition-all group relative overflow-hidden ${evt.isExternal ? 'bg-white border-slate-200' : 'bg-brand-blue/10 border-brand-blue/20'}`}
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: evt.isExternal ? (evt as any).color : '#006bff' }} />
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{evt.time}</p>
+                        <p className="text-[11px] font-bold text-brand-dark truncate leading-tight mt-0.5">{evt.title}</p>
+                        {evt.isExternal && (
+                          <div className="flex items-center gap-1 mt-1 opacity-60">
+                             <ExternalLink size={8} className="text-slate-400" />
+                             <span className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-400">{(evt as any).provider}</span>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                    {dayEvents.length === 0 && (
+                      <div className="h-full flex items-center justify-center opacity-20 py-10">
+                        <CalendarIcon size={24} className="text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Tabs */}
+          <div className="flex items-center gap-8 border-b border-slate-100 mb-6">
         {['upcoming', 'pending', 'past'].map((tab) => (
           <button
             key={tab}
@@ -236,6 +359,8 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* EasyBookly Help Tip */}
       <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-200">

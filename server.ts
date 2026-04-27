@@ -17,9 +17,6 @@ import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
-
 dotenv.config();
 
 // Initialize SendGrid
@@ -67,14 +64,15 @@ console.log('[SERVER] NETLIFY env:', process.env.NETLIFY);
 const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
 
 // Initialize Firebase for server-side use
+const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
 let db: any;
 try {
-  console.log('[SERVER] Initializing Firebase with config');
-  const firebaseApp = initializeApp(firebaseConfig);
-  db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
-  console.log('[SERVER] Firebase initialized successfully');
+  console.log('[SERVER] Initializing Firebase Admin for Firestore');
+  // We prioritize using the Admin SDK for all server-side operations to bypass security rules
+  db = getAdminFirestore(dbId);
+  console.log('[SERVER] Admin Firestore initialized successfully');
 } catch (error) {
-  console.error('[SERVER] Failed to initialize Firebase on server:', error);
+  console.error('[SERVER] Failed to initialize Admin Firestore on server:', error);
 }
 
 const app = express();
@@ -151,9 +149,8 @@ app.get('/api/appointments', requireAuth, async (req: any, res: any) => {
   const userId = req.user.uid;
   
   try {
-    const q = query(collection(db, 'appointments'), where('userId', '==', userId));
-    const snapshot = await getDocs(q);
-    const appointments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    const snapshot = await db.collection('appointments').where('userId', '==', userId).get();
+    const appointments = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }));
     res.json(appointments);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -186,7 +183,7 @@ app.post('/api/public/book', async (req: any, res: any) => {
     const googleEventId = await pushToGoogleCalendar(userId, docDef);
     if (googleEventId) docDef.googleEventId = googleEventId;
 
-    const docRef = await addDoc(collection(db, 'appointments'), docDef);
+    const docRef = await db.collection('appointments').add(docDef);
     
     // Optional: Send notification
     try {
@@ -241,7 +238,7 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
     const outlookEventId = await pushToOutlookCalendar(userId, appointmentData);
     if (outlookEventId) appointmentData.outlookEventId = outlookEventId;
 
-    const docRef = await addDoc(collection(db, 'appointments'), appointmentData);
+    const docRef = await db.collection('appointments').add(appointmentData);
     res.status(201).json({ ...appointmentData, id: docRef.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -253,10 +250,10 @@ app.delete('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
   const userId = req.user.uid;
 
   try {
-    const docRef = doc(db, 'appointments', req.params.id);
-    const docSnap = await getDoc(docRef);
+    const docRef = db.collection('appointments').doc(req.params.id);
+    const docSnap = await docRef.get();
     
-    if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
+    if (!docSnap.exists) return res.status(404).json({ error: 'Not found' });
     if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
 
     const appointment = docSnap.data();
@@ -271,7 +268,7 @@ app.delete('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
       await removeFromOutlookCalendar(userId, appointment.outlookEventId);
     }
 
-    await deleteDoc(docRef);
+    await docRef.delete();
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -282,10 +279,10 @@ app.put('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.user.uid;
   try {
-    const docRef = doc(db, 'appointments', req.params.id);
-    const docSnap = await getDoc(docRef);
+    const docRef = db.collection('appointments').doc(req.params.id);
+    const docSnap = await docRef.get();
     
-    if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
+    if (!docSnap.exists) return res.status(404).json({ error: 'Not found' });
     if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
 
     const updatedData = { ...req.body, userId };
@@ -306,7 +303,7 @@ app.put('/api/appointments/:id', requireAuth, async (req: any, res: any) => {
       if (oId) updatedData.outlookEventId = oId;
     }
 
-    await updateDoc(docRef, updatedData);
+    await docRef.update(updatedData);
     res.json({ ...updatedData, id: req.params.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -318,9 +315,8 @@ app.get('/api/clients', requireAuth, async (req: any, res: any) => {
   const userId = req.user.uid;
   
   try {
-    const q = query(collection(db, 'clients'), where('userId', '==', userId));
-    const snapshot = await getDocs(q);
-    const clients = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    const snapshot = await db.collection('clients').where('userId', '==', userId).get();
+    const clients = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }));
     res.json(clients);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -331,22 +327,125 @@ app.delete('/api/clients/:id', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.user.uid;
   try {
-    const docRef = doc(db, 'clients', req.params.id);
-    const docSnap = await getDoc(docRef);
+    const docRef = db.collection('clients').doc(req.params.id);
+    const docSnap = await docRef.get();
 
-    if (!docSnap.exists()) return res.status(404).json({ error: 'Not found' });
+    if (!docSnap.exists) return res.status(404).json({ error: 'Not found' });
     if (docSnap.data().userId !== userId) return res.status(403).json({ error: 'Forbidden' });
 
-    await deleteDoc(docRef);
+    await docRef.delete();
     res.status(204).send();
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/availability', (req, res) => {
-  // Mock availability logic
-  res.json(["09:00", "10:00", "11:00", "12:00", "13:30", "14:30", "15:30", "16:30"]);
+app.get('/api/availability', async (req, res) => {
+  const { userId, date } = req.query;
+  if (!userId || !date) return res.status(400).json({ error: 'Missing userId or date' });
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+
+  try {
+    const selectedDate = date as string;
+    const merchantId = userId as string;
+
+    // 1. Fetch Merchant Appointments for this date
+    const appointmentsSnap = await db.collection('appointments')
+      .where('userId', '==', merchantId)
+      .where('date', '==', selectedDate)
+      .get();
+    
+    const existingBookings = appointmentsSnap.docs.map((doc: any) => ({
+      time: doc.data().time,
+      duration: doc.data().duration || 30
+    }));
+
+    // 2. Fetch Merchant External Events (Google/Outlook)
+    const userSnap = await db.collection('users').doc(merchantId).get();
+    const userData = userSnap.data();
+    const busySlots: { start: Date, end: Date }[] = [];
+
+    // Convert existing bookings to busySlots
+    existingBookings.forEach((b: any) => {
+      const start = new Date(`${selectedDate}T${b.time}`);
+      const end = new Date(start.getTime() + b.duration * 60000);
+      busySlots.push({ start, end });
+    });
+
+    if (userData) {
+      // Google Calendar
+      if (userData.googleCalendarTokens) {
+        try {
+          const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+          auth.setCredentials(userData.googleCalendarTokens);
+          const calendar = google.calendar({ version: 'v3', auth });
+          
+          const timeMin = new Date(`${selectedDate}T00:00:00Z`).toISOString();
+          const timeMax = new Date(`${selectedDate}T23:59:59Z`).toISOString();
+          
+          const gRes = await calendar.events.list({
+            calendarId: 'primary',
+            timeMin,
+            timeMax,
+            singleEvents: true,
+          });
+          
+          (gRes.data.items || []).forEach((item: any) => {
+            if (item.start?.dateTime) {
+              busySlots.push({
+                start: new Date(item.start.dateTime),
+                end: new Date(item.end.dateTime)
+              });
+            }
+          });
+        } catch (e) { console.error('[AVAILABILITY] Google fetch failed'); }
+      }
+
+      // Outlook Calendar
+      if (userData.outlookCalendarTokens) {
+        try {
+          const oRes = await axios.get('https://graph.microsoft.com/v1.0/me/calendar/events', {
+            headers: { Authorization: `Bearer ${userData.outlookCalendarTokens.access_token}` },
+            params: {
+              '$select': 'start,end',
+              '$filter': `start/dateTime ge '${selectedDate}T00:00:00Z' and start/dateTime le '${selectedDate}T23:59:59Z'`
+            }
+          });
+          (oRes.data.value || []).forEach((item: any) => {
+            busySlots.push({
+              start: new Date(item.start.dateTime + 'Z'),
+              end: new Date(item.end.dateTime + 'Z')
+            });
+          });
+        } catch (e) { console.error('[AVAILABILITY] Outlook fetch failed'); }
+      }
+    }
+
+    // 3. Generate 30-min slots from 09:00 to 18:00
+    const slots = [];
+    let current = new Date(`${selectedDate}T09:00:00`);
+    const endOfDay = new Date(`${selectedDate}T18:00:00`);
+
+    while (current < endOfDay) {
+      const slotStart = new Date(current);
+      const slotEnd = new Date(current.getTime() + 30 * 60000);
+      
+      // Check if slot overlaps with any busySlot
+      const isBusy = busySlots.some(busy => {
+        return (slotStart < busy.end && slotEnd > busy.start);
+      });
+
+      if (!isBusy) {
+        slots.push(current.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+      }
+      current = new Date(current.getTime() + 30 * 60000);
+    }
+
+    res.json(slots);
+  } catch (error: any) {
+    console.error('[AVAILABILITY] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Gemini AI Proxy Helper
@@ -508,16 +607,16 @@ app.post('/api/auth/disconnect', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
 
   try {
-    const userRef = doc(db, 'users', userId);
+    const userRef = db.collection('users').doc(userId);
     const updates: any = {
-      connectedApps: arrayRemove(provider)
+      connectedApps: admin.firestore.FieldValue.arrayRemove(provider)
     };
 
-    if (provider === 'google') updates.googleCalendarTokens = deleteField();
-    if (provider === 'outlook') updates.outlookCalendarTokens = deleteField();
-    if (provider === 'zoom') updates.zoomTokens = deleteField();
+    if (provider === 'google') updates.googleCalendarTokens = admin.firestore.FieldValue.delete();
+    if (provider === 'outlook') updates.outlookCalendarTokens = admin.firestore.FieldValue.delete();
+    if (provider === 'zoom') updates.zoomTokens = admin.firestore.FieldValue.delete();
 
-    await updateDoc(userRef, updates);
+    await userRef.update(updates);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -529,7 +628,8 @@ app.get('/api/auth/google/url', (req, res) => {
   const { userId } = req.query;
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.get('host');
-  const callbackUrl = `${protocol}://${host}/auth/callback`;
+  const appUrl = process.env.APP_URL || `${protocol}://${host}`;
+  const callbackUrl = `${appUrl}/auth/callback`;
   
   if (process.env.GOOGLE_CLIENT_ID && userId) {
     const client = new google.auth.OAuth2(
@@ -541,6 +641,9 @@ app.get('/api/auth/google/url', (req, res) => {
       access_type: 'offline',
       prompt: 'consent',
       scope: [
+        'openid',
+        'email',
+        'profile',
         'https://www.googleapis.com/auth/calendar.readonly',
         'https://www.googleapis.com/auth/calendar.events'
       ],
@@ -557,7 +660,8 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
   const { code, state: userId } = req.query;
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.get('host');
-  const callbackUrl = `${protocol}://${host}/auth/callback`;
+  const appUrl = process.env.APP_URL || `${protocol}://${host}`;
+  const callbackUrl = `${appUrl}/auth/callback`;
 
   if (process.env.GOOGLE_CLIENT_ID && code && code !== 'mock_code_123' && userId) {
     try {
@@ -570,10 +674,10 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
       
       // Save tokens to Firestore
       if (db) {
-        const userRef = doc(db, 'users', userId as string);
-        await updateDoc(userRef, { 
+        const userRef = db.collection('users').doc(userId as string);
+        await userRef.update({ 
           googleCalendarTokens: tokens,
-          connectedApps: arrayUnion('google')
+          connectedApps: admin.firestore.FieldValue.arrayUnion('google')
         });
         console.log('[SERVER] Google Tokens saved for user:', userId);
       }
@@ -621,8 +725,8 @@ const refreshGoogleToken = async (userId: string, tokens: any) => {
       const updatedTokens = { ...tokens, ...credentials };
       
       if (db) {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, { googleCalendarTokens: updatedTokens });
+        const userRef = db.collection('users').doc(userId);
+        await userRef.update({ googleCalendarTokens: updatedTokens });
       }
       return updatedTokens;
     }
@@ -637,8 +741,8 @@ const pushToGoogleCalendar = async (userId: string, appointment: any) => {
   if (!db) return null;
   
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    if (!userSnap.exists()) return null;
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists) return null;
     let tokens = userSnap.data().googleCalendarTokens;
     if (!tokens) return null;
 
@@ -683,7 +787,7 @@ const pushToGoogleCalendar = async (userId: string, appointment: any) => {
 const removeFromGoogleCalendar = async (userId: string, eventId: string) => {
   if (!db) return;
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
+    const userSnap = await db.collection('users').doc(userId).get();
     let tokens = userSnap.data()?.googleCalendarTokens;
     if (!tokens) return;
     tokens = await refreshGoogleToken(userId, tokens);
@@ -701,7 +805,7 @@ const removeFromGoogleCalendar = async (userId: string, eventId: string) => {
 const updateGoogleCalendarEvent = async (userId: string, eventId: string, appointment: any) => {
   if (!db) return;
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
+    const userSnap = await db.collection('users').doc(userId).get();
     let tokens = userSnap.data()?.googleCalendarTokens;
     if (!tokens) return;
     tokens = await refreshGoogleToken(userId, tokens);
@@ -764,10 +868,10 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) 
 
       const tokens = response.data;
       if (db) {
-        const userRef = doc(db, 'users', userId as string);
-        await updateDoc(userRef, { 
+        const userRef = db.collection('users').doc(userId as string);
+        await userRef.update({ 
           outlookCalendarTokens: tokens,
-          connectedApps: arrayUnion('outlook')
+          connectedApps: admin.firestore.FieldValue.arrayUnion('outlook')
         });
         console.log('[SERVER] Outlook Tokens saved for user:', userId);
       }
@@ -802,7 +906,7 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) 
 const pushToOutlookCalendar = async (userId: string, appointment: any) => {
   if (!db || !process.env.OUTLOOK_CLIENT_ID) return null;
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
+    const userSnap = await db.collection('users').doc(userId).get();
     const tokens = userSnap.data()?.outlookCalendarTokens;
     if (!tokens) return null;
 
@@ -828,7 +932,7 @@ const pushToOutlookCalendar = async (userId: string, appointment: any) => {
 const removeFromOutlookCalendar = async (userId: string, eventId: string) => {
   if (!db || !process.env.OUTLOOK_CLIENT_ID) return;
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
+    const userSnap = await db.collection('users').doc(userId).get();
     const tokens = userSnap.data()?.outlookCalendarTokens;
     if (!tokens) return;
 
@@ -843,7 +947,7 @@ const removeFromOutlookCalendar = async (userId: string, eventId: string) => {
 const updateOutlookCalendarEvent = async (userId: string, eventId: string, appointment: any) => {
   if (!db || !process.env.OUTLOOK_CLIENT_ID) return;
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
+    const userSnap = await db.collection('users').doc(userId).get();
     const tokens = userSnap.data()?.outlookCalendarTokens;
     if (!tokens) return;
 
@@ -902,10 +1006,10 @@ app.get(['/auth/zoom/callback', '/auth/zoom/callback/'], async (req, res) => {
 
       const tokens = response.data;
       if (db) {
-        const userRef = doc(db, 'users', userId as string);
-        await updateDoc(userRef, { 
+        const userRef = db.collection('users').doc(userId as string);
+        await userRef.update({ 
           zoomTokens: tokens,
-          connectedApps: arrayUnion('zoom')
+          connectedApps: admin.firestore.FieldValue.arrayUnion('zoom')
         });
         console.log('[SERVER] Zoom Tokens saved for user:', userId);
       }
@@ -954,8 +1058,8 @@ const refreshZoomToken = async (userId: string, tokens: any) => {
 
     const newTokens = response.data;
     if (db) {
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, { zoomTokens: newTokens });
+      const userRef = db.collection('users').doc(userId);
+      await userRef.update({ zoomTokens: newTokens });
     }
     return newTokens;
   } catch (error) {
@@ -968,8 +1072,8 @@ const createZoomMeeting = async (userId: string, topic: string, startTime: strin
   if (!db) return null;
   
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    if (!userSnap.exists() || !userSnap.data().zoomTokens) return null;
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists || !userSnap.data().zoomTokens) return null;
     
     let tokens = userSnap.data().zoomTokens;
     // Always refresh or check expiration (simplified: always refresh for now or use current)
@@ -1002,11 +1106,15 @@ app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
 
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    if (!userSnap.exists()) return res.status(404).json({ error: 'User not found' });
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists) return res.status(404).json({ error: 'User not found' });
     
     const userData = userSnap.data();
     const externalEvents: any[] = [];
+    
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    const ninetyDaysAhead = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000));
 
     // 1. Google Calendar
     if (userData.googleCalendarTokens) {
@@ -1020,8 +1128,9 @@ app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
         const calendar = google.calendar({ version: 'v3', auth });
         const googleRes = await calendar.events.list({
           calendarId: 'primary',
-          timeMin: new Date().toISOString(),
-          maxResults: 50,
+          timeMin: thirtyDaysAgo.toISOString(),
+          timeMax: ninetyDaysAhead.toISOString(),
+          maxResults: 250,
           singleEvents: true,
           orderBy: 'startTime',
         });
@@ -1030,13 +1139,17 @@ app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
         events.forEach((event: any) => {
           if (event.start?.dateTime || event.start?.date) {
             const start = new Date(event.start.dateTime || event.start.date);
+            const end = new Date(event.end.dateTime || event.end.date);
             externalEvents.push({
               id: event.id,
               title: event.summary || 'Busy (Google)',
               start: start.toISOString(),
-              end: new Date(event.end.dateTime || event.end.date).toISOString(),
+              end: end.toISOString(),
+              date: start.toISOString().split('T')[0],
+              time: start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
               provider: 'google',
-              color: '#4285F4'
+              color: '#4285F4',
+              isExternal: true
             });
           }
         });
@@ -1050,27 +1163,29 @@ app.get('/api/calendar/sync', requireAuth, async (req: any, res: any) => {
       try {
         let tokens = userData.outlookCalendarTokens;
         
-        // Refresh token if needed (simplification: always try to refresh or use current)
-        // In a real app, check expiration
-        
         const outlookRes = await axios.get('https://graph.microsoft.com/v1.0/me/calendar/events', {
           headers: { Authorization: `Bearer ${tokens.access_token}` },
           params: {
             '$select': 'subject,start,end,id',
-            '$top': 50,
-            '$filter': `start/dateTime ge '${new Date().toISOString()}'`
+            '$top': 100,
+            '$filter': `start/dateTime ge '${thirtyDaysAgo.toISOString()}'`
           }
         });
 
         const events = outlookRes.data.value || [];
         events.forEach((event: any) => {
+          const start = new Date(event.start.dateTime + 'Z');
+          const end = new Date(event.end.dateTime + 'Z');
           externalEvents.push({
             id: event.id,
             title: event.subject || 'Busy (Outlook)',
-            start: new Date(event.start.dateTime + 'Z').toISOString(),
-            end: new Date(event.end.dateTime + 'Z').toISOString(),
+            start: start.toISOString(),
+            end: end.toISOString(),
+            date: start.toISOString().split('T')[0],
+            time: start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
             provider: 'outlook',
-            color: '#0078d4'
+            color: '#0078d4',
+            isExternal: true
           });
         });
       } catch (err) {
@@ -1464,6 +1579,109 @@ app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any)
     res.status(500).json({ error: 'Failed to generate insights: ' + error.message });
   }
 });
+
+// Reminder Service (Automated Workflows)
+const checkAndSendReminders = async () => {
+  if (!db) return;
+  console.log('[REMINDERS] Checking for upcoming appointments...');
+  
+  try {
+    const now = new Date();
+    // Check appointments in the next 24 hours that haven't had a reminder
+    // We check all 'confirmed' appointments where reminderSent is false or undefined
+    const snapshot = await db.collection('appointments')
+      .where('status', '==', 'confirmed')
+      .where('reminderSent', '!=', true)
+      .get();
+    
+    console.log(`[REMINDERS] Found ${snapshot.size} potential candidates for reminders`);
+    
+    for (const appointmentDoc of snapshot.docs) {
+      const appointment = appointmentDoc.data();
+      if (!appointment.date || !appointment.time) continue;
+
+      const appointmentTime = new Date(`${appointment.date}T${appointment.time}`);
+      
+      // Get user settings
+      const userSnap = await db.collection('users').doc(appointment.userId).get();
+      const userData = userSnap.data();
+      if (!userData || !userData.reminderSettings || !userData.reminderSettings.enabled) continue;
+      
+      const settings = userData.reminderSettings;
+      const timingMinutes = settings.timing || 60;
+      
+      const diffMs = appointmentTime.getTime() - now.getTime();
+      const diffMinutes = Math.floor(diffMs / 60000);
+      
+      // If we are within the timing window (and not passed the appointment)
+      if (diffMinutes > 0 && diffMinutes <= timingMinutes) {
+        console.log(`[REMINDERS] Sending reminder for appointment ${appointmentDoc.id} to ${appointment.clientName}`);
+        
+        const message = (settings.messageTemplate || "Hi {clientName}, reminder for your {serviceName} at {time}.")
+          .replace(/{clientName}/g, appointment.clientName || 'valued client')
+          .replace(/{serviceName}/g, appointment.service || 'session')
+          .replace(/{businessName}/g, userData.businessName || 'the business')
+          .replace(/{date}/g, appointment.date)
+          .replace(/{time}/g, appointment.time)
+          .replace(/{link}/g, appointment.meetingLink || 'No link provided');
+
+        // Send through channels
+        if (settings.channels.includes('email') && (appointment.clientEmail || appointment.email)) {
+          const targetEmail = appointment.clientEmail || appointment.email;
+          try {
+            await sgMail.send({
+              to: targetEmail,
+              from: process.env.SENDGRID_FROM_EMAIL || 'notifications@easybookly.com',
+              subject: `Reminder: ${appointment.service}`,
+              text: message,
+              html: `<div style="font-family: sans-serif; padding: 20px; color: #334155;">
+                <h2 style="color: #006bff;">Appointment Reminder</h2>
+                <p>${message.replace(/\n/g, '<br>')}</p>
+                <div style="margin-top: 20px; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; pt: 10px;">
+                  Sent via EasyBookly Intelligence Platform
+                </div>
+              </div>`
+            });
+            console.log(`[REMINDERS] Email sent to ${targetEmail}`);
+          } catch (e: any) { console.error('[REMINDERS] Email failed:', e.response?.body || e.message); }
+        }
+        
+        if (settings.channels.includes('sms') && appointment.clientPhone && twilioClient) {
+           try {
+             await twilioClient.messages.create({
+               body: message,
+               to: appointment.clientPhone,
+               from: process.env.TWILIO_PHONE_NUMBER
+             });
+             console.log(`[REMINDERS] SMS sent to ${appointment.clientPhone}`);
+           } catch (e: any) { console.error('[REMINDERS] SMS failed:', e.message); }
+        }
+
+        if (settings.channels.includes('whatsapp') && appointment.clientPhone && twilioClient) {
+           try {
+             await twilioClient.messages.create({
+               body: message,
+               from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+               to: `whatsapp:${appointment.clientPhone}`
+             });
+             console.log(`[REMINDERS] WhatsApp sent to ${appointment.clientPhone}`);
+           } catch (e: any) { console.error('[REMINDERS] WhatsApp failed:', e.message); }
+        }
+
+        // Mark as sent
+        await db.collection('appointments').doc(appointmentDoc.id).update({
+          reminderSent: true,
+          reminderTimestamp: now.toISOString()
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[REMINDERS] Critical error:', error);
+  }
+};
+
+// Start background job every 5 minutes
+setInterval(checkAndSendReminders, 5 * 60 * 1000);
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
