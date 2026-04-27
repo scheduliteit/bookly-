@@ -536,36 +536,84 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
             <div className="p-8 space-y-6">
               {/* Google Calendar */}
-              <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                    <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" className="w-6 h-6" alt="Google Calendar" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-brand-dark">Google Calendar</p>
-                    <p className="text-xs text-slate-500">{connectedApps.includes('google') ? 'Connected and syncing' : 'Not connected'}</p>
-                  </div>
-                </div>
-                {connectedApps.includes('google') ? (
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100">
-                      <Check size={14} /> Active
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                      <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" className="w-6 h-6" alt="Google Calendar" />
                     </div>
-                    <button 
-                      onClick={() => handleDisconnectApp('google')}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                      title="Disconnect Google Calendar"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div>
+                      <p className="text-sm font-bold text-brand-dark">Google Calendar</p>
+                      <p className="text-xs text-slate-500">{connectedApps.includes('google') ? 'Connected and syncing' : 'Not connected'}</p>
+                    </div>
                   </div>
-                ) : (
-                  <button 
-                    onClick={handleConnectCalendar}
-                    className="px-6 py-2.5 bg-brand-blue text-white rounded-lg font-bold text-sm hover:bg-brand-dark shadow-md transition-all"
-                  >
-                    Connect
-                  </button>
+                  {connectedApps.includes('google') ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100">
+                        <Check size={14} /> Active
+                      </div>
+                      <button 
+                        onClick={() => handleDisconnectApp('google')}
+                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        title="Disconnect Google Calendar"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={handleConnectCalendar}
+                      className="px-6 py-2.5 bg-brand-blue text-white rounded-lg font-bold text-sm hover:bg-brand-dark shadow-md transition-all"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+
+                {!connectedApps.includes('google') && (
+                  <div className="p-6 bg-brand-blue/5 rounded-2xl border border-brand-blue/10 space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 bg-brand-blue/10 text-brand-blue rounded-lg flex items-center justify-center shrink-0">
+                        <Info size={16} />
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-bold text-brand-dark">Setup Instructions</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          To connect Google Calendar, you must configure your Client ID and Client Secret in the <strong>Admin Settings</strong> (via the backend or environment variables).
+                        </p>
+                        <div className="pt-2">
+                          <p className="text-[10px] font-black text-brand-blue uppercase tracking-widest mb-2">Authorized Redirect URIs</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-brand-blue/20">
+                              <code className="text-[10px] font-mono text-slate-600 truncate mr-2">{window.location.origin}/auth/callback</code>
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${window.location.origin}/auth/callback`);
+                                  alert('Copied dev callback');
+                                }}
+                                className="p-1.5 hover:bg-slate-50 rounded-lg text-brand-blue transition-all"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </div>
+                            {/* Also provide the shared/preview URL if available */}
+                            <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-brand-blue/20">
+                              <code className="text-[10px] font-mono text-slate-600 truncate mr-2">https://ais-pre-aal6thy3ti4eogtu3iyvnn-508897601969.europe-west2.run.app/auth/callback</code>
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`https://ais-pre-aal6thy3ti4eogtu3iyvnn-508897601969.europe-west2.run.app/auth/callback`);
+                                  alert('Copied shared callback');
+                                }}
+                                className="p-1.5 hover:bg-slate-50 rounded-lg text-brand-blue transition-all"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 

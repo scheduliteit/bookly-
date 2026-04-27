@@ -41,6 +41,8 @@ const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'fire
 
 // Firebase Admin Initialization (Security Fix #6)
 let adminApp: admin.app.App | null = null;
+let db: any;
+
 try {
   if (admin.apps.length > 0) {
     adminApp = admin.app();
@@ -51,37 +53,69 @@ try {
     });
     console.log('[SERVER] Firebase Admin initialized with Service Account');
   } else {
-    // Explicitly use the projectId from our configuration as a fallback
-    try {
-      adminApp = admin.initializeApp({
-        projectId: firebaseConfig.projectId
-      });
-      console.log('[SERVER] Firebase Admin initialized with Project ID:', firebaseConfig.projectId);
-    } catch (adcError) {
-      console.warn('[SERVER] Firebase Admin initialization failed. Auth verification will be mocked.');
-    }
+    // We don't call initializeApp here if we don't have credentials to avoid ADC errors
+    console.warn('[SERVER] FIREBASE_SERVICE_ACCOUNT_JSON missing. Admin features (token verification) will be limited.');
+  }
+
+  if (adminApp) {
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    db = getAdminFirestore(adminApp, dbId);
+    console.log('[SERVER] Admin Firestore initialized successfully');
   }
 } catch (error) {
-  console.error('[SERVER] Admin Init Failed:', error);
+  console.error('[SERVER] Failed to initialize Firebase Admin:', error);
 }
 
-console.log('[SERVER] Starting with NODE_ENV:', process.env.NODE_ENV);
-console.log('[SERVER] NETLIFY env:', process.env.NETLIFY);
+// Unified Firestore Field Values
+let firestoreValues: any = {
+  arrayUnion: (val: any) => admin.firestore.FieldValue.arrayUnion(val),
+  arrayRemove: (val: any) => admin.firestore.FieldValue.arrayRemove(val),
+  delete: () => admin.firestore.FieldValue.delete()
+};
 
-// Initialize Firebase for server-side use
-const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-let db: any;
-try {
-  console.log('[SERVER] Initializing Firestore Admin with DB:', dbId);
-  // Pass the app explicitly to ensure it uses the correctly initialized project
-  if (adminApp) {
-    db = getAdminFirestore(adminApp, dbId);
-  } else {
-    db = getAdminFirestore(dbId);
+// Fallback to Web SDK if Admin fails or is not available
+if (!db) {
+  try {
+    console.log('[SERVER] Falling back to Firebase Web SDK for Firestore');
+    const { initializeApp: initializeWebApp } = await import('firebase/app');
+    const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
+    
+    // Update unitied values for Web SDK
+    firestoreValues = {
+      arrayUnion,
+      arrayRemove,
+      delete: deleteField
+    };
+    
+    const webApp = initializeWebApp(firebaseConfig);
+    const webDb = getWebFirestore(webApp, firebaseConfig.firestoreDatabaseId);
+    
+    // Create a compatibility wrapper for Admin-style calls used in the server
+    db = {
+      collection: (colName: string) => ({
+        doc: (docId: string) => ({
+          get: () => getDoc(doc(webDb, colName, docId)).then(s => ({ exists: s.exists(), data: () => s.data(), id: s.id })),
+          update: (data: any) => updateDoc(doc(webDb, colName, docId), data),
+          delete: () => deleteDoc(doc(webDb, colName, docId)),
+        }),
+        where: (field: string, op: any, value: any) => {
+          const q = query(collection(webDb, colName), where(field, op === '==' ? '==' : op, value));
+          return {
+            get: () => getDocs(q).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
+            where: (f2: string, o2: any, v2: any) => {
+               const q2 = query(q, where(f2, o2 === '==' ? '==' : o2, v2));
+               return { get: () => getDocs(q2).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })) };
+            }
+          };
+        },
+        add: (data: any) => addDoc(collection(webDb, colName), data).then(d => ({ id: d.id })),
+        get: () => getDocs(collection(webDb, colName)).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
+      })
+    };
+    console.log('[SERVER] Web SDK Firestore wrapper initialized');
+  } catch (webError) {
+    console.error('[SERVER] Failed fallback to Web SDK:', webError);
   }
-  console.log('[SERVER] Admin Firestore initialized successfully');
-} catch (error) {
-  console.error('[SERVER] Failed to initialize Admin Firestore on server:', error);
 }
 
 const app = express();
@@ -618,12 +652,12 @@ app.post('/api/auth/disconnect', requireAuth, async (req: any, res: any) => {
   try {
     const userRef = db.collection('users').doc(userId);
     const updates: any = {
-      connectedApps: admin.firestore.FieldValue.arrayRemove(provider)
+      connectedApps: firestoreValues.arrayRemove(provider)
     };
 
-    if (provider === 'google') updates.googleCalendarTokens = admin.firestore.FieldValue.delete();
-    if (provider === 'outlook') updates.outlookCalendarTokens = admin.firestore.FieldValue.delete();
-    if (provider === 'zoom') updates.zoomTokens = admin.firestore.FieldValue.delete();
+    if (provider === 'google') updates.googleCalendarTokens = firestoreValues.delete();
+    if (provider === 'outlook') updates.outlookCalendarTokens = firestoreValues.delete();
+    if (provider === 'zoom') updates.zoomTokens = firestoreValues.delete();
 
     await userRef.update(updates);
     res.json({ success: true });
@@ -686,7 +720,7 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
         const userRef = db.collection('users').doc(userId as string);
         await userRef.update({ 
           googleCalendarTokens: tokens,
-          connectedApps: admin.firestore.FieldValue.arrayUnion('google')
+          connectedApps: firestoreValues.arrayUnion('google')
         });
         console.log('[SERVER] Google Tokens saved for user:', userId);
       }
@@ -880,7 +914,7 @@ app.get(['/auth/outlook/callback', '/auth/outlook/callback/'], async (req, res) 
         const userRef = db.collection('users').doc(userId as string);
         await userRef.update({ 
           outlookCalendarTokens: tokens,
-          connectedApps: admin.firestore.FieldValue.arrayUnion('outlook')
+          connectedApps: firestoreValues.arrayUnion('outlook')
         });
         console.log('[SERVER] Outlook Tokens saved for user:', userId);
       }
@@ -1018,7 +1052,7 @@ app.get(['/auth/zoom/callback', '/auth/zoom/callback/'], async (req, res) => {
         const userRef = db.collection('users').doc(userId as string);
         await userRef.update({ 
           zoomTokens: tokens,
-          connectedApps: admin.firestore.FieldValue.arrayUnion('zoom')
+          connectedApps: firestoreValues.arrayUnion('zoom')
         });
         console.log('[SERVER] Zoom Tokens saved for user:', userId);
       }

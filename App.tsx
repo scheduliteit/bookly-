@@ -551,7 +551,7 @@ const App: React.FC = () => {
           {(() => {
             switch (activeTab) {
               case 'dashboard':
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} onJoinMeeting={setActiveMeetingRoom} />;
+                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} externalEvents={externalEvents} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} onJoinMeeting={setActiveMeetingRoom} />;
               case 'calendar':
                 return (
                   <AppointmentCalendar 

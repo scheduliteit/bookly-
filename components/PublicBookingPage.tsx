@@ -182,6 +182,50 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
     setIsAiTyping(false);
   };
 
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const calendarDays = (() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysCount = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+    const days = [];
+    
+    // Padding for first week
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+    
+    for (let i = 1; i <= daysCount; i++) {
+      days.push(new Date(year, month, i));
+    }
+    
+    return days;
+  })();
+
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+
+  const isSelected = (day: Date | null) => {
+    if (!day || !selectedDate) return false;
+    return day.toISOString().split('T')[0] === selectedDate;
+  };
+
+  const isToday = (day: Date | null) => {
+    if (!day) return false;
+    return day.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+  };
+
+  const isPast = (day: Date | null) => {
+    if (!day) return true;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    return day < today;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-4">
@@ -243,83 +287,94 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
     };
 
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in" dir={t.dir}>
-        <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-6">
-          <Check size={32} />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.confirmed}</h2>
-        <p className="text-slate-500 mb-8">{t.scheduledWith} {businessName}.</p>
-        
-        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-left w-full max-w-md mb-8" dir={t.dir}>
-           <h3 className="font-bold text-slate-900 mb-4">{selectedService?.name}</h3>
-           <div className="space-y-3">
-              <div className={`flex items-center gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                 <Calendar size={16} className="text-slate-400" />
-                 {new Date(selectedDate).toLocaleDateString(language === 'en' ? 'en-US' : language, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+      <div className="min-h-screen bg-[#fcfcfc] flex flex-col items-center justify-center p-6 animate-in fade-in duration-1000" dir={t.dir}>
+        <div className="w-full max-w-xl bg-white rounded-[40px] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden relative">
+          <div className="absolute top-0 left-0 right-0 h-2 bg-emerald-500" />
+          
+          <div className="p-10 md:p-16 text-center space-y-10">
+            <div className="space-y-4">
+              <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-[32px] flex items-center justify-center mx-auto rotate-12 group-hover:rotate-0 transition-transform">
+                <Check size={48} strokeWidth={3} />
               </div>
-              <div className="flex flex-col gap-1">
-                <div className={`flex items-center gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                   <Clock size={16} className="text-slate-400" />
-                   {formatInTimezone(selectedTime, selectedDate, timezone)}, {selectedService?.duration} {t.minutes}
+              <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">{t.confirmed}</h2>
+              <p className="text-slate-500 font-medium max-w-sm mx-auto">
+                {t.scheduledWith} <span className="text-slate-900 font-black">{businessName}</span>. A confirmation has been sent to your email.
+              </p>
+            </div>
+
+            <div className="bg-slate-50/80 backdrop-blur-sm p-8 rounded-[32px] border border-slate-100 text-left space-y-6" dir={t.dir}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-900">{selectedService?.name}</h3>
+                <div className="px-3 py-1 bg-white rounded-full text-[10px] font-black text-brand-blue border border-brand-blue/10 uppercase tracking-widest">
+                  {symbol}{selectedService?.price}
                 </div>
-                {businessTimezone !== timezone && (
-                  <div className={`${t.dir === 'rtl' ? 'mr-7' : 'ml-7'} text-[10px] text-slate-400 font-medium`}>
-                    ({selectedTime} {businessTimezone} - Business Time)
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className={`flex items-start gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : ''}`}>
+                    <Calendar size={18} className="text-slate-300 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Date</p>
+                      <p className="font-bold">{new Date(selectedDate).toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-
-                         {(selectedService?.locationType === 'online' || selectedService?.locationType === 'zoom') && (
-                <div className="mt-4 p-4 bg-brand-blue/5 border border-brand-blue/10 rounded-xl space-y-2">
-                   <div className={`flex items-center gap-2 text-brand-blue text-[10px] font-black uppercase tracking-widest ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                      <Video size={14} /> {t.virtualMeetingRoom}
-                   </div>
-                   <div className={`flex items-center justify-between ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                      <span className="text-xs font-bold text-slate-600 truncate mr-4">{confirmedMeetingLink || t.linkGenFailed}</span>
-                      <button 
-                        onClick={() => {
-                          if (confirmedMeetingLink) navigator.clipboard.writeText(confirmedMeetingLink);
-                        }}
-                        className="text-[10px] font-black text-brand-blue uppercase bg-white px-3 py-1 rounded-md border border-brand-blue/10 hover:bg-brand-blue/5 transition-all"
-                      >
-                        {t.copy}
-                      </button>
-                   </div>
-                   {confirmedMeetingPassword && (
-                     <div className={`text-[10px] font-bold text-slate-400 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-                       {t.meetingPassword}: <span className="text-slate-600">{confirmedMeetingPassword}</span>
-                     </div>
-                   )}
+                  <div className={`flex items-start gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : ''}`}>
+                    <Clock size={18} className="text-slate-300 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Time</p>
+                      <p className="font-bold">{formatInTimezone(selectedTime, selectedDate, timezone)} <span className="text-slate-400 font-medium">({selectedService?.duration} min)</span></p>
+                    </div>
+                  </div>
                 </div>
-              )}
-           </div>
+
+                <div className="space-y-4">
+                  {(selectedService?.locationType === 'online' || selectedService?.locationType === 'zoom') && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black text-brand-blue uppercase tracking-widest mb-1">{t.virtualMeetingRoom}</p>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => confirmedMeetingLink && window.open(confirmedMeetingLink, '_blank')}
+                          className="flex-1 py-3 px-4 bg-brand-blue text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-brand-blue/20"
+                        >
+                          Join Meeting
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => window.open(generateGoogleCalendarUrl(), '_blank')}
+                  className="py-5 bg-white border-2 border-slate-100 text-slate-900 rounded-[24px] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:border-slate-900 transition-all group"
+                >
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" className="w-5 h-5 group-hover:scale-110 transition-transform" alt="Google" referrerPolicy="no-referrer" />
+                  Google
+                </button>
+                <button 
+                  onClick={downloadIcs}
+                  className="py-5 bg-white border-2 border-slate-100 text-slate-900 rounded-[24px] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:border-slate-900 transition-all group"
+                >
+                  <Calendar size={20} className="text-brand-blue group-hover:scale-110 transition-transform" />
+                  iCal
+                </button>
+              </div>
+              <button 
+                onClick={() => onBack ? onBack() : window.location.href = '/'} 
+                className="py-5 text-slate-400 hover:text-slate-900 transition-colors text-xs font-black uppercase tracking-[0.3em]"
+              >
+                {t.close}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-           <a 
-            href={generateGoogleCalendarUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
-           >
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" className="w-5 h-5" alt="Google" referrerPolicy="no-referrer" />
-            Add to Google Calendar
-           </a>
-           
-           <button 
-            onClick={downloadIcs}
-            className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
-           >
-            <Calendar size={20} className="text-brand-blue" />
-            Download iCal File
-           </button>
-
-           <button 
-            onClick={() => onBack ? onBack() : window.location.href = '/'} 
-            className="mt-4 text-slate-400 hover:text-slate-900 transition-colors text-sm font-bold uppercase tracking-widest"
-           >
-            {t.close}
-           </button>
+        <div className="mt-12 flex items-center gap-3 px-6 py-3 bg-white border border-slate-100 rounded-full shadow-sm text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          <ShieldCheck size={14} className="text-emerald-500" /> Securely processed by EasyBookly AI
         </div>
       </div>
     );
@@ -448,6 +503,19 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         {/* Right Side: Step Contents */}
         <div className="flex-1 p-6 md:p-10 bg-[#fdfdfd] overflow-y-auto custom-scroll relative">
           
+          {/* Step Progress */}
+          {step <= 3 && (
+            <div className={`flex items-center gap-4 mb-16 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+              {[1, 2, 3].map((s) => (
+                <React.Fragment key={s}>
+                  <div className={`flex items-center gap-3 transition-all duration-500 ${step === s ? 'flex-[2]' : 'flex-1'}`}>
+                    <div className={`h-2.5 rounded-full transition-all duration-700 ${step >= s ? 'bg-brand-blue w-full' : 'bg-slate-100 w-full'}`} />
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+
           {/* Step 1: Service Selection */}
           {step === 1 && (
             <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
@@ -475,44 +543,49 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
               </div>
             </div>
           )}
-          {/* Step 2: Date & Time Selection */}
+                {/* Step 2: Date & Time Selection */}
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-700">
-               <h2 className={`text-2xl font-black text-slate-900 mb-8 tracking-tight ${t.dir === 'rtl' ? 'text-right' : ''}`}>{t.chooseYourTime}</h2>
-               <div className={`flex flex-col lg:flex-row gap-8 lg:gap-12 ${t.dir === 'rtl' ? 'lg:flex-row-reverse' : ''}`}>
+               <h2 className={`text-3xl font-black text-slate-900 mb-10 tracking-tight ${t.dir === 'rtl' ? 'text-right' : ''}`}>{t.chooseYourTime}</h2>
+               <div className={`flex flex-col lg:flex-row gap-8 lg:gap-16 ${t.dir === 'rtl' ? 'lg:flex-row-reverse' : ''}`}>
                   <div className="flex-1">
-                     <div className={`flex justify-between items-center mb-6 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                        <h4 className="font-bold text-slate-800">
-                          {new Date(selectedDate || Date.now()).toLocaleDateString(language, { month: 'long', year: 'numeric' })}
+                     <div className={`flex justify-between items-center mb-8 bg-slate-50 p-4 rounded-2xl ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                        <h4 className="font-black text-slate-900 text-lg uppercase tracking-wider">
+                          {currentMonth.toLocaleDateString(language, { month: 'long', year: 'numeric' })}
                         </h4>
-                        <div className={`flex gap-2 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                           <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowLeft size={16} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
-                           <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowRight size={16} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
+                        <div className={`flex gap-3 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                           <button onClick={prevMonth} className="p-2.5 hover:bg-white hover:shadow-md rounded-xl text-slate-400 transition-all"><ArrowLeft size={18} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
+                           <button onClick={nextMonth} className="p-2.5 hover:bg-white hover:shadow-md rounded-xl text-slate-400 transition-all"><ArrowRight size={18} className={t.dir === 'rtl' ? 'rotate-180' : ''} /></button>
                         </div>
                      </div>
-                     <div className={`grid grid-cols-7 gap-2 text-center mb-4 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                        {(t.dir === 'rtl' ? (language === 'he' ? ['ש', 'ו', 'ה', 'ד', 'ג', 'ב', 'א'] : ['ج', 'خ', 'ر', 'ث', 'ن', 'ح', 'س']) : ['S', 'M', 'T', 'W', 'T', 'F', 'S']).map(d => (
-                           <span key={d} className="text-[10px] font-black text-slate-300 tracking-widest">{d}</span>
+                     <div className={`grid grid-cols-7 gap-2 text-center mb-6 px-2 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
+                        {(t.dir === 'rtl' ? (language === 'he' ? ['ש', 'ו', 'ה', 'ד', 'ג', 'ב', 'א'] : ['ج', 'خ', 'ر', 'ث', 'ن', 'ح', 'س']) : ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']).map(d => (
+                           <span key={d} className="text-[10px] font-black text-slate-400 tracking-[0.2em]">{d}</span>
                         ))}
                      </div>
-                     <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                        {Array.from({length: 31}).map((_, i) => {
-                          const date = `2024-05-${String(i+1).padStart(2, '0')}`;
-                          const isSelected = selectedDate === date;
-                          const isAvailable = i % 3 !== 0; // Simulated availability
+                     <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
+                        {calendarDays.map((day, i) => {
+                          if (!day) return <div key={`empty-${i}`} className="h-12 w-full" />;
+                          
+                          const dateStr = day.toISOString().split('T')[0];
+                          const selected = isSelected(day);
+                          const past = isPast(day);
+                          const today = isToday(day);
+
                           return (
                             <button 
                               key={i} 
-                              disabled={!isAvailable}
-                              onClick={() => setSelectedDate(date)}
-                              className={`h-11 sm:h-12 w-full rounded-xl sm:rounded-2xl text-sm font-bold transition-all flex items-center justify-center relative ${
-                                !isAvailable ? 'text-slate-200 cursor-not-allowed' :
-                                isSelected ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/30 scale-105' : 
-                                'bg-slate-50 hover:bg-brand-blue/10 text-brand-blue'
+                              disabled={past}
+                              onClick={() => setSelectedDate(dateStr)}
+                              className={`h-11 sm:h-14 w-full rounded-2xl text-sm font-black transition-all flex items-center justify-center relative border-2 ${
+                                past ? 'text-slate-200 border-transparent cursor-not-allowed' :
+                                selected ? 'bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-200' : 
+                                'bg-white border-slate-100 hover:border-brand-blue/30 text-slate-900'
                               }`}
                             >
-                              {i + 1}
-                              {isAvailable && !isSelected && <div className="absolute bottom-2 w-1 h-1 bg-brand-blue rounded-full opacity-40" />}
+                              {day.getDate()}
+                              {today && !selected && <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-brand-blue rounded-full" />}
+                              {!past && !selected && <div className="absolute bottom-2 w-1 h-1 bg-slate-200 rounded-full" />}
                             </button>
                           );
                         })}
@@ -520,37 +593,46 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                   </div>
 
                   {selectedDate && (
-                    <div className="w-full lg:w-56 space-y-3 animate-in fade-in zoom-in-95">
-                       <p className={`text-xs font-black text-slate-400 uppercase tracking-widest mb-6 ${t.dir === 'rtl' ? 'text-right' : ''}`}>{new Date(selectedDate).toLocaleDateString(language, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                       <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2 custom-scroll">
-                          {(availableSlots.length > 0 ? availableSlots : ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']).map(time => {
+                    <div className="w-full lg:w-72 space-y-6 animate-in slide-in-from-bottom-4">
+                       <div className={`pb-4 border-b border-slate-100 ${t.dir === 'rtl' ? 'text-right' : ''}`}>
+                          <p className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] mb-1">{t.availableTimes || 'Available Times'}</p>
+                          <h4 className="text-xl font-black text-slate-900">{new Date(selectedDate).toLocaleDateString(language, { weekday: 'long', month: 'short', day: 'numeric' })}</h4>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 overflow-y-auto max-h-[450px] pr-2 custom-scroll">
+                          {availableSlots.length > 0 ? availableSlots.map(time => {
                              const clientTime = formatInTimezone(time, selectedDate, timezone);
                              const isDifferentTz = businessTimezone !== timezone;
                              return (
-                               <div key={time} className="flex flex-col gap-2">
+                               <div key={time} className="space-y-2">
                                   <button 
                                    onClick={() => { setSelectedTime(time); }}
-                                   className={`w-full py-4 px-4 border-2 font-black rounded-2xl transition-all flex justify-between items-center ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : 'text-left'} ${selectedTime === time ? 'bg-slate-800 text-white border-slate-800 scale-[0.98]' : 'border-brand-blue/30 text-brand-blue hover:border-brand-blue'}`}
+                                   className={`w-full py-4 px-5 border-2 font-black rounded-2xl transition-all flex justify-between items-center group ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : 'text-left'} ${selectedTime === time ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'border-slate-100 text-slate-600 hover:border-brand-blue/30 hover:bg-slate-50'}`}
                                   >
                                      <div className={`flex flex-col ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-                                        <span className="text-sm">{clientTime}</span>
+                                        <span className="text-sm tracking-tight">{clientTime}</span>
                                         {isDifferentTz && (
-                                          <span className="text-[10px] opacity-60 font-medium">({time} Business Local)</span>
+                                          <span className="text-[10px] opacity-60 font-black uppercase tracking-widest mt-0.5">({time} Local)</span>
                                         )}
                                      </div>
-                                     {selectedTime === time && <Check size={16} />}
+                                     {selectedTime === time ? <CheckCircle2 size={16} /> : <div className="w-4 h-4 rounded-full border border-slate-200 group-hover:border-brand-blue/30" />}
                                   </button>
                                   {selectedTime === time && (
                                     <button 
                                      onClick={() => setStep(3)}
-                                     className="w-full py-4 bg-brand-blue text-white font-black rounded-2xl text-sm shadow-xl shadow-brand-blue/20 animate-in slide-in-from-top-2"
+                                     className="w-full py-4 bg-brand-blue text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] shadow-xl shadow-brand-blue/20 animate-in zoom-in-95"
                                     >
                                       {t.confirmTime}
                                     </button>
                                   )}
                                </div>
                              );
-                          })}
+                          }) : (
+                            <div className="py-20 text-center space-y-4 opacity-40">
+                               <Clock size={32} className="mx-auto" />
+                               <p className="text-[10px] font-black uppercase tracking-widest">No Slots Found</p>
+                            </div>
+                          )}
                        </div>
                     </div>
                   )}
@@ -560,37 +642,49 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
           {/* Step 3: Confirmation Details */}
           {step === 3 && (
-            <div className={`max-w-md mx-auto space-y-10 animate-in fade-in slide-in-from-right-8 duration-700 ${t.dir === 'rtl' ? 'text-right' : ''}`}>
-               <div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">{t.completeBooking}</h2>
-                  <p className="text-sm text-slate-500 mt-1">{t.calendarInviteNotice}</p>
+            <div className={`max-w-md mx-auto space-y-12 animate-in fade-in slide-in-from-right-8 duration-700 ${t.dir === 'rtl' ? 'text-right' : ''}`}>
+               <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest">
+                    <User size={12} /> {t.lastStep || 'Final Step'}
+                  </div>
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">{t.completeBooking}</h2>
+                  <p className="text-sm text-slate-500 font-medium">{t.calendarInviteNotice}</p>
                </div>
 
-               <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.fullName}</label>
-                    <input 
-                      className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
-                      placeholder="Jane Doe"
-                      value={clientInfo.name}
-                      onChange={e => setClientInfo({...clientInfo, name: e.target.value})}
-                    />
+               <div className="space-y-8">
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-2">
+                      <label className={`text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.fullName}</label>
+                      <div className="relative group">
+                        <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors" size={18} />
+                        <input 
+                          className={`w-full bg-slate-50 border-2 border-slate-50 rounded-2xl pl-12 pr-5 py-4 text-base sm:text-sm font-black focus:bg-white focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
+                          placeholder="Your Name"
+                          value={clientInfo.name}
+                          onChange={e => setClientInfo({...clientInfo, name: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className={`text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.emailAddress}</label>
+                      <div className="relative group">
+                        <Globe className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-blue transition-colors" size={18} />
+                        <input 
+                          type="email"
+                          className={`w-full bg-slate-50 border-2 border-slate-50 rounded-2xl pl-12 pr-5 py-4 text-base sm:text-sm font-black focus:bg-white focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
+                          placeholder="email@example.com"
+                          value={clientInfo.email}
+                          onChange={e => setClientInfo({...clientInfo, email: e.target.value})}
+                        />
+                      </div>
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.emailAddress}</label>
-                    <input 
-                      type="email"
-                      className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
-                      placeholder="jane@company.com"
-                      value={clientInfo.email}
-                      onChange={e => setClientInfo({...clientInfo, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-widest ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.additionalNotes}</label>
+                    <label className={`text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ${t.dir === 'rtl' ? 'mr-1' : 'ml-1'}`}>{t.additionalNotes}</label>
                     <textarea 
                       rows={4}
-                      className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-base sm:text-sm font-bold focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 resize-none ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
+                      className={`w-full bg-slate-50 border-2 border-slate-50 rounded-3xl px-6 py-5 text-base sm:text-sm font-black focus:bg-white focus:border-brand-blue outline-none transition-all placeholder:text-slate-300 resize-none ${t.dir === 'rtl' ? 'text-right' : 'text-left'}`}
                       placeholder={t.sharedNotePlaceholder}
                       value={clientInfo.note}
                       onChange={e => setClientInfo({...clientInfo, note: e.target.value})}

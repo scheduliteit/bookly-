@@ -14,6 +14,7 @@ interface DashboardProps {
   services: Service[];
   businessName: string;
   appointments: Appointment[];
+  externalEvents?: any[];
   clients: Client[];
   connectedApps: string[];
   legalData: any;
@@ -26,7 +27,7 @@ interface DashboardProps {
   onJoinMeeting?: (room: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide, onJoinMeeting }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, externalEvents = [], clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide, onJoinMeeting }) => {
   const t = translations[language];
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState(t.analyzing);
@@ -52,6 +53,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
   };
 
   const displayServices = services.length > 0 ? services : [];
+
+  // Consolidate all events for the stream
+  const allEvents = useMemo(() => {
+    const internal = appointments.map(a => ({ ...a, origin: 'internal' }));
+    const external = externalEvents.map(e => ({
+      id: e.id,
+      clientName: e.title || 'Busy (Calendar Sync)',
+      service: 'External Focus',
+      time: e.time,
+      date: e.date,
+      status: 'confirmed',
+      origin: 'external',
+      meetingLink: e.meetingLink,
+      provider: e.provider
+    }));
+    return [...internal, ...external].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [appointments, externalEvents]);
 
   const stats = useMemo(() => {
     const confirmed = appointments.filter(a => a.status === 'confirmed').length;
@@ -317,19 +335,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
           
           <div className="bg-white border border-slate-100 rounded-[40px] overflow-hidden shadow-sm flex flex-col h-fit">
             <div className="p-10 space-y-10">
-              {appointments.length > 0 ? (
-                appointments.slice(0, 6).map((apt, i) => (
+              {allEvents.length > 0 ? (
+                allEvents.slice(0, 6).map((apt, i) => (
                   <div key={apt.id} className="relative flex gap-6 group">
                     <div className="relative z-10">
-                       <div className="w-12 h-12 bg-white border-2 border-slate-50 rounded-full flex items-center justify-center text-slate-400 group-hover:border-brand-blue group-hover:text-brand-blue transition-all shadow-sm">
+                       <div className={`w-12 h-12 bg-white border-2 rounded-full flex items-center justify-center transition-all shadow-sm ${apt.origin === 'external' ? 'border-brand-blue/30 text-brand-blue' : 'border-slate-50 text-slate-400 group-hover:border-brand-blue group-hover:text-brand-blue'}`}>
                          <Calendar size={20} />
                        </div>
-                       {i !== Math.min(appointments.length, 6) - 1 && (
+                       {i !== Math.min(allEvents.length, 6) - 1 && (
                          <div className="absolute top-12 left-1/2 -translate-x-1/2 w-[2px] h-10 bg-slate-50" />
                        )}
                     </div>
                     <div className="flex-1 pb-10">
-                       <h4 className="text-base font-black text-brand-dark leading-tight">{apt.clientName}</h4>
+                       <div className="flex items-center gap-2">
+                         <h4 className="text-base font-black text-brand-dark leading-tight">{apt.clientName}</h4>
+                         {apt.origin === 'external' && (
+                           <span className="text-[8px] font-black text-brand-blue uppercase bg-brand-blue/10 px-1.5 py-0.5 rounded-md">Synced</span>
+                         )}
+                       </div>
                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 italic">{apt.service}</p>
                        <div className="flex items-center gap-3 mt-3">
                           <div className="flex items-center gap-1.5 text-slate-300">

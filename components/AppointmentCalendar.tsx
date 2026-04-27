@@ -1,496 +1,361 @@
-
 import React, { useState } from 'react';
 import { Appointment } from '../types';
-import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, ExternalLink, ChevronDown, CheckCircle2, AlertCircle, Video, Copy, X, Lock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Search, MoreHorizontal, Clock, Globe, Smartphone, Trash2, Video, Copy, X, LayoutGrid, List, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
-import { geminiAssistant } from '../services/geminiService';
-import { translations, Language } from '../services/translations';
+import { Language, translations } from '../services/translations';
 
 interface AppointmentCalendarProps {
   appointments: Appointment[];
   externalEvents?: any[];
+  language: Language;
   onAddClick: () => void;
   onUpdateAppointment?: (apt: Appointment) => void;
   onDeleteAppointment?: (id: string) => void;
   onNavigate?: (tab: string) => void;
-  connectedApps: string[];
-  currency?: 'ILS' | 'USD' | 'EUR' | 'GBP';
   onJoinMeeting?: (room: string) => void;
-  onSyncNow?: () => Promise<void>;
-  language?: Language;
+  onSyncNow?: () => void;
+  connectedApps?: string[];
+  currency?: string;
 }
 
-const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
-  appointments, 
+const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
+  appointments,
   externalEvents = [],
-  onAddClick, 
-  onUpdateAppointment, 
+  language,
+  onAddClick,
+  onUpdateAppointment,
   onDeleteAppointment,
   onNavigate,
-  connectedApps,
-  currency,
   onJoinMeeting,
   onSyncNow,
-  language = 'en'
+  connectedApps = [],
+  currency = 'USD'
 }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
-
   const t = translations[language] || translations.en;
+  const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
+  const [view, setView] = useState<'list' | 'grid'>('list');
+  const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
 
-  const handleSync = async () => {
-    if (!onSyncNow) return;
-    setIsSyncing(true);
-    await onSyncNow();
-    setIsSyncing(false);
-  };
+  const combined = [
+    ...appointments,
+    ...externalEvents.map(e => ({
+      ...e,
+      id: e.id,
+      title: e.title || 'Busy (Private Event)',
+      date: e.date,
+      time: e.time,
+      duration: e.duration || 30,
+      service: 'Calendar Sync',
+      status: 'confirmed',
+      isExternal: true,
+      provider: e.provider || 'Google'
+    }))
+  ];
 
-  const getWeekDays = (date: Date) => {
-    const startOfWeek = new Date(date);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day; // Adjust to Sunday or Monday? Hebrew/Arabic might prefer different
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
-      return d;
-    });
-  };
-
-  const weekDays = getWeekDays(currentWeek);
-
-  const filterAppointments = (mode?: 'list' | 'grid') => {
+  const filtered = combined.filter(apt => {
+    const aptDate = new Date(apt.date);
     const now = new Date();
+    now.setHours(0,0,0,0);
     
-    // Convert EasyBookly appointments to a unified format
-    const easyBooklyEvents = appointments.map(apt => ({
-      id: apt.id,
-      title: apt.clientName,
-      start: new Date(`${apt.date}T${apt.time}`).toISOString(),
-      service: apt.service,
-      duration: apt.duration,
-      status: apt.status,
-      isExternal: false,
-      date: apt.date,
-      time: apt.time,
-      googleEventId: apt.googleEventId,
-      outlookEventId: apt.outlookEventId,
-      meetingLink: apt.meetingLink,
-      meetingPassword: apt.meetingPassword,
-      notes: (apt as any).note,
-    }));
-
-    // Convert External events to unified format
-    const syncEvents = externalEvents.map(e => {
-      const startDate = new Date(e.start);
-      const endDate = new Date(e.end);
-      
-      const duration = !isNaN(endDate.getTime()) && !isNaN(startDate.getTime())
-        ? Math.round((endDate.getTime() - startDate.getTime()) / 60000)
-        : 30;
-
-      const isoParts = e.start.includes('T') ? e.start.split('T') : [e.start, '00:00:00'];
-      const datePart = isoParts[0];
-      const timePart = isoParts[1].substring(0, 5);
-
-      return {
-        id: e.id,
-        title: e.title,
-        start: e.start,
-        service: 'External Focus',
-        duration,
-        status: 'confirmed',
-        isExternal: true,
-        provider: e.provider,
-        color: e.color,
-        date: datePart,
-        time: timePart
-      };
-    });
-
-    const allEvents = [...easyBooklyEvents, ...syncEvents];
-
-    if (mode === 'grid' || viewMode === 'grid') {
-      return allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-    }
-
-    return allEvents.filter(evt => {
-      const evtDate = new Date(evt.start);
-      if (localActiveTab === 'upcoming') return evtDate >= now;
-      if (localActiveTab === 'past') return evtDate < now;
-      if (localActiveTab === 'pending') return evt.status === 'pending';
-      return false;
-    }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-  };
-
-  const filtered = filterAppointments();
+    if (localActiveTab === 'past') return aptDate < now;
+    if (localActiveTab === 'pending') return apt.status === 'pending';
+    return aptDate >= now && apt.status !== 'pending';
+  }).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20" dir={t.dir}>
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
-        <div className={t.dir === 'rtl' ? 'text-right' : 'text-left'}>
-          <h2 className="text-2xl font-bold text-brand-dark">Scheduled Events</h2>
-          <p className="text-sm text-slate-500">View and manage your meetings.</p>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">
+            {t.yourSchedule || 'Schedule'}
+          </h1>
+          <p className="text-slate-500 font-medium mt-1">
+            {filtered.length} {localActiveTab} {filtered.length === 1 ? 'event' : 'events'}
+          </p>
         </div>
+        
         <div className="flex items-center gap-3">
-          <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
+          <div className="bg-white border border-slate-200 rounded-2xl p-1 flex gap-1 mr-2">
             <button 
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white text-brand-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => setView('list')}
+              className={`p-2 rounded-xl transition-all ${view === 'list' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              <LayoutGrid size={14} /> Grid
+              <List size={18} />
             </button>
             <button 
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'list' ? 'bg-white text-brand-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => setView('grid')}
+              className={`p-2 rounded-xl transition-all ${view === 'grid' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              <CalendarIcon size={14} /> List
+              <LayoutGrid size={18} />
             </button>
           </div>
-          {connectedApps.length > 0 && onSyncNow && (
-            <button 
-              onClick={handleSync}
-              disabled={isSyncing}
-              className={`flex items-center gap-2 px-4 py-2 border-2 border-slate-100 rounded-full text-sm font-bold text-slate-600 hover:border-brand-blue hover:text-brand-blue transition-all disabled:opacity-50 ${isSyncing ? 'bg-slate-50' : 'bg-white'}`}
-            >
-              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? t.syncing : t.syncNow}
-            </button>
-          )}
+          <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 transition-all">
+            <Search size={20} />
+          </button>
+          <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 transition-all">
+            <Filter size={20} />
+          </button>
           <button 
-            onClick={() => alert('Exporting calendar data...')}
-            className="px-4 py-2 bg-slate-100 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all"
+            onClick={onAddClick}
+            className="flex items-center gap-3 px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-200"
           >
-            Export
+            <CalendarIcon size={16} /> {t.bookNew || 'New Event'}
           </button>
         </div>
-      </header>
+      </div>
 
-      {viewMode === 'grid' ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => {
-                  const d = new Date(currentWeek);
-                  d.setDate(d.getDate() - 7);
-                  setCurrentWeek(d);
-                }}
-                className="p-2 hover:bg-slate-50 rounded-full transition-all"
-              >
-                <ChevronDown size={20} className="rotate-90" />
-              </button>
-              <h3 className="font-bold text-brand-dark min-w-[200px] text-center">
-                {weekDays[0].toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' })} - {weekDays[6].toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </h3>
-              <button 
-                onClick={() => {
-                  const d = new Date(currentWeek);
-                  d.setDate(d.getDate() + 7);
-                  setCurrentWeek(d);
-                }}
-                className="p-2 hover:bg-slate-50 rounded-full transition-all"
-              >
-                <ChevronDown size={20} className="-rotate-90" />
-              </button>
-            </div>
-            <button 
-              onClick={() => setCurrentWeek(new Date())}
-              className="text-xs font-bold text-brand-blue hover:underline"
-            >
-              Today
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-4">
-            {weekDays.map((day, idx) => {
-              const dayStr = day.toISOString().split('T')[0];
-              const dayEvents = filterAppointments().filter(e => e.date === dayStr);
-              const isToday = new Date().toISOString().split('T')[0] === dayStr;
-
-              return (
-                <div key={idx} className="space-y-3">
-                  <div className={`text-center p-3 rounded-2xl border ${isToday ? 'bg-brand-blue/5 border-brand-blue/20' : 'bg-white border-slate-100'}`}>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-brand-blue' : 'text-slate-400'}`}>
-                      {day.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' })}
-                    </p>
-                    <p className={`text-xl font-black ${isToday ? 'text-brand-blue' : 'text-brand-dark'}`}>
-                      {day.getDate()}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 min-h-[400px] bg-slate-50/50 rounded-2xl p-2 border border-dashed border-slate-200">
-                    {dayEvents.map(evt => (
-                      <motion.div 
-                        key={evt.id}
-                        layoutId={evt.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        onClick={() => setSelectedApt(evt as any)}
-                        className={`p-3 rounded-xl border shadow-sm cursor-pointer hover:scale-[1.02] transition-all group relative overflow-hidden ${evt.isExternal ? 'bg-white border-slate-200' : 'bg-brand-blue/10 border-brand-blue/20'}`}
-                      >
-                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: evt.isExternal ? (evt as any).color : '#006bff' }} />
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{evt.time}</p>
-                        <p className="text-[11px] font-bold text-brand-dark truncate leading-tight mt-0.5">{evt.title}</p>
-                        {evt.isExternal && (
-                          <div className="flex items-center gap-1 mt-1 opacity-60">
-                             <ExternalLink size={8} className="text-slate-400" />
-                             <span className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-400">{(evt as any).provider}</span>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                    {dayEvents.length === 0 && (
-                      <div className="h-full flex items-center justify-center opacity-20 py-10">
-                        <CalendarIcon size={24} className="text-slate-300" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Tabs */}
-          <div className="flex items-center gap-8 border-b border-slate-100 mb-6">
-        {['upcoming', 'pending', 'past'].map((tab) => (
+      {/* Tabs */}
+      <div className="flex items-center gap-10 border-b border-slate-100 pt-2">
+        {[
+          { id: 'upcoming', label: t.upcoming || 'Upcoming' },
+          { id: 'pending', label: t.pending || 'Pending' },
+          { id: 'past', label: t.past || 'Past' }
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setLocalActiveTab(tab as any)}
-            className={`pb-4 px-1 text-sm font-bold capitalize transition-all border-b-2 ${
-              localActiveTab === tab ? 'border-brand-blue text-brand-dark' : 'border-transparent text-slate-400 hover:text-slate-600'
+            key={tab.id}
+            onClick={() => setLocalActiveTab(tab.id as any)}
+            className={`group relative pb-4 px-1 text-xs font-black uppercase tracking-[0.2em] transition-all ${
+              localActiveTab === tab.id ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            {tab}
+            {tab.label}
+            <div className={`absolute bottom-0 left-0 right-0 h-1 rounded-t-full transition-all duration-300 ${localActiveTab === tab.id ? 'bg-brand-blue scale-x-100' : 'bg-transparent scale-x-0 group-hover:bg-slate-200 group-hover:scale-x-50'}`} />
           </button>
         ))}
       </div>
 
-      {/* List */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      {/* List Container */}
+      <div className={`${view === 'list' ? 'bg-white/80 backdrop-blur-sm border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/40' : ''}`}>
         {filtered.length === 0 ? (
-          <div className="p-20 text-center space-y-4">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+          <div className="p-24 text-center space-y-6 bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl shadow-slate-200/40">
+            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto text-slate-200 border border-slate-100 rotate-6 group hover:rotate-0 transition-transform">
               <CalendarIcon size={32} />
             </div>
-            <p className="text-slate-500 font-medium">No {localActiveTab} events scheduled.</p>
+            <div>
+              <p className="text-slate-900 font-black text-xl">No {localActiveTab} events</p>
+              <p className="text-slate-400 text-sm mt-1">Your schedule is clear for now.</p>
+            </div>
+            <button onClick={onAddClick} className="px-8 py-3 bg-brand-blue text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl shadow-brand-blue/20">Schedule First</button>
           </div>
-        ) : (
+        ) : view === 'list' ? (
           <div className="divide-y divide-slate-100">
-            {filtered.map(evt => (
-              <div key={evt.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-slate-50 transition-all group">
+            {filtered.map((evt, idx) => (
+              <motion.div 
+                key={evt.id} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-slate-50/50 transition-all group"
+              >
                 <div className="flex items-start gap-6">
-                   <div className="w-3 h-3 rounded-full mt-1.5" style={{ backgroundColor: evt.isExternal ? (evt as any).color : '#006bff' }} />
-                   <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                          {new Date(evt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </p>
-                        {evt.isExternal && (
-                          <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
-                            <ExternalLink size={8} /> {(evt as any).provider} Sync
-                          </span>
-                        )}
-                        {!(evt as any).isExternal && (evt as any).googleEventId && (
-                           <span className="px-2 py-0.5 bg-brand-blue/5 text-brand-blue rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
-                             <CheckCircle2 size={8} /> Google Cloud Synced
-                           </span>
-                        )}
-                      </div>
-                      <h4 className="text-lg font-bold text-brand-dark">{evt.time} - {evt.title}</h4>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="text-sm text-slate-500 flex items-center gap-1.5"><Clock size={14} /> {evt.duration} mins</span>
-                        <span className="text-sm text-slate-500 flex items-center gap-1.5"><Globe size={14} /> {evt.service}</span>
-                        {(evt as any).meetingLink && (
-                          <div className="flex items-center gap-2 ml-auto">
-                            <button 
-                              onClick={() => {
-                                navigator.clipboard.writeText((evt as any).meetingLink);
-                                alert('Meeting link copied to clipboard!');
-                              }}
-                              className="p-2 text-slate-400 hover:text-brand-blue transition-colors"
-                              title="Copy Meeting Link"
-                            >
-                              <Copy size={16} />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                const room = (evt as any).meetingLink?.split('/').pop();
-                                if (room && onJoinMeeting) onJoinMeeting(room);
-                                else window.open((evt as any).meetingLink, '_blank');
-                              }}
-                              className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all"
-                            >
-                              <Video size={14} /> Join Meeting
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                   </div>
+                  <div className="flex flex-col items-center min-w-[64px] text-center">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+                      {new Date(evt.date).toLocaleDateString(language, { weekday: 'short' }).toUpperCase()}
+                    </p>
+                    <p className="text-3xl font-black text-slate-900 leading-none">
+                      {new Date(evt.date).getDate()}
+                    </p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300 mt-1">
+                      {new Date(evt.date).toLocaleDateString(language, { month: 'short' }).toUpperCase()}
+                    </p>
+                  </div>
+                  
+                  <div className="w-px h-12 bg-slate-100 mt-2 hidden sm:block" />
+
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-3 py-1 bg-slate-900 text-slate-50 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        {evt.time}
+                      </span>
+                      {evt.isExternal && (
+                        <span className="px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-brand-blue/10">
+                          <Globe size={10} /> {(evt as any).provider || 'Google'} Synced
+                        </span>
+                      )}
+                      {evt.status === 'pending' && (
+                        <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-100">
+                          {t.pending}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <h4 className="text-xl font-black text-slate-900 group-hover:text-brand-blue transition-colors">
+                      {evt.title}
+                    </h4>
+                    
+                    <div className="flex flex-wrap items-center gap-5 mt-3">
+                      <span className="text-[11px] font-black text-slate-400 flex items-center gap-2 uppercase tracking-widest">
+                        <Clock size={14} className="text-slate-300 shrink-0" /> {evt.duration} {t.minutes}
+                      </span>
+                      <span className="text-[11px] font-black text-slate-400 flex items-center gap-2 uppercase tracking-widest">
+                        <Smartphone size={14} className="text-slate-300 shrink-0" /> {evt.service}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="flex items-center gap-4 mt-4 md:mt-0">
-                   <button 
-                     onClick={() => setSelectedApt(evt as any)}
-                     className="px-4 py-2 border border-slate-200 rounded-full text-xs font-bold text-brand-blue hover:bg-brand-blue/5 transition-all"
-                   >
-                     Details
-                   </button>
-                   {!evt.isExternal && (
+                <div className="flex items-center gap-3 mt-8 md:mt-0">
+                  {evt.meetingLink && (
+                    <button 
+                      onClick={() => {
+                        const room = evt.meetingLink?.split('/').pop();
+                        if (room && onJoinMeeting) onJoinMeeting(room);
+                        else window.open(evt.meetingLink, '_blank');
+                      }}
+                      className="flex items-center gap-2 px-6 py-3 bg-brand-blue text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-blue/20"
+                    >
+                      <Video size={14} /> Join Session
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setSelectedApt(evt)}
+                    className="px-6 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] text-slate-900 hover:border-slate-900 transition-all"
+                  >
+                    Details
+                  </button>
+                  {!evt.isExternal && (
                     <div className="relative group/menu">
-                        <button className="p-2 text-slate-400 hover:text-slate-600"><MoreHorizontal size={20} /></button>
-                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-30">
-                          <button onClick={() => onDeleteAppointment?.(evt.id)} className="w-full text-left px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2">
-                            <Trash2 size={16} /> Cancel Event
-                          </button>
-                        </div>
+                      <button className="p-3.5 text-slate-400 hover:text-slate-900 rounded-2xl hover:bg-slate-100 transition-all">
+                        <MoreHorizontal size={20} strokeWidth={3} />
+                      </button>
+                      <div className="absolute right-0 top-full mt-3 w-56 bg-white border border-slate-200 rounded-[2rem] shadow-2xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible translate-y-4 group-hover/menu:translate-y-0 transition-all z-30 overflow-hidden shadow-slate-300/50">
+                        <button onClick={() => onDeleteAppointment?.(evt.id)} className="w-full text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 flex items-center gap-3 transition-colors">
+                          <Trash2 size={16} /> Cancel Session
+                        </button>
+                        <button className="w-full text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-50 flex items-center gap-3 transition-colors border-t border-slate-50">
+                           <RefreshCw size={16} className="text-slate-300" /> Reschedule
+                        </button>
+                      </div>
                     </div>
-                   )}
+                  )}
                 </div>
-              </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filtered.map((evt, idx) => (
+              <motion.div
+                key={evt.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.05 }}
+                className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-brand-blue/5 transition-all group flex flex-col justify-between"
+              >
+                <div className="space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex flex-col items-center min-w-[64px] text-center bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+                        {new Date(evt.date).toLocaleDateString(language, { weekday: 'short' }).toUpperCase()}
+                      </p>
+                      <p className="text-2xl font-black text-slate-900 leading-none">
+                        {new Date(evt.date).getDate()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                       {evt.meetingLink && (
+                         <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-2xl flex items-center justify-center">
+                            <Video size={18} />
+                         </div>
+                       )}
+                       {evt.isExternal && (
+                         <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center">
+                            <Globe size={18} />
+                         </div>
+                       )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                       <span className="px-3 py-1 bg-slate-900 text-slate-50 rounded-full text-[10px] font-black uppercase tracking-widest">{evt.time}</span>
+                       {evt.status === 'pending' && <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-100">{t.pending}</span>}
+                    </div>
+                    <h4 className="text-xl font-black text-slate-900 group-hover:text-brand-blue transition-colors line-clamp-1">{evt.title}</h4>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{evt.service}</p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
+                  <button 
+                    onClick={() => setSelectedApt(evt)}
+                    className="text-[10px] font-black text-brand-blue uppercase tracking-widest hover:translate-x-1 transition-transform"
+                  >
+                    View Details →
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <Clock size={14} className="text-slate-300" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{evt.duration}M</span>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         )}
       </div>
-      </>
-      )}
 
-      {/* EasyBookly Help Tip */}
-      <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-200">
-         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-blue shadow-sm">
-           <AlertCircle size={20} />
-         </div>
-         <div className="flex-1">
-            <p className="text-sm font-bold text-brand-dark">Troubleshooting Availability?</p>
-            <p className="text-xs text-slate-500">If you're not seeing times you expect, check your Working Hours and Calendar Sync settings.</p>
-         </div>
-          <button 
-            onClick={() => onNavigate?.('ai-assistant')}
-            className="text-brand-blue text-xs font-bold hover:underline"
-          >
-            Troubleshoot
-          </button>
-      </div>
-
-      {/* Appointment Details Modal */}
+      {/* Appointment Detail Modal */}
       {selectedApt && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={() => setSelectedApt(null)}>
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className={`h-2 w-full ${selectedApt.isExternal ? 'bg-slate-200' : 'bg-brand-blue'}`} />
-            <div className="p-8 md:p-12 space-y-8">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <h3 className="text-3xl font-black text-brand-dark leading-tight">{(selectedApt as any).title}</h3>
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{(selectedApt as any).service}</p>
-                </div>
-                <button onClick={() => setSelectedApt(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
-                  <X size={24} />
-                </button>
-              </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+           <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-xl bg-white rounded-[3rem] shadow-2xl relative overflow-hidden ring-1 ring-slate-100"
+           >
+              <button 
+                onClick={() => setSelectedApt(null)}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all"
+              >
+                <X size={20} />
+              </button>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Time</p>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                    <CalendarIcon size={16} className="text-slate-300" />
-                    {new Date((selectedApt as any).date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} at {(selectedApt as any).time}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</p>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                    <Clock size={16} className="text-slate-300" />
-                    {(selectedApt as any).duration} {t.minutes}
-                  </div>
-                </div>
-              </div>
+              <div className="p-10 space-y-8">
+                 <div className="space-y-2">
+                    <span className="px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest leading-none">
+                      Appointment Details
+                    </span>
+                    <h3 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                      {selectedApt.title}
+                    </h3>
+                 </div>
 
-              {(selectedApt as any).notes && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Notes</p>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600 font-medium leading-relaxed">
-                    {(selectedApt as any).notes}
-                  </div>
-                </div>
-              )}
-
-              {(selectedApt as any).meetingLink && (
-                <div className="space-y-4 pt-4 border-t border-slate-100">
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-black text-brand-blue uppercase tracking-widest">{t.meetingDetails}</p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-brand-blue/5 border border-brand-blue/10 rounded-xl px-4 py-3 flex items-center gap-3 overflow-hidden">
-                        <Video size={18} className="text-brand-blue/40" />
-                        <span className="text-xs font-bold text-brand-blue truncate">{(selectedApt as any).meetingLink}</span>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          if ((selectedApt as any).meetingLink) {
-                            navigator.clipboard.writeText((selectedApt as any).meetingLink);
-                            alert('Meeting link copied!');
-                          }
-                        }}
-                        className="p-3.5 bg-brand-blue text-white rounded-xl shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95 transition-all"
-                      >
-                        <Copy size={18} />
-                      </button>
+                 <div className="grid grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    <div className="space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client</p>
+                       <p className="font-bold text-slate-900 text-lg">{(selectedApt as any).clientName || 'N/A'}</p>
                     </div>
-                  </div>
-                  {(selectedApt as any).meetingPassword && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <Lock size={16} className="text-slate-400" />
-                      <p className="text-xs font-bold text-slate-500">
-                        {t.meetingPassword}: <span className="text-brand-dark ml-1">{(selectedApt as any).meetingPassword}</span>
-                      </p>
+                    <div className="space-y-1 text-right">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Time</p>
+                       <p className="font-bold text-slate-900 text-lg">{selectedApt.time}</p>
                     </div>
-                  )}
-                  <button 
-                    onClick={() => {
-                      const link = (selectedApt as any).meetingLink;
-                      const room = link?.split('/').pop();
-                      if (room && onJoinMeeting && (link.includes('jitsi') || link.includes('whereby'))) onJoinMeeting(room);
-                      else window.open(link, '_blank');
-                    }}
-                    className="w-full py-4 bg-brand-blue text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all flex items-center justify-center gap-3"
-                  >
-                    <Video size={18} /> Join Meeting Now
-                  </button>
-                </div>
-              )}
+                    <div className="space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service</p>
+                       <p className="font-bold text-slate-900">{selectedApt.service}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</p>
+                       <p className="font-bold text-slate-900">{selectedApt.duration} minutes</p>
+                    </div>
+                 </div>
 
-              <div className="flex gap-4 pt-4">
-                 {!selectedApt.isExternal && (
-                   <button 
-                    onClick={() => {
-                      onUpdateAppointment?.({...selectedApt, status: 'cancelled'});
-                      setSelectedApt(null);
-                    }}
-                    className="flex-1 py-4 border border-rose-100 text-rose-500 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-rose-50 transition-all"
-                   >
-                     Cancel Event
-                   </button>
-                 )}
-                 <button 
-                  onClick={() => setSelectedApt(null)}
-                  className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-all"
-                 >
-                   Close
-                 </button>
+                 <div className="space-y-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Session Note</p>
+                    <div className="p-6 bg-white border border-slate-100 rounded-3xl text-sm text-slate-600 leading-relaxed italic">
+                       "{(selectedApt as any).note || 'No notes provided for this session.'}"
+                    </div>
+                 </div>
+
+                 <div className="flex gap-4">
+                    <button 
+                      onClick={() => setSelectedApt(null)}
+                      className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-800/10"
+                    >
+                      Close Window
+                    </button>
+                 </div>
               </div>
-            </div>
-          </motion.div>
+           </motion.div>
         </div>
       )}
     </div>
