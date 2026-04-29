@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText, HelpCircle } from 'lucide-react';
+import { Calendar, Users, LayoutDashboard, Settings, CreditCard, Sparkles, Megaphone, Crown, Zap, Activity, Globe, Radio, Link as LinkIcon, Layers, LogOut, Plus, ShieldCheck, ChevronDown, ChevronUp, Smartphone, FileText, HelpCircle, Search, X } from 'lucide-react';
 import Logo from './Logo';
 import { User } from '../types';
 import { translations, Language } from '../services/translations';
@@ -24,7 +24,24 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
   const isAdmin = user?.role === 'admin';
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRolledDown, setIsRolledDown] = useState(true);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
   const t = translations[language];
+
+  const languages: { id: Language; label: string; native: string; flag: string }[] = [
+    { id: 'en', label: 'English', native: 'English', flag: '🇺🇸' },
+    { id: 'he', label: 'Hebrew', native: 'עברית', flag: '🇮🇱' },
+    { id: 'es', label: 'Spanish', native: 'Español', flag: '🇪🇸' },
+    { id: 'fr', label: 'French', native: 'Français', flag: '🇫🇷' },
+    { id: 'de', label: 'German', native: 'Deutsch', flag: '🇩🇪' },
+    { id: 'ar', label: 'Arabic', native: 'العربية', flag: '🇸🇦' },
+  ];
+
+  const filteredLangs = languages.filter(l => 
+    l.label.toLowerCase().includes(langSearch.toLowerCase()) || 
+    l.native.toLowerCase().includes(langSearch.toLowerCase()) ||
+    l.id.toLowerCase().includes(langSearch.toLowerCase())
+  );
 
   const menuItems = [];
 
@@ -133,19 +150,77 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
                 {t.legal}
               </motion.button>
 
-              <motion.button
-                variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
-                onClick={() => { setActiveTab('settings'); }}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all font-bold text-xs text-slate-500 bg-slate-50 hover:bg-slate-100 mt-2"
-              >
-                <div className="flex items-center gap-3">
-                  <Globe size={16} />
-                  <span>{t.language}</span>
-                </div>
-                <div className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[8px] uppercase tracking-tighter">
-                  {language.toUpperCase()}
-                </div>
-              </motion.button>
+              <div className="relative">
+                <motion.button
+                  variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
+                  onClick={() => { setShowLanguagePicker(!showLanguagePicker); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all font-bold text-xs text-slate-500 bg-slate-50 hover:bg-slate-100 mt-2"
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe size={16} />
+                    <span>{t.language}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[8px] uppercase tracking-tighter">
+                      {language.toUpperCase()}
+                    </div>
+                    <ChevronDown size={12} className={`transition-transform duration-300 ${showLanguagePicker ? 'rotate-180' : ''}`} />
+                  </div>
+                </motion.button>
+
+                <AnimatePresence>
+                  {showLanguagePicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute bottom-full left-0 w-full mb-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-[100]"
+                    >
+                      <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                        <div className="relative">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input 
+                            type="text"
+                            autoFocus
+                            placeholder={t.search}
+                            value={langSearch}
+                            onChange={(e) => setLangSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto no-scrollbar py-1">
+                        {filteredLangs.length > 0 ? (
+                          filteredLangs.map((lang) => (
+                            <button
+                              key={lang.id}
+                              onClick={() => {
+                                onUpdateLanguage(lang.id);
+                                setShowLanguagePicker(false);
+                                setLangSearch('');
+                              }}
+                              className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors text-left ${language === lang.id ? 'bg-brand-blue/5' : ''}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-lg">{lang.flag}</span>
+                                <div>
+                                  <p className={`text-xs font-black ${language === lang.id ? 'text-brand-blue' : 'text-slate-700'}`}>{lang.native}</p>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{lang.label}</p>
+                                </div>
+                              </div>
+                              {language === lang.id && <div className="w-1.5 h-1.5 bg-brand-blue rounded-full" />}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center">
+                            <p className="text-xs font-bold text-slate-400 italic">No languages found</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <motion.button
                 variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
