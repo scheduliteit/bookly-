@@ -20,6 +20,7 @@ const DiagnosticTool: React.FC = () => {
     { name: 'Public Profile Visibility', status: 'pending', message: 'Testing public booking link...', icon: Globe },
     { name: 'QA: Booking Journey', status: 'pending', message: 'Simulating client booking...', icon: Zap },
     { name: 'QA: Dashboard Data', status: 'pending', message: 'Verifying analytics integrity...', icon: Activity },
+    { name: 'AI Architect Ready', status: 'pending', message: 'Checking neural link...', icon: Zap },
   ]);
 
   const [isRunning, setIsRunning] = useState(false);
@@ -65,7 +66,7 @@ const DiagnosticTool: React.FC = () => {
           logQa('Firestore Success: Connection active.');
         }
       } else {
-         newResults[1] = { ...newResults[1], status: 'error', message: 'Auth Required', details: 'Cannot test Firestore without UID.' };
+        newResults[1] = { ...newResults[1], status: 'error', message: 'Auth Required', details: 'Cannot test Firestore without UID.' };
       }
     } catch (e: any) {
       newResults[1] = { ...newResults[1], status: 'error', message: 'Firestore Denied', details: e.message };
@@ -106,10 +107,10 @@ const DiagnosticTool: React.FC = () => {
           logQa('Public Route Error.');
         }
       } else {
-         newResults[3] = { ...newResults[3], status: 'pending', message: 'Skipped', details: 'Signin required to detect profile.' };
+        newResults[3] = { ...newResults[3], status: 'pending', message: 'Skipped', details: 'Signin required to detect profile.' };
       }
     } catch (e: any) {
-        newResults[3] = { ...newResults[3], status: 'error', message: 'Profile Sync Fault', details: e.message };
+      newResults[3] = { ...newResults[3], status: 'error', message: 'Profile Sync Fault', details: e.message };
     }
     setResults([...newResults]);
 
@@ -130,34 +131,56 @@ const DiagnosticTool: React.FC = () => {
         newResults[4] = { ...newResults[4], status: 'error', message: 'Test Skipped', details: 'Unauthorized simulation.' };
       }
     } catch (e: any) {
-       // If it's a permission error, we check if they are the admin
-       if (e.message.includes('permissions')) {
-          logQa('QA Notice: Limited read access detected.');
-          newResults[4] = { ...newResults[4], status: 'success', message: 'Sandbox Access Active', details: 'Standard user restrictions in place.' };
-       } else {
-          newResults[4] = { ...newResults[4], status: 'error', message: 'QA Failure', details: `Path blocked: ${e.message}` };
-          logQa(`QA Failure: ${e.message}`);
-       }
+      // If it's a permission error, we check if they are the admin
+      if (e.message.includes('permissions')) {
+        logQa('QA Notice: Limited read access detected.');
+        newResults[4] = { ...newResults[4], status: 'success', message: 'Sandbox Access Active', details: 'Standard user restrictions in place.' };
+      } else {
+        newResults[4] = { ...newResults[4], status: 'error', message: 'QA Failure', details: `Path blocked: ${e.message}` };
+        logQa(`QA Failure: ${e.message}`);
+      }
     }
     setResults([...newResults]);
 
     // 6. QA: Dashboard Data Integrity
     logQa('Verifying Dashboard Data Integrity...');
     try {
-        if (auth.currentUser) {
-            const token = await auth.currentUser?.getIdToken();
-            const res = await fetch('/api/dashboard/stats', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                newResults[5] = { ...newResults[5], status: 'success', message: 'Analytics Integrity Verified', details: 'Dashboard metrics are resolving correctly.' };
-                logQa('Dashboard Integrity PASSED.');
-            } else {
-                newResults[5] = { ...newResults[5], status: 'error', message: 'Data Delay', details: 'Backend returned non-200 status for stats.' };
-            }
+      if (auth.currentUser) {
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/dashboard/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          newResults[5] = { ...newResults[5], status: 'success', message: 'Analytics Integrity Verified', details: 'Dashboard metrics are resolving correctly.' };
+          logQa('Dashboard Integrity PASSED.');
+        } else {
+          newResults[5] = { ...newResults[5], status: 'error', message: 'Data Delay', details: 'Backend returned non-200 status for stats.' };
         }
+      }
     } catch (e: any) {
-        newResults[5] = { ...newResults[5], status: 'error', message: 'Data Integrity Fault', details: e.message };
+      newResults[5] = { ...newResults[5], status: 'error', message: 'Data Integrity Fault', details: e.message };
+    }
+    setResults([...newResults]);
+
+    // 7. AI Architect Readiness
+    logQa('Testing AI Neural Link (AI Architect)...');
+    try {
+       const token = await auth.currentUser?.getIdToken();
+       const res = await fetch('/api/admin/config-status', {
+           headers: { 'Authorization': `Bearer ${token}` }
+       });
+       if (res.ok) {
+          newResults[6] = { ...newResults[6], status: 'success', message: 'AI Engine Ready', details: 'Architect endpoints responding.' };
+          logQa('AI Link Success.');
+       } else if (res.status === 403) {
+          newResults[6] = { ...newResults[6], status: 'success', message: 'Endpoint Restricted', details: 'AI Architect locked to Admins.' };
+          logQa('AI Link Restricted (as expected for non-admin).');
+       } else {
+          newResults[6] = { ...newResults[6], status: 'error', message: 'AI Offline', details: `Status: ${res.status}` };
+          logQa('AI Link Error.');
+       }
+    } catch (e: any) {
+       newResults[6] = { ...newResults[6], status: 'error', message: 'Neural Fault', details: e.message };
     }
 
     setResults([...newResults]);

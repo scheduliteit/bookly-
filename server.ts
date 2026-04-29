@@ -176,7 +176,7 @@ const initDb = async () => {
     try {
       console.log('[SERVER] Falling back to Firebase Web SDK for Firestore');
       const { initializeApp: initializeWebApp } = await import('firebase/app');
-      const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, limit, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
+      const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
       
       const webApp = initializeWebApp(firebaseConfig);
       const webDb = getWebFirestore(webApp, firebaseConfig.firestoreDatabaseId);
@@ -193,14 +193,26 @@ const initDb = async () => {
         collection: (colName: string) => ({
           doc: (docId: string) => ({
             get: () => getDoc(doc(webDb, colName, docId)).then(s => ({ exists: s.exists(), data: () => s.data(), id: s.id })),
-            update: (data: any) => updateDoc(doc(webDb, colName, docId), data),
-            delete: () => deleteDoc(doc(webDb, colName, docId)),
+            set: (data: any, opts: any) => {
+              console.log(`[DB FALLBACK] Writing to ${colName}/${docId}`);
+              return setDoc(doc(webDb, colName, docId), data, opts);
+            },
+            update: (data: any) => {
+              console.log(`[DB FALLBACK] Updating ${colName}/${docId}`);
+              return updateDoc(doc(webDb, colName, docId), data);
+            },
+            delete: () => {
+              console.log(`[DB FALLBACK] Deleting ${colName}/${docId}`);
+              return deleteDoc(doc(webDb, colName, docId));
+            },
           }),
           where: (field: string, op: any, value: any) => {
+            console.log(`[DB FALLBACK] Query: ${colName} where ${field} ${op} ${value}`);
             const q = query(collection(webDb, colName), where(field, op === '==' ? '==' : op, value));
             return {
               get: () => getDocs(q).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })),
               where: (f2: string, o2: any, v2: any) => {
+                 console.log(`[DB FALLBACK] Query: ... and where ${f2} ${o2} ${v2}`);
                  const q2 = query(q, where(f2, o2 === '==' ? '==' : o2, v2));
                  return { get: () => getDocs(q2).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })) };
               },
@@ -210,7 +222,16 @@ const initDb = async () => {
               }
             };
           },
-          add: (data: any) => addDoc(collection(webDb, colName), data).then(d => ({ id: d.id })),
+          add: (data: any) => {
+            console.log(`[DB FALLBACK] Adding doc to ${colName}...`);
+            return addDoc(collection(webDb, colName), data).then(d => {
+              console.log(`[DB FALLBACK] Created ${colName}/${d.id}`);
+              return { id: d.id };
+            }).catch(err => {
+              console.error(`[DB FALLBACK ERROR] Failed to add to ${colName}:`, err);
+              throw err;
+            });
+          },
           get: () => getDocs(collection(webDb, colName)).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })),
         })
       };
@@ -254,14 +275,14 @@ const requireAuth = async (req: any, res: any, next: any) => {
         console.log(`[AUTH] Extracted UID ${req.user.uid} from token (Mock verification)`);
         return next();
       }
-    } catch (e) {
-      console.warn('[AUTH] Failed to decode token payload:', e);
+    } catch (e: any) {
+      console.warn('[AUTH] Failed to decode token payload:', e.message);
     }
 
     console.warn('[AUTH] Admin SDK offline and no valid token found. Using default mock.');
     req.user = { 
       uid: 'dev-user-mock', 
-      email: 'm.elsalameen@gmail.com',
+      email: 'scheduliteit@gmail.com', // Match user if fallback happens
       email_verified: true 
     };
     return next();
@@ -327,9 +348,14 @@ app.get('/api/appointments', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/public/book', async (req: any, res: any) => {
-  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  if (!db) {
+    console.error('[BOOKING] FAILED: Database not initialized');
+    return res.status(500).json({ error: 'Database not initialized' });
+  }
   const { userId, service, date, time, duration, locationType } = req.body;
   
+  console.log(`[BOOKING START] User: ${userId}, Service: ${service}, Date: ${date} ${time}`);
+
   try {
     let meetingLink = req.body.meetingLink;
     let meetingPassword = req.body.meetingPassword;
@@ -337,27 +363,59 @@ app.post('/api/public/book', async (req: any, res: any) => {
     if (!meetingLink && (locationType === 'zoom' || locationType === 'online')) {
       // Try Zoom first if connected
       const zoomLink = await createZoomMeeting(userId, `${service} - ${req.body.clientName}`, `${date}T${time}:00Z`, duration || 30);
-      if (locationType === 'zoom' && zoomLink) {
+      if (zoomLink) {
         meetingLink = zoomLink;
-      } else {
-        // Fallback or explicit Jitsi
+        console.log('[BOOKING] Zoom Link Generated:', meetingLink);
+      } else if (locationType !== 'zoom') {
         const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
         meetingLink = `https://meet.jit.si/${roomName}`;
       }
     }
 
-    const docDef = { ...req.body, meetingLink, meetingPassword };
+    const docDef = { 
+      ...req.body, 
+      meetingLink, 
+      meetingPassword,
+      createdAt: new Date().toISOString()
+    };
     
     // Sync to Google if host connected
     const googleEventId = await pushToGoogleCalendar(userId, docDef);
-    if (googleEventId) docDef.googleEventId = googleEventId;
+    if (googleEventId) {
+      docDef.googleEventId = googleEventId;
+      console.log('[BOOKING] Google Calendar Synced:', googleEventId);
+    }
 
+    const outlookEventId = await pushToOutlookCalendar(userId, docDef);
+    if (outlookEventId) {
+      docDef.outlookEventId = outlookEventId;
+      console.log('[BOOKING] Outlook Calendar Synced:', outlookEventId);
+    }
+
+    console.log('[BOOKING] Saving to Firestore:', JSON.stringify(docDef));
     const docRef = await db.collection('appointments').add(docDef);
+    console.log('[BOOKING SUCCESS] Appointment ID:', docRef.id);
     
-    // Optional: Send notification
+    // 2. Upsert Client info
+    try {
+      const clientDocId = req.body.clientEmail || `client-${Date.now()}`;
+      await db.collection('clients').doc(clientDocId).set({
+        id: clientDocId,
+        userId: userId,
+        name: req.body.clientName,
+        email: req.body.clientEmail,
+        phone: req.body.clientPhone,
+        lastVisit: date,
+        notes: `Booked ${service} via public link.`
+      }, { merge: true });
+      console.log('[BOOKING] Client upserted:', clientDocId);
+    } catch (e: any) {
+      console.warn('[SERVER] Client upsert failed (Non-blocking):', e.message);
+    }
+
+    // Trigger Notifications
     try {
       const message = `Confirmation: Your appointment for ${service} is scheduled for ${date} at ${time}. ${meetingLink ? 'Link: ' + meetingLink : ''}`;
-      // Logic from /api/notify could be called here or duplicated
       if (process.env.SENDGRID_API_KEY) {
         await sgMail.send({
           to: req.body.clientEmail,
@@ -365,13 +423,15 @@ app.post('/api/public/book', async (req: any, res: any) => {
           subject: 'Appointment Confirmed',
           text: message
         });
+        console.log('[BOOKING] Confirmation email sent');
       }
-    } catch (e) {
-      console.warn('[SERVER] Post-booking notification failed:', e);
+    } catch (e: any) {
+      console.warn('[SERVER] Post-booking notification failed:', e.message);
     }
 
     res.status(201).json({ ...docDef, id: docRef.id });
   } catch (error: any) {
+    console.error('[BOOKING GLOBAL ERROR]:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -380,6 +440,7 @@ app.post('/api/public/book', async (req: any, res: any) => {
 app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.user.uid;
+  console.log(`[AUTH-BOOKING] User: ${userId} adding appointment`);
   
   try {
     const { service, date, time, duration, locationType } = req.body;
@@ -389,27 +450,43 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
     if (!meetingLink && (locationType === 'online' || locationType === 'zoom')) {
       // Try Zoom first
       const zoomLink = await createZoomMeeting(userId, `${service} - ${req.body.clientName}`, `${date}T${time}:00Z`, duration || 30);
-      if (locationType === 'zoom' && zoomLink) {
+      if (zoomLink) {
         meetingLink = zoomLink;
-      } else {
+        console.log('[AUTH-BOOKING] Zoom Link Generated:', meetingLink);
+      } else if (locationType !== 'zoom') {
         const roomName = `easybookly-${userId.substring(0, 5)}-${Math.random().toString(36).substr(2, 8)}`;
         meetingLink = `https://meet.jit.si/${roomName}`;
       }
     }
 
-    const appointmentData = { ...req.body, userId, meetingLink, meetingPassword };
+    const appointmentData = { 
+      ...req.body, 
+      userId, 
+      meetingLink, 
+      meetingPassword,
+      createdAt: new Date().toISOString()
+    };
     
     // Sync to Google if connected
     const googleEventId = await pushToGoogleCalendar(userId, appointmentData);
-    if (googleEventId) appointmentData.googleEventId = googleEventId;
+    if (googleEventId) {
+      appointmentData.googleEventId = googleEventId;
+      console.log('[AUTH-BOOKING] Google Sync Success');
+    }
 
     // Sync to Outlook if connected
     const outlookEventId = await pushToOutlookCalendar(userId, appointmentData);
-    if (outlookEventId) appointmentData.outlookEventId = outlookEventId;
+    if (outlookEventId) {
+      appointmentData.outlookEventId = outlookEventId;
+      console.log('[AUTH-BOOKING] Outlook Sync Success');
+    }
 
+    console.log('[AUTH-BOOKING] Saving to Firestore:', JSON.stringify(appointmentData));
     const docRef = await db.collection('appointments').add(appointmentData);
+    console.log('[AUTH-BOOKING SUCCESS] ID:', docRef.id);
     res.status(201).json({ ...appointmentData, id: docRef.id });
   } catch (error: any) {
+    console.error('[AUTH-BOOKING ERROR]:', error);
     res.status(500).json({ error: error.message });
   }
 });
