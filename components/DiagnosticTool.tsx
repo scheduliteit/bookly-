@@ -77,11 +77,13 @@ const DiagnosticTool: React.FC = () => {
     // 4. Public Profile Visibility
     try {
       if (auth.currentUser) {
-        const res = await fetch(`/api/availability?userId=${auth.currentUser.uid}&date=${new Date().toISOString().split('T')[0]}`);
+        const url = `/api/availability?userId=${auth.currentUser.uid}&date=${new Date().toISOString().split('T')[0]}`;
+        const res = await fetch(url);
         if (res.ok) {
           newResults[3] = { ...newResults[3], status: 'success', message: 'Gateway Active', details: 'Availability service responding.' };
         } else {
-          newResults[3] = { ...newResults[3], status: 'error', message: 'Public Route Degraded', details: 'Check Firestore rules for public_profiles.' };
+          const errorText = await res.text();
+          newResults[3] = { ...newResults[3], status: 'error', message: 'Public Route Degraded', details: `Status ${res.status}: ${errorText.substring(0, 100)}` };
         }
       } else {
          newResults[3] = { ...newResults[3], status: 'pending', message: 'Skipped', details: 'Signin required to detect profile.' };

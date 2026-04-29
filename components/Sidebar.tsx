@@ -135,12 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
 
               <motion.button
                 variants={{ hidden: { x: -20, opacity: 0 }, visible: { x: 0, opacity: 1 } }}
-                onClick={() => {
-                  const langs: Language[] = ['en', 'he', 'es', 'fr', 'de', 'ar'];
-                  const currentIndex = langs.indexOf(language);
-                  const nextIndex = (currentIndex + 1) % langs.length;
-                  onUpdateLanguage(langs[nextIndex]);
-                }}
+                onClick={() => { setActiveTab('settings'); }}
                 className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all font-bold text-xs text-slate-500 bg-slate-50 hover:bg-slate-100 mt-2"
               >
                 <div className="flex items-center gap-3">

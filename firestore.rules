@@ -22,6 +22,7 @@ service cloud.firestore {
         request.auth.token.admin == true || 
         request.auth.token.email == 'm.elsalameen@gmail.com' ||
         request.auth.token.email == 'scheduliteit@gmail.com' ||
+        request.auth.token.email == 'loktasook@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -41,7 +42,7 @@ service cloud.firestore {
     // --- Entity Validations ---
 
     function isValidUser(data) {
-      let isMasterAdmin = data.email == 'm.elsalameen@gmail.com' || data.email == 'scheduliteit@gmail.com' || (request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com');
+      let isMasterAdmin = data.email == 'm.elsalameen@gmail.com' || data.email == 'scheduliteit@gmail.com' || data.email == 'loktasook@gmail.com' || (request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com' || request.auth.token.email == 'loktasook@gmail.com');
       return data.id is string && data.id == request.auth.uid &&
              data.email is string && data.email.size() <= 128 &&
              (!('role' in data) || data.role == 'user' || (data.role == 'admin' && isMasterAdmin)) && 
@@ -86,7 +87,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
         (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt'])) ||
-        ((request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com') && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt']))
+        ((request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com' || request.auth.token.email == 'loktasook@gmail.com') && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt']))
       );
       allow delete: if false; 
     }
@@ -109,8 +110,8 @@ service cloud.firestore {
 
     // /appointments/{appointmentId}
     match /appointments/{appointmentId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || (!isSignedIn() && resource.data.userId != null);
+      allow get: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin() || !isSignedIn();
       allow create: if (isSignedIn() && isValidAppointment(incoming())) || (!isSignedIn() && isValidPublicAppointment(incoming()));
       allow update: if (isSignedIn() && existing().userId == request.auth.uid && isValidAppointment(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['date', 'time', 'status', 'reminderSent'])) || isAdmin();

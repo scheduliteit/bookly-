@@ -190,7 +190,15 @@ const Settings: React.FC<SettingsProps> = ({
     { day: 'Saturday', hours: 'Unavailable', active: false },
   ];
 
+  const [localLanguage, setLocalLanguage] = useState<Language>(language);
+  const [localCurrency, setLocalCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>(currency);
   const t = translations[language];
+
+  const handleSaveLocalization = () => {
+    onUpdateLanguage(localLanguage);
+    onUpdateCurrency(localCurrency);
+    alert('Localization settings saved!');
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
@@ -772,8 +780,8 @@ const Settings: React.FC<SettingsProps> = ({
                     ].map((lang) => (
                       <button 
                         key={lang.id}
-                        onClick={() => onUpdateLanguage(lang.id as Language)}
-                        className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${language === lang.id ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
+                        onClick={() => setLocalLanguage(lang.id as Language)}
+                        className={`px-4 py-3 rounded-xl border font-bold text-sm transition-all focus:outline-none ${localLanguage === lang.id ? 'bg-brand-blue text-white border-brand-blue shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-brand-blue/30'}`}
                       >
                         {lang.label}
                       </button>
@@ -786,8 +794,8 @@ const Settings: React.FC<SettingsProps> = ({
                     <DollarSign size={14} /> Default Currency
                   </label>
                   <select 
-                    value={currency}
-                    onChange={(e) => onUpdateCurrency(e.target.value as any)}
+                    value={localCurrency}
+                    onChange={(e) => setLocalCurrency(e.target.value as any)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all"
                   >
                     <option value="USD">USD ($) - US Dollar</option>
@@ -796,6 +804,15 @@ const Settings: React.FC<SettingsProps> = ({
                     <option value="ILS">ILS (₪) - Israeli Shekel</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-100 flex justify-end">
+                <button 
+                  onClick={handleSaveLocalization}
+                  className="px-8 py-3 bg-brand-blue text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition-all flex items-center gap-2"
+                >
+                  <Save size={18} /> Update Localization
+                </button>
               </div>
 
               <div className="pt-8 border-t border-slate-50 space-y-3">
