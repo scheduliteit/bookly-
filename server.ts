@@ -1345,17 +1345,39 @@ app.get('/api/payments/stats', requireAuth, (req: any, res: any) => {
 app.get('/api/dashboard/stats', requireAuth, async (req: any, res: any) => {
   try {
     if (!db) return res.status(503).json({ error: 'Database initializing' });
-    const userDoc = await db.collection('users').doc(req.user.uid).get();
-    const apptsSnap = await db.collection('appointments').where('userId', '==', req.user.uid).get();
-    const clientsSnap = await db.collection('clients').where('userId', '==', req.user.uid).get();
     
-    res.json({
-      appointments: apptsSnap.size,
-      clients: clientsSnap.size,
-      onboarding: userDoc.data()?.onboardingCompleted || false,
-      status: 'healthy',
-      timestamp: new Date().toISOString()
-    });
+    // If the server is using the Web SDK fallback, it's unauthenticated and might fail rules.
+    // For the dashboard stats, we attempt to fetch, but handle permission errors gracefully by returning partial data.
+    try {
+      const userDoc = await db.collection('users').doc(req.user.uid).get();
+      const apptsSnap = await db.collection('appointments').where('userId', '==', req.user.uid).get();
+      const clientsSnap = await db.collection('clients').where('userId', '==', req.user.uid).get();
+      
+      res.json({
+        appointments: apptsSnap.size || 0,
+        clients: clientsSnap.size || 0,
+        onboarding: (userDoc.exists ? userDoc.data()?.onboardingCompleted : false) || false,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        privileged: !!adminApp
+      });
+    } catch (dbError: any) {
+      if (dbError.message?.includes('permissions') || dbError.code === 'permission-denied') {
+        // Return success but with zero/empty data if we can't read due to rules (server-side limitation in dev)
+        console.warn('[STATS] Permission Denied for server-side read. This is expected in dev fallback mode.');
+        res.json({
+          appointments: 0,
+          clients: 0,
+          onboarding: false,
+          status: 'degraded',
+          message: 'Server restricted by security rules (Dev Fallback Active)',
+          timestamp: new Date().toISOString(),
+          privileged: false
+        });
+      } else {
+        throw dbError;
+      }
+    }
   } catch (error: any) {
     console.error('[STATS ERROR]', error);
     res.status(500).json({ error: error.message });
