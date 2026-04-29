@@ -266,14 +266,18 @@ const requireAuth = async (req: any, res: any, next: any) => {
     // NOTE: This is only for development/preview mode where credentials may be missing.
     try {
       if (idToken) {
-        const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
-        req.user = { 
-          uid: payload.user_id || payload.sub, 
-          email: payload.email,
-          email_verified: payload.email_verified || true
-        };
-        console.log(`[AUTH] Extracted UID ${req.user.uid} from token (Mock verification)`);
-        return next();
+        const payloadParts = idToken.split('.');
+        if (payloadParts.length > 1) {
+          const base64Payload = payloadParts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+          req.user = { 
+            uid: payload.user_id || payload.sub, 
+            email: payload.email,
+            email_verified: payload.email_verified || true
+          };
+          console.log(`[AUTH] Extracted UID ${req.user.uid} from token (Mock verification)`);
+          return next();
+        }
       }
     } catch (e: any) {
       console.warn('[AUTH] Failed to decode token payload:', e.message);
