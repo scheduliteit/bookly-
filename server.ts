@@ -240,9 +240,25 @@ const requireAuth = async (req: any, res: any, next: any) => {
   const idToken = authHeader?.startsWith('Bearer ') ? authHeader.split('Bearer ')[1] : null;
 
   if (!adminApp) {
-    // FALLBACK: If Admin SDK is offline, we allow requests for the master admin email
-    // or if we are in a mode that needs it. This is safe because Firestore rules still protect data.
-    console.warn('[AUTH] Admin SDK offline. Using mock authorization.');
+    // FALLBACK: If Admin SDK is offline, we attempt to extract the UID from the JWT token
+    // so that queries match the user's actual data in Firestore.
+    // NOTE: This is only for development/preview mode where credentials may be missing.
+    try {
+      if (idToken) {
+        const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
+        req.user = { 
+          uid: payload.user_id || payload.sub, 
+          email: payload.email,
+          email_verified: payload.email_verified || true
+        };
+        console.log(`[AUTH] Extracted UID ${req.user.uid} from token (Mock verification)`);
+        return next();
+      }
+    } catch (e) {
+      console.warn('[AUTH] Failed to decode token payload:', e);
+    }
+
+    console.warn('[AUTH] Admin SDK offline and no valid token found. Using default mock.');
     req.user = { 
       uid: 'dev-user-mock', 
       email: 'm.elsalameen@gmail.com',

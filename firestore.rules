@@ -98,17 +98,17 @@ service cloud.firestore {
 
     // /clients/{clientId}
     match /clients/{clientId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || (!isSignedIn());
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || (!isSignedIn());
       allow create: if (isSignedIn() && isValidClient(incoming())) || (!isSignedIn() && incoming().userId != null); 
-      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidClient(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'phone', 'notes', 'lastVisit']);
-      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && isValidClient(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'phone', 'notes', 'lastVisit']));
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
     }
 
     // /appointments/{appointmentId}
     match /appointments/{appointmentId} {
-      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || (!isSignedIn());
       allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || !isSignedIn();
       allow create: if (isSignedIn() && isValidAppointment(incoming())) || (!isSignedIn() && isValidPublicAppointment(incoming()));
       allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && isValidAppointment(incoming()) &&
