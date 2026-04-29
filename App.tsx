@@ -148,7 +148,7 @@ const App: React.FC = () => {
             // Auto-upgrade if email matches
             const userEmail = firebaseUser.email?.toLowerCase();
             let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
-            const isMasterEmail = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
+            const isMasterEmail = userEmail === 'm.elsalameen@gmail.com';
             if (isMasterEmail) {
                console.log(`Welcome Master Admin (${userEmail}). Verifying role...`);
                if (userData.role !== 'admin') {
@@ -212,7 +212,7 @@ const App: React.FC = () => {
               services: [],
               currency: 'USD',
               subscriptionPlan: initialPlan,
-              role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com' || firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com') ? 'admin' : undefined,
+              role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com') ? 'admin' : undefined,
               createdAt: new Date().toISOString(),
               workingHours: {
                 monday: { start: '09:00', end: '17:00', active: true },

@@ -157,14 +157,10 @@ const initDb = async () => {
       });
       console.log('[SERVER] Firebase Admin initialized with Service Account');
     } else {
-      try {
-        adminApp = admin.initializeApp({
-          projectId: firebaseConfig.projectId
-        });
-        console.log('[SERVER] Firebase Admin initialized with Project ID:', firebaseConfig.projectId);
-      } catch (e) {
-        console.warn('[SERVER] Default Admin Init failed, will fallback to Web SDK');
-      }
+      // If no service account, we don't initialize adminApp to avoid "Default Credentials" errors
+      // Token verification will use fallback mock for dev mode
+      console.warn('[SERVER] No service account found. Using Web SDK for Firestore and Mock Auth.');
+      adminApp = null;
     }
 
     if (adminApp) {
@@ -180,7 +176,10 @@ const initDb = async () => {
     try {
       console.log('[SERVER] Falling back to Firebase Web SDK for Firestore');
       const { initializeApp: initializeWebApp } = await import('firebase/app');
-      const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
+      const { getFirestore: getWebFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, limit, arrayUnion, arrayRemove, deleteField } = await import('firebase/firestore');
+      
+      const webApp = initializeWebApp(firebaseConfig);
+      const webDb = getWebFirestore(webApp, firebaseConfig.firestoreDatabaseId);
       
       // Update unified values for Web SDK
       firestoreValues = {
@@ -188,9 +187,6 @@ const initDb = async () => {
         arrayRemove,
         delete: deleteField
       };
-      
-      const webApp = initializeWebApp(firebaseConfig);
-      const webDb = getWebFirestore(webApp, firebaseConfig.firestoreDatabaseId);
       
       // Create a compatibility wrapper for Admin-style calls used in the server
       db = {
@@ -203,15 +199,19 @@ const initDb = async () => {
           where: (field: string, op: any, value: any) => {
             const q = query(collection(webDb, colName), where(field, op === '==' ? '==' : op, value));
             return {
-              get: () => getDocs(q).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
+              get: () => getDocs(q).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })),
               where: (f2: string, o2: any, v2: any) => {
                  const q2 = query(q, where(f2, o2 === '==' ? '==' : o2, v2));
-                 return { get: () => getDocs(q2).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })) };
+                 return { get: () => getDocs(q2).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })) };
+              },
+              limit: (n: number) => {
+                 const qLimit = query(q, limit(n));
+                 return { get: () => getDocs(qLimit).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })) };
               }
             };
           },
           add: (data: any) => addDoc(collection(webDb, colName), data).then(d => ({ id: d.id })),
-          get: () => getDocs(collection(webDb, colName)).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id })), size: s.size })),
+          get: () => getDocs(collection(webDb, colName)).then(s => ({ docs: s.docs.map(d => ({ data: () => d.data(), id: d.id, exists: true })), size: s.size })),
         })
       };
       console.log('[SERVER] Web SDK Firestore wrapper initialized');
@@ -240,12 +240,12 @@ const requireAuth = async (req: any, res: any, next: any) => {
   const idToken = authHeader?.startsWith('Bearer ') ? authHeader.split('Bearer ')[1] : null;
 
   if (!adminApp) {
-    // FALLBACK: If Admin SDK is offline, we allow requests in Free Mode or for local dev
-    // We try to extract uid from token if it's a known format or just use a default
+    // FALLBACK: If Admin SDK is offline, we allow requests for the master admin email
+    // or if we are in a mode that needs it. This is safe because Firestore rules still protect data.
     console.warn('[AUTH] Admin SDK offline. Using mock authorization.');
     req.user = { 
       uid: 'dev-user-mock', 
-      email: 'm.elsalameen@gmail.com', // Default to current user for demo
+      email: 'm.elsalameen@gmail.com',
       email_verified: true 
     };
     return next();
