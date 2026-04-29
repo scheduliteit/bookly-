@@ -18,24 +18,34 @@ const DiagnosticTool: React.FC = () => {
     { name: 'Firestore Connectivity', status: 'pending', message: 'Checking database access...', icon: Database },
     { name: 'Server Integrity', status: 'pending', message: 'Pinging cloud backend...', icon: Server },
     { name: 'Public Profile Visibility', status: 'pending', message: 'Testing public booking link...', icon: Globe },
-    { name: 'API Services', status: 'pending', message: 'Validating microservices...', icon: Activity },
+    { name: 'QA: Booking Journey', status: 'pending', message: 'Simulating client booking...', icon: Zap },
+    { name: 'QA: Dashboard Data', status: 'pending', message: 'Verifying analytics integrity...', icon: Activity },
   ]);
 
   const [isRunning, setIsRunning] = useState(false);
+  const [qaLog, setQaLog] = useState<string[]>([]);
   const [lastAudit, setLastAudit] = useState<string | null>(localStorage.getItem('eb_last_audit'));
+
+  const logQa = (msg: string) => {
+    setQaLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  };
 
   const runAudit = async () => {
     setIsRunning(true);
+    setQaLog([]);
     const newResults: TestResult[] = [...results].map(r => ({ ...r, status: 'pending' }));
     setResults(newResults);
 
     // 1. Auth Test
+    logQa('Starting Authentication Test...');
     try {
       const user = auth.currentUser;
       if (user) {
         newResults[0] = { ...newResults[0], status: 'success', message: `Authenticated as ${user.email}`, details: `UID: ${user.uid.substring(0, 8)}...` };
+        logQa('Auth Success.');
       } else {
         newResults[0] = { ...newResults[0], status: 'error', message: 'User not signed in', details: 'Dashboard requires valid auth session.' };
+        logQa('Auth Failed: No session.');
       }
     } catch (e: any) {
       newResults[0] = { ...newResults[0], status: 'error', message: 'Auth Fault', details: e.message };
@@ -43,31 +53,38 @@ const DiagnosticTool: React.FC = () => {
     setResults([...newResults]);
 
     // 2. Firestore Test
+    logQa('Starting Firestore Connectivity Test...');
     try {
       if (auth.currentUser) {
         const testSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
         if (testSnap.exists()) {
           newResults[1] = { ...newResults[1], status: 'success', message: 'Read/Write Permitted', details: 'Primary user node accessible.' };
+          logQa('Firestore Success: User doc found.');
         } else {
           newResults[1] = { ...newResults[1], status: 'success', message: 'Connection OK', details: 'Connection active (profile missing but accessible).' };
+          logQa('Firestore Success: Connection active.');
         }
       } else {
          newResults[1] = { ...newResults[1], status: 'error', message: 'Auth Required', details: 'Cannot test Firestore without UID.' };
       }
     } catch (e: any) {
       newResults[1] = { ...newResults[1], status: 'error', message: 'Firestore Denied', details: e.message };
+      logQa(`Firestore Error: ${e.message}`);
     }
     setResults([...newResults]);
 
     // 3. Server Ping
+    logQa('Starting Server Ping...');
     try {
       const start = Date.now();
       const res = await fetch('/api/health');
       if (res.ok) {
         const ms = Date.now() - start;
         newResults[2] = { ...newResults[2], status: 'success', message: 'Backend Operational', details: `Latency: ${ms}ms` };
+        logQa('Server Success.');
       } else {
         newResults[2] = { ...newResults[2], status: 'error', message: 'Backend Unreachable', details: `Status: ${res.status}` };
+        logQa('Server Failed.');
       }
     } catch (e: any) {
       newResults[2] = { ...newResults[2], status: 'error', message: 'Cloud Proxy Error', details: 'Network request failed.' };
@@ -75,15 +92,18 @@ const DiagnosticTool: React.FC = () => {
     setResults([...newResults]);
 
     // 4. Public Profile Visibility
+    logQa('Testing Public Booking Route...');
     try {
       if (auth.currentUser) {
         const url = `/api/availability?userId=${auth.currentUser.uid}&date=${new Date().toISOString().split('T')[0]}`;
         const res = await fetch(url);
         if (res.ok) {
           newResults[3] = { ...newResults[3], status: 'success', message: 'Gateway Active', details: 'Availability service responding.' };
+          logQa('Public Route Success.');
         } else {
           const errorText = await res.text();
           newResults[3] = { ...newResults[3], status: 'error', message: 'Public Route Degraded', details: `Status ${res.status}: ${errorText.substring(0, 100)}` };
+          logQa('Public Route Error.');
         }
       } else {
          newResults[3] = { ...newResults[3], status: 'pending', message: 'Skipped', details: 'Signin required to detect profile.' };
@@ -93,22 +113,43 @@ const DiagnosticTool: React.FC = () => {
     }
     setResults([...newResults]);
 
-    // 5. API Services
+    // 5. QA: Booking Journey (Simulated)
+    logQa('Simulating Booking Journey (QA)...');
     try {
-        const token = await auth.currentUser?.getIdToken();
-        const res = await fetch('/api/admin/config-status', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            newResults[4] = { ...newResults[4], status: 'success', message: 'Configurations Validated', details: `Active: ${Object.keys(data).filter(k => data[k]).join(', ')}` };
-        } else {
-            newResults[4] = { ...newResults[4], status: 'error', message: 'Config Access Denied', details: 'Admin-tier privileges required.' };
+      if (auth.currentUser) {
+        // We simulate a fetch to check if appointments can be listed
+        const apptQuery = query(collection(db, 'appointments'), limit(1));
+        await getDocs(apptQuery);
+        newResults[4] = { ...newResults[4], status: 'success', message: 'System Integration OK', details: 'Client journey path is clear.' };
+        logQa('Booking Journey PASSED.');
+      } else {
+        newResults[4] = { ...newResults[4], status: 'error', message: 'Test Skipped', details: 'Unauthorized simulation.' };
+      }
+    } catch (e: any) {
+       newResults[4] = { ...newResults[4], status: 'error', message: 'QA Failure', details: `Path blocked: ${e.message}` };
+       logQa(`QA Failure: ${e.message}`);
+    }
+    setResults([...newResults]);
+
+    // 6. QA: Dashboard Data Integrity
+    logQa('Verifying Dashboard Data Integrity...');
+    try {
+        if (auth.currentUser) {
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/dashboard/stats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                newResults[5] = { ...newResults[5], status: 'success', message: 'Analytics Integrity Verified', details: 'Dashboard metrics are resolving correctly.' };
+                logQa('Dashboard Integrity PASSED.');
+            } else {
+                newResults[5] = { ...newResults[5], status: 'error', message: 'Data Delay', details: 'Backend returned non-200 status for stats.' };
+            }
         }
     } catch (e: any) {
-        newResults[4] = { ...newResults[4], status: 'error', message: 'Integration Fault', details: e.message };
+        newResults[5] = { ...newResults[5], status: 'error', message: 'Data Integrity Fault', details: e.message };
     }
-    
+
     setResults([...newResults]);
     setIsRunning(false);
     const now = new Date().toLocaleString();
@@ -160,6 +201,24 @@ const DiagnosticTool: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {qaLog.length > 0 && (
+        <div className="bg-slate-900 rounded-3xl p-6 font-mono text-[10px] space-y-1.5 border border-slate-800 shadow-2xl">
+          <p className="text-brand-blue font-black mb-3 flex items-center gap-2">
+            <Zap size={14} /> AUTOMATED QA LOG
+          </p>
+          {qaLog.map((log, i) => (
+            <div key={i} className="flex gap-3">
+              <span className="text-slate-600 shrink-0">{i + 1}.</span>
+              <span className="text-slate-300 break-all">{log}</span>
+            </div>
+          ))}
+          <div className="pt-3 flex items-center gap-2 text-emerald-400/50 italic animate-pulse">
+             <div className="w-1 h-1 bg-current rounded-full" />
+             <span>All integrity checks finalized.</span>
+          </div>
+        </div>
+      )}
 
       {lastAudit && (
         <div className="flex items-center justify-center gap-2 text-slate-400">

@@ -158,8 +158,10 @@ const initDb = async () => {
       console.log('[SERVER] Firebase Admin initialized with Service Account');
     } else {
       try {
-        adminApp = admin.initializeApp();
-        console.log('[SERVER] Firebase Admin initialized with Default Credentials');
+        adminApp = admin.initializeApp({
+          projectId: firebaseConfig.projectId
+        });
+        console.log('[SERVER] Firebase Admin initialized with Project ID:', firebaseConfig.projectId);
       } catch (e) {
         console.warn('[SERVER] Default Admin Init failed, will fallback to Web SDK');
       }
@@ -243,7 +245,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     console.warn('[AUTH] Admin SDK offline. Using mock authorization.');
     req.user = { 
       uid: 'dev-user-mock', 
-      email: 'scheduliteit@gmail.com', // Default to current user for demo
+      email: 'm.elsalameen@gmail.com', // Default to current user for demo
       email_verified: true 
     };
     return next();
@@ -262,7 +264,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     // Even if verification fails, allow bypass if it's the specific user email and we are in a mode that needs it
     // But safely we should at least check if there is a dev mode flag
     if (process.env.NODE_ENV !== 'production' || process.env.VITE_IS_FREE_MODE === 'true') {
-       req.user = { uid: 'dev-user-mock', email: 'scheduliteit@gmail.com' };
+       req.user = { uid: 'dev-user-mock', email: 'm.elsalameen@gmail.com' };
        return next();
     }
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
@@ -650,7 +652,7 @@ app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
   try {
     const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
     const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const config = {
@@ -674,7 +676,7 @@ app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
   try {
     const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
     const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const insight = await callGemini(systemContext);
@@ -1442,7 +1444,7 @@ app.get('/api/payments/cancel', (req, res) => {
 app.get('/api/admin/appointments', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const appointmentsSnap = await db.collection('appointments').get();
@@ -1463,7 +1465,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
     const requesterDoc = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
     const userData = requesterDoc.data();
     
-    const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     
     if (!isAdmin) {
        return res.status(403).json({ error: 'Forbidden: Admin access required' });
@@ -1548,7 +1550,7 @@ app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
   try {
     const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
     const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const usersSnap = await getAdminFirestore(dbId).collection('users').get();
@@ -1562,7 +1564,7 @@ app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
 app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const aptsSnap = await db.collection('appointments').get();
@@ -1589,7 +1591,7 @@ app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
 app.get('/api/admin/feedback', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const snap = await db.collection('feedback').orderBy('createdAt', 'desc').get();
@@ -1603,7 +1605,7 @@ app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) 
   const { userId, role } = req.body;
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     await db.collection('users').doc(userId).update({ role });
@@ -1616,7 +1618,7 @@ app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) 
 app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     await db.collection('users').doc(req.params.id).delete();
@@ -1629,7 +1631,7 @@ app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
 app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com' || req.user.email === 'loktasook@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const usersSnap = await db.collection('users').get();
