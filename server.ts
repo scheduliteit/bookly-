@@ -650,8 +650,7 @@ app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: 
 
 app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
   try {
-    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const requesterSnap = await db.collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
@@ -674,8 +673,7 @@ app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
 app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
   const { systemContext } = req.body;
   try {
-    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const requesterSnap = await db.collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
@@ -1344,6 +1342,26 @@ app.get('/api/payments/stats', requireAuth, (req: any, res: any) => {
   });
 });
 
+app.get('/api/dashboard/stats', requireAuth, async (req: any, res: any) => {
+  try {
+    if (!db) return res.status(503).json({ error: 'Database initializing' });
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+    const apptsSnap = await db.collection('appointments').where('userId', '==', req.user.uid).get();
+    const clientsSnap = await db.collection('clients').where('userId', '==', req.user.uid).get();
+    
+    res.json({
+      appointments: apptsSnap.size,
+      clients: clientsSnap.size,
+      onboarding: userDoc.data()?.onboardingCompleted || false,
+      status: 'healthy',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[STATS ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/payments/connect', (req, res) => {
   // Stubbed for now
   res.json({ success: true });
@@ -1461,8 +1479,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
   
   try {
     // Check if requester is actually an admin
-    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-    const requesterDoc = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const requesterDoc = await db.collection('users').doc(req.user.uid).get();
     const userData = requesterDoc.data();
     
     const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
@@ -1471,7 +1488,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
        return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
     
-    const usersSnap = await getAdminFirestore(dbId).collection('users').get();
+    const usersSnap = await db.collection('users').get();
     const totalUsers = usersSnap.size;
     
     const fifteenMinutesAgo = new Date();
@@ -1505,7 +1522,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
       .sort((a, b) => b.users - a.users)
       .slice(0, 4);
 
-    const appointmentsSnap = await getAdminFirestore(dbId).collection('appointments').get();
+    const appointmentsSnap = await db.collection('appointments').get();
     const totalAppointmentsCount = appointmentsSnap.size;
     
     // Calculate REAL revenue from confirmed/completed appointments
@@ -1548,12 +1565,11 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
 
 app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
   try {
-    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-    const requesterSnap = await getAdminFirestore(dbId).collection('users').doc(req.user.uid).get();
+    const requesterSnap = await db.collection('users').doc(req.user.uid).get();
     const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    const usersSnap = await getAdminFirestore(dbId).collection('users').get();
+    const usersSnap = await db.collection('users').get();
     const users = usersSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     res.json(users);
   } catch (error: any) {

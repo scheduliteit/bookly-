@@ -20,7 +20,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true || 
-        request.auth.token.email.lower() == 'm.elsalameen@gmail.com' ||
+        request.auth.token.email.toLower() == 'm.elsalameen@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -108,12 +108,12 @@ service cloud.firestore {
 
     // /appointments/{appointmentId}
     match /appointments/{appointmentId} {
-      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || (!isSignedIn() && resource.data.userId != null);
-      allow get: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin() || !isSignedIn();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || !isSignedIn();
       allow create: if (isSignedIn() && isValidAppointment(incoming())) || (!isSignedIn() && isValidPublicAppointment(incoming()));
-      allow update: if (isSignedIn() && existing().userId == request.auth.uid && isValidAppointment(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['date', 'time', 'status', 'reminderSent'])) || isAdmin();
-      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && isValidAppointment(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['date', 'time', 'status', 'reminderSent']));
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
     }
 
     // /feedback/{feedbackId}
