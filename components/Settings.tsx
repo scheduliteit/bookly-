@@ -29,6 +29,7 @@ interface SettingsProps {
   initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit';
   language: Language;
   onUpdateLanguage: (lang: Language) => void;
+  showToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -49,7 +50,8 @@ const Settings: React.FC<SettingsProps> = ({
   userId,
   initialTab,
   language,
-  onUpdateLanguage
+  onUpdateLanguage,
+  showToast
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
@@ -62,9 +64,13 @@ const Settings: React.FC<SettingsProps> = ({
   const [newService, setNewService] = useState<Partial<Service>>({ name: '', duration: 30, price: 0, color: '#006bff', locationType: 'online' });
 
   const handleAddService = () => {
-    if (!newService.name) return;
+    if (!newService.name) {
+      if (showToast) showToast('Please enter an event name', 'error');
+      return;
+    }
     onUpdateServices([...services, newService as Service]);
     setNewService({ name: '', duration: 30, price: 0, color: '#006bff', locationType: 'online' });
+    if (showToast) showToast(`Added "${newService.name}" to your events`);
   };
 
   const handleDeleteService = (serviceName: string) => {

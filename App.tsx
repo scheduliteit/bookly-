@@ -382,9 +382,32 @@ const App: React.FC = () => {
 
   const updateUserSettings = async (updates: Partial<User>) => {
     if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      await api.user.save(updatedUser);
+      try {
+        const updatedUser = { ...user, ...updates };
+        
+        // Optimistically update the main user state
+        setUser(updatedUser);
+        
+        // Sync duplicate auxiliary states
+        if (updates.businessName !== undefined) setBusinessName(updates.businessName);
+        if (updates.services !== undefined) setServices(updates.services);
+        if (updates.connectedApps !== undefined) setConnectedApps(updates.connectedApps);
+        if (updates.legalData !== undefined) setLegalData(updates.legalData);
+        if (updates.currency !== undefined) setCurrency(updates.currency);
+        if (updates.timezone !== undefined) setTimezone(updates.timezone);
+        if (updates.reminderSettings !== undefined) setReminderSettings(updates.reminderSettings);
+        if (updates.subscriptionPlan !== undefined) setSubscriptionPlan(updates.subscriptionPlan);
+        if (updates.language !== undefined) {
+           setLanguage(updates.language as Language);
+           localStorage.setItem('easybookly_lang', updates.language);
+        }
+
+        await api.user.save(updatedUser);
+        // showToast("Settings updated successfully"); // Optional: can be annoying if too frequent
+      } catch (err: any) {
+        console.error("Failed to update user settings:", err);
+        showToast("Failed to save settings: " + (err.message || String(err)), "error");
+      }
     }
   };
 
@@ -719,6 +742,7 @@ const App: React.FC = () => {
                       localStorage.setItem('easybookly_lang', l);
                       updateUserSettings({ language: l });
                     }}
+                    showToast={showToast}
                   />
                 );
               default:
