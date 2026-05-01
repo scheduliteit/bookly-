@@ -4,13 +4,13 @@ import { db, auth, doc, getDoc, collection, query, where, onSnapshot, setDoc, up
 
 export const api = {
   appointments: {
-    list: (callback: (data: Appointment[]) => void) => {
-      const userId = auth.currentUser?.uid;
+    list: (userId: string, callback: (data: Appointment[]) => void) => {
       if (!userId) return () => {};
       
       const q = query(collection(db, 'appointments'), where('userId', '==', userId));
       return onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Appointment));
+        console.log(`[API-DEBUG] Snapshot for ${userId}: ${data.length} appointments`);
         callback(data);
       }, (error) => {
         handleFirestoreError(error, OperationType.LIST, 'appointments');
@@ -19,6 +19,7 @@ export const api = {
     create: async (data: Appointment): Promise<Appointment> => {
       // If it's a public booking (no current user), use the public endpoint 
       // so the server can handle Zoom meeting generation without admin auth token
+      console.log('[API-DEBUG] Creating appointment. User:', auth.currentUser?.uid || 'GUEST');
       if (!auth.currentUser) {
         const response = await fetch('/api/public/book', {
           method: 'POST',
@@ -27,6 +28,7 @@ export const api = {
         });
         if (!response.ok) {
           const err = await response.json();
+          console.error('[API-DEBUG] Public booking failed:', err);
           throw err;
         }
         return response.json();
@@ -34,6 +36,7 @@ export const api = {
 
       // For authenticated user (admin), use the authenticated proxy
       const token = await auth.currentUser.getIdToken();
+      console.log('[API-DEBUG] Using AUTH endpoint with token');
       const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 
@@ -45,6 +48,7 @@ export const api = {
 
       if (!response.ok) {
         const err = await response.json();
+        console.error('[API-DEBUG] Auth booking failed:', err);
         throw err;
       }
       return response.json();
@@ -68,13 +72,13 @@ export const api = {
     }
   },
   clients: {
-    list: (callback: (data: Client[]) => void) => {
-      const userId = auth.currentUser?.uid;
+    list: (userId: string, callback: (data: Client[]) => void) => {
       if (!userId) return () => {};
       
       const q = query(collection(db, 'clients'), where('userId', '==', userId));
       return onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Client));
+        console.log(`[API-DEBUG] Client snapshot for ${userId}: ${data.length} clients`);
         callback(data);
       }, (error) => {
         handleFirestoreError(error, OperationType.LIST, 'clients');

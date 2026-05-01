@@ -264,8 +264,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (user && user.onboardingCompleted) {
-      const unsubApts = api.appointments.list(setAppointments);
-      const unsubClients = api.clients.list(setClients);
+      const unsubApts = api.appointments.list(user.id, setAppointments);
+      const unsubClients = api.clients.list(user.id, setClients);
       
       if (user.role === 'admin') {
         api.system.getUsers().then(setAllUsers).catch(console.error);
@@ -351,10 +351,14 @@ const App: React.FC = () => {
 
   const handleNewBooking = async (newBooking: Appointment) => {
     try {
+      console.log('[DEBUG] Attempting to save booking:', newBooking);
       const saved = await api.appointments.create(newBooking);
+      console.log('[DEBUG] Booking saved successfully:', saved);
       showToast(`Session locked for ${saved.clientName}`);
-    } catch (err) {
-      showToast("Failed to save booking", "error");
+    } catch (err: any) {
+      console.error('[DEBUG] Booking save failed:', err);
+      const errorMessage = err?.message || JSON.stringify(err);
+      showToast(`Failed to save booking: ${errorMessage}`, "error");
     }
   };
 

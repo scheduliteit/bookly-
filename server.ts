@@ -223,9 +223,9 @@ const initDb = async () => {
             };
           },
           add: (data: any) => {
-            console.log(`[DB FALLBACK] Adding doc to ${colName}...`);
+            console.log(`[DB FALLBACK] Adding doc to ${colName}... DATA:`, JSON.stringify(data));
             return addDoc(collection(webDb, colName), data).then(d => {
-              console.log(`[DB FALLBACK] Created ${colName}/${d.id}`);
+              console.log(`[DB FALLBACK] SUCCESS: Created ${colName}/${d.id}`);
               return { id: d.id };
             }).catch(err => {
               console.error(`[DB FALLBACK ERROR] Failed to add to ${colName}:`, err);
@@ -265,17 +265,17 @@ const requireAuth = async (req: any, res: any, next: any) => {
     // so that queries match the user's actual data in Firestore.
     // NOTE: This is only for development/preview mode where credentials may be missing.
     try {
-      if (idToken) {
+      if (idToken && idToken !== 'null' && idToken !== 'undefined') {
         const payloadParts = idToken.split('.');
         if (payloadParts.length > 1) {
           const base64Payload = payloadParts[1].replace(/-/g, '+').replace(/_/g, '/');
           const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
           req.user = { 
-            uid: payload.user_id || payload.sub, 
+            uid: payload.user_id || payload.sub || payload.uid, 
             email: payload.email,
             email_verified: payload.email_verified || true
           };
-          console.log(`[AUTH] Extracted UID ${req.user.uid} from token (Mock verification)`);
+          console.log(`[AUTH-DEBUG] Extracted UID ${req.user.uid} from token.`);
           return next();
         }
       }
@@ -444,7 +444,8 @@ app.post('/api/public/book', async (req: any, res: any) => {
 app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
   const userId = req.user.uid;
-  console.log(`[AUTH-BOOKING] User: ${userId} adding appointment`);
+  console.log(`[AUTH-BOOKING] User UID: ${userId}, Email: ${req.user.email}`);
+  console.log(`[AUTH-BOOKING] Request Body:`, JSON.stringify(req.body));
   
   try {
     const { service, date, time, duration, locationType } = req.body;
