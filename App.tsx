@@ -144,104 +144,106 @@ const App: React.FC = () => {
         if (firebaseUser) {
           // Fetch user settings from Firestore
           let userData: User | null = null;
+          let fetchWorked = false;
           try {
              userData = await api.user.get(firebaseUser.uid);
+             fetchWorked = true;
           } catch (fetchErr) {
              console.error("[AUTH] Failed to fetch user document:", fetchErr);
-             // If we can't fetch, don't overwrite with a new profile yet!
-             // Just set the basic info we have from Firebase
              setAuthError("Network error: Could not load profile. Using local session.");
           }
 
-          if (userData) {
-            console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}`);
-            // Auto-upgrade if email matches
-            const userEmail = firebaseUser.email?.toLowerCase();
-            let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
-            const isMasterEmail = userEmail === 'm.elsalameen@gmail.com';
-            
-            if (isMasterEmail && userData.role !== 'admin') {
-               console.log("[AUTH] Upgrading master email to Admin role...");
-               effectiveUser.role = 'admin';
-               // Non-blocking save
-               api.user.save(effectiveUser).catch(e => console.error("Role save failed:", e));
-            }
-            
-            // Update login tracking
-            const now = new Date().toISOString();
-            const updatedUser: User = {
-              ...effectiveUser,
-              loginCount: (userData.loginCount || 0) + 1,
-              lastLoginAt: now,
-              lastSeenAt: now
-            };
-            
-            // Subscription Plan Logic
-            let planToSet: 'basic' | 'premium' = updatedUser.subscriptionPlan as 'basic' | 'premium';
-            if (isFreeMode) planToSet = 'premium';
-            
-            setUser(updatedUser);
-            // Save login update in background
-            api.user.save(updatedUser).catch(e => console.error("Login meta save failed:", e));
+          if (fetchWorked) {
+            if (userData) {
+              console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}`);
+              // Auto-upgrade if email matches
+              const userEmail = firebaseUser.email?.toLowerCase();
+              let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
+              const isMasterEmail = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
+              
+              if (isMasterEmail && userData.role !== 'admin') {
+                 console.log("[AUTH] Upgrading master email to Admin role...");
+                 effectiveUser.role = 'admin';
+                 // Non-blocking save
+                 api.user.save(effectiveUser).catch(e => console.error("Role save failed:", e));
+              }
+              
+              // Update login tracking
+              const now = new Date().toISOString();
+              const updatedUser: User = {
+                ...effectiveUser,
+                loginCount: (userData.loginCount || 0) + 1,
+                lastLoginAt: now,
+                lastSeenAt: now
+              };
+              
+              // Subscription Plan Logic
+              let planToSet: 'basic' | 'premium' = updatedUser.subscriptionPlan as 'basic' | 'premium';
+              if (isFreeMode) planToSet = 'premium';
+              
+              setUser(updatedUser);
+              // Save login update in background
+              api.user.save(updatedUser).catch(e => console.error("Login meta save failed:", e));
 
-            if (updatedUser.role === 'admin' && activeTab === 'dashboard') {
-              setActiveTab('management');
-            }
-            setBusinessName(userData.businessName || '');
-            setBusinessCategory(userData.businessCategory || 'Consulting');
-            setIsOnboarded(userData.onboardingCompleted || false);
-            setServices(userData.services || []);
-            setConnectedApps(userData.connectedApps || []);
-            setLegalData(userData.legalData || legalData);
-            setCurrency(userData.currency || 'USD');
-            setSubscriptionPlan(planToSet);
-            setReminderSettings(userData.reminderSettings || {
-              enabled: true,
-              channels: ['email'],
-              timing: 60,
-              messageTemplate: "Hi {clientName}, just a reminder for your {serviceName} at {businessName} on {date} at {time}."
-            });
-            setTimezone(userData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-          } else if (!userData) {
-            console.log("[AUTH] No user record found in Firestore. Initializing new profile...");
-            
-            // FREE FOR NOW: All users get premium by default
-            const initialPlan = 'premium';
-            setSubscriptionPlan(initialPlan);
+              if (updatedUser.role === 'admin' && activeTab === 'dashboard') {
+                setActiveTab('management');
+              }
+              setBusinessName(userData.businessName || '');
+              setBusinessCategory(userData.businessCategory || 'Consulting');
+              setIsOnboarded(userData.onboardingCompleted || false);
+              setServices(userData.services || []);
+              setConnectedApps(userData.connectedApps || []);
+              setLegalData(userData.legalData || legalData);
+              setCurrency(userData.currency || 'USD');
+              setSubscriptionPlan(planToSet);
+              setReminderSettings(userData.reminderSettings || {
+                enabled: true,
+                channels: ['email'],
+                timing: 60,
+                messageTemplate: "Hi {clientName}, just a reminder for your {serviceName} at {businessName} on {date} at {time}."
+              });
+              setTimezone(userData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+            } else {
+              console.log("[AUTH] No user record found in Firestore. Initializing new profile...");
+              
+              // FREE FOR NOW: All users get premium by default
+              const initialPlan = 'premium';
+              setSubscriptionPlan(initialPlan);
 
-            // New user
-            const newUser: User = {
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              businessName: '',
-              businessCategory: 'Consulting',
-              services: [],
-              currency: 'USD',
-              subscriptionPlan: initialPlan,
-              role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com') ? 'admin' : undefined,
-              createdAt: new Date().toISOString(),
-              workingHours: {
-                monday: { start: '09:00', end: '17:00', active: true },
-                tuesday: { start: '09:00', end: '17:00', active: true },
-                wednesday: { start: '09:00', end: '17:00', active: true },
-                thursday: { start: '09:00', end: '17:00', active: true },
-                friday: { start: '09:00', end: '17:00', active: true },
-                saturday: { start: '09:00', end: '17:00', active: false },
-                sunday: { start: '09:00', end: '17:00', active: false },
-              },
-              legalData: legalData,
-              onboardingCompleted: false,
-              loginCount: 1,
-              lastLoginAt: new Date().toISOString(),
-              lastSeenAt: new Date().toISOString()
-            };
-            setUser(newUser);
-            if (newUser.role === 'admin') {
-              setActiveTab('management');
+              // New user
+              const newUser: User = {
+                id: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                businessName: '',
+                businessCategory: 'Consulting',
+                services: [],
+                currency: 'USD',
+                subscriptionPlan: initialPlan,
+                role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com' || firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com') ? 'admin' : undefined,
+                createdAt: new Date().toISOString(),
+                workingHours: {
+                  monday: { start: '09:00', end: '17:00', active: true },
+                  tuesday: { start: '09:00', end: '17:00', active: true },
+                  wednesday: { start: '09:00', end: '17:00', active: true },
+                  thursday: { start: '09:00', end: '17:00', active: true },
+                  friday: { start: '09:00', end: '17:00', active: true },
+                  saturday: { start: '09:00', end: '17:00', active: false },
+                  sunday: { start: '09:00', end: '17:00', active: false },
+                },
+                legalData: legalData,
+                onboardingCompleted: false,
+                loginCount: 1,
+                lastLoginAt: new Date().toISOString(),
+                lastSeenAt: new Date().toISOString()
+              };
+              setUser(newUser);
+              if (newUser.role === 'admin') {
+                setActiveTab('management');
+              }
+              await api.user.save(newUser);
+              console.log("[AUTH] Initial profile created successfully.");
             }
-            await api.user.save(newUser);
-            console.log("[AUTH] Initial profile created successfully.");
           }
         } else {
           console.log("[AUTH] No authenticated user detected.");
@@ -394,13 +396,26 @@ const App: React.FC = () => {
       return;
     }
 
+    const uid = auth.currentUser.uid;
+    console.log(`[UPDATE-SETTINGS] Starting update for ${uid}:`, Object.keys(updates));
+
     try {
-      // Functional update to avoid stale closure issues
+      // Use a functional update to ensure we use latest state
+      // We wrap the save in a way that we can track it
+      let latestUpdated: User | null = null;
+      
       setUser(prev => {
         if (!prev) return prev;
-        const updated = { ...prev, ...updates };
         
-        // Sync auxiliary states if they are being updated
+        // Safety check: ensure ID consistency
+        if (prev.id !== uid) {
+           console.warn(`[UPDATE-SETTINGS] ID Mismatch! State has ${prev.id}, Auth has ${uid}. Correcting...`);
+        }
+
+        const updated = { ...prev, ...updates, id: uid };
+        latestUpdated = updated;
+        
+        // Sync auxiliary states
         if (updates.businessName !== undefined) setBusinessName(updates.businessName);
         if (updates.services !== undefined) setServices(updates.services);
         if (updates.connectedApps !== undefined) setConnectedApps(updates.connectedApps);
@@ -409,21 +424,27 @@ const App: React.FC = () => {
         if (updates.timezone !== undefined) setTimezone(updates.timezone);
         if (updates.reminderSettings !== undefined) setReminderSettings(updates.reminderSettings);
         if (updates.subscriptionPlan !== undefined) setSubscriptionPlan(updates.subscriptionPlan);
+        if (updates.onboardingCompleted !== undefined) setIsOnboarded(updates.onboardingCompleted);
         if (updates.language !== undefined) {
            setLanguage(updates.language as Language);
            localStorage.setItem('easybookly_lang', updates.language);
         }
 
-        // Fire off the API save in the background using the most recent merged data
-        api.user.save(updated).catch(err => {
-          console.error("Delayed persistence failure:", err);
-          showToast("Failed to sync with cloud", "error");
-        });
-
         return updated;
       });
+
+      // Now save the result of the block
+      if (latestUpdated) {
+        try {
+          await api.user.save(latestUpdated);
+          console.log(`[UPDATE-SETTINGS] Persistence successful for ${uid}`);
+        } catch (saveErr) {
+          console.error(`[UPDATE-SETTINGS] Persistence failed for ${uid}:`, saveErr);
+          showToast("Failed to sync changes with the cloud", "error");
+        }
+      }
     } catch (err: any) {
-      console.error("Failed to update user settings:", err);
+      console.error("[UPDATE-SETTINGS] Unexpected error:", err);
       showToast("Update error: " + (err.message || String(err)), "error");
     }
   };
