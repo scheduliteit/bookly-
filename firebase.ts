@@ -9,7 +9,9 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
-  signOut
+  signOut,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, getDocFromServer, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, Timestamp } from 'firebase/firestore';
 import firebaseConfig from './firebase-applet-config.json';
@@ -18,6 +20,7 @@ import firebaseConfig from './firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch(e => console.error("Persistence error:", e));
 export const googleProvider = new GoogleAuthProvider();
 
 export { 

@@ -114,22 +114,20 @@ const App: React.FC = () => {
 
   // Activity Heartbeat
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     
     // Heartbeat every 5 minutes
     const intervalId = setInterval(async () => {
-      try {
-        await api.user.save({
-          ...user,
-          lastSeenAt: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error("Heartbeat failed:", err);
-      }
+      setUser(current => {
+        if (!current) return current;
+        const updated = { ...current, lastSeenAt: new Date().toISOString() };
+        api.user.save(updated).catch(e => console.error("HB Sync Error:", e));
+        return updated;
+      });
     }, 5 * 60 * 1000);
 
     return () => clearInterval(intervalId);
-  }, [user]);
+  }, [user?.id]);
 
   // Auth Listener
   useEffect(() => {
@@ -141,25 +139,32 @@ const App: React.FC = () => {
     }, 8000);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log(`[AUTH] State changed. User: ${firebaseUser?.email || 'NONE'}`);
       try {
         if (firebaseUser) {
           // Fetch user settings from Firestore
-          const userData = await api.user.get(firebaseUser.uid);
+          let userData: User | null = null;
+          try {
+             userData = await api.user.get(firebaseUser.uid);
+          } catch (fetchErr) {
+             console.error("[AUTH] Failed to fetch user document:", fetchErr);
+             // If we can't fetch, don't overwrite with a new profile yet!
+             // Just set the basic info we have from Firebase
+             setAuthError("Network error: Could not load profile. Using local session.");
+          }
+
           if (userData) {
+            console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}`);
             // Auto-upgrade if email matches
             const userEmail = firebaseUser.email?.toLowerCase();
             let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
             const isMasterEmail = userEmail === 'm.elsalameen@gmail.com';
-            if (isMasterEmail) {
-               console.log(`Welcome Master Admin (${userEmail}). Verifying role...`);
-               if (userData.role !== 'admin') {
-                  console.log("Upgrading account to Admin role...");
-                  effectiveUser.role = 'admin';
-                  await api.user.save(effectiveUser);
-                  console.log("Role update successful.");
-               } else {
-                  console.log("Admin role already active.");
-               }
+            
+            if (isMasterEmail && userData.role !== 'admin') {
+               console.log("[AUTH] Upgrading master email to Admin role...");
+               effectiveUser.role = 'admin';
+               // Non-blocking save
+               api.user.save(effectiveUser).catch(e => console.error("Role save failed:", e));
             }
             
             // Update login tracking
@@ -172,11 +177,12 @@ const App: React.FC = () => {
             };
             
             // Subscription Plan Logic
-            let planToSet: 'basic' | 'premium' = userData.subscriptionPlan as 'basic' | 'premium';
+            let planToSet: 'basic' | 'premium' = updatedUser.subscriptionPlan as 'basic' | 'premium';
             if (isFreeMode) planToSet = 'premium';
             
             setUser(updatedUser);
-            await api.user.save(updatedUser);
+            // Save login update in background
+            api.user.save(updatedUser).catch(e => console.error("Login meta save failed:", e));
 
             if (updatedUser.role === 'admin' && activeTab === 'dashboard') {
               setActiveTab('management');
@@ -195,13 +201,13 @@ const App: React.FC = () => {
               timing: 60,
               messageTemplate: "Hi {clientName}, just a reminder for your {serviceName} at {businessName} on {date} at {time}."
             });
-          } else {
-            console.log("New user detected, creating profile...");
+            setTimezone(userData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+          } else if (!userData) {
+            console.log("[AUTH] No user record found in Firestore. Initializing new profile...");
             
             // FREE FOR NOW: All users get premium by default
             const initialPlan = 'premium';
             setSubscriptionPlan(initialPlan);
-            setPendingPlan(undefined);
 
             // New user
             const newUser: User = {
@@ -235,17 +241,17 @@ const App: React.FC = () => {
               setActiveTab('management');
             }
             await api.user.save(newUser);
-            console.log("New user profile saved.");
+            console.log("[AUTH] Initial profile created successfully.");
           }
         } else {
+          console.log("[AUTH] No authenticated user detected.");
           setUser(null);
           setIsOnboarded(false);
         }
         setAuthError(null);
       } catch (error: any) {
-        console.error("Initialization error:", error);
-        setAuthError(error.message || "Failed to load your profile. Please check your internet connection.");
-        showToast("Failed to load user data", "error");
+        console.error("[AUTH] Error in auth state handler:", error);
+        setAuthError(error.message || "Authentication integrity fault.");
       } finally {
         setIsAuthReady(true);
         setIsInitializing(false);
@@ -383,14 +389,18 @@ const App: React.FC = () => {
   };
 
   const updateUserSettings = async (updates: Partial<User>) => {
-    if (user) {
-      try {
-        const updatedUser = { ...user, ...updates };
+    if (!auth.currentUser) {
+      showToast("You must be logged in to save changes", "error");
+      return;
+    }
+
+    try {
+      // Functional update to avoid stale closure issues
+      setUser(prev => {
+        if (!prev) return prev;
+        const updated = { ...prev, ...updates };
         
-        // Optimistically update the main user state
-        setUser(updatedUser);
-        
-        // Sync duplicate auxiliary states
+        // Sync auxiliary states if they are being updated
         if (updates.businessName !== undefined) setBusinessName(updates.businessName);
         if (updates.services !== undefined) setServices(updates.services);
         if (updates.connectedApps !== undefined) setConnectedApps(updates.connectedApps);
@@ -404,12 +414,17 @@ const App: React.FC = () => {
            localStorage.setItem('easybookly_lang', updates.language);
         }
 
-        await api.user.save(updatedUser);
-        // showToast("Settings updated successfully"); // Optional: can be annoying if too frequent
-      } catch (err: any) {
-        console.error("Failed to update user settings:", err);
-        showToast("Failed to save settings: " + (err.message || String(err)), "error");
-      }
+        // Fire off the API save in the background using the most recent merged data
+        api.user.save(updated).catch(err => {
+          console.error("Delayed persistence failure:", err);
+          showToast("Failed to sync with cloud", "error");
+        });
+
+        return updated;
+      });
+    } catch (err: any) {
+      console.error("Failed to update user settings:", err);
+      showToast("Update error: " + (err.message || String(err)), "error");
     }
   };
 

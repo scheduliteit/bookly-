@@ -121,20 +121,44 @@ export const api = {
       }
     },
     save: async (user: User): Promise<void> => {
+      if (!user.id) {
+        console.error('[API-USER] Refusing to save user without ID');
+        return;
+      }
+      console.log(`[API-USER] Saving user profile for ${user.id}...`, { 
+        businessName: user.businessName, 
+        serviceCount: user.services?.length,
+        onboarding: user.onboardingCompleted 
+      });
       try {
+        // Enforce same ID as authenticated user if possible to prevent security rule failures
+        const uid = auth.currentUser?.uid;
+        if (uid && uid !== user.id) {
+          console.warn(`[API-USER] Attempting to save profile with ID ${user.id} while logged in as ${uid}. Security rules might block this.`);
+        }
+
         await setDoc(doc(db, 'users', user.id), user, { merge: true });
+        console.log(`[API-USER] User core data saved successfully for ${user.id}`);
         
-        // Also update public profile
-        const publicRef = doc(db, 'public_profiles', user.id);
-        await setDoc(publicRef, {
-          userId: user.id,
-          businessName: user.businessName,
-          businessCategory: user.businessCategory,
-          services: user.services,
-          currency: user.currency,
-          legalData: user.legalData
-        }, { merge: true });
+        // Update public profile separately to ensure if it fails, main save isn't reverted (though setDoc is atomic per call)
+        try {
+          const publicRef = doc(db, 'public_profiles', user.id);
+          await setDoc(publicRef, {
+            userId: user.id,
+            businessName: user.businessName,
+            businessCategory: user.businessCategory,
+            services: user.services,
+            currency: user.currency,
+            legalData: user.legalData,
+            timezone: user.timezone,
+            language: user.language
+          }, { merge: true });
+          console.log(`[API-USER] Public profile sync successful for ${user.id}`);
+        } catch (pubErr) {
+          console.error('[API-USER] Public profile sync failed (continuing anyway):', pubErr);
+        }
       } catch (error) {
+        console.error(`[API-USER] CRITICAL SAVE FAILURE for ${user.id}:`, error);
         handleFirestoreError(error, OperationType.WRITE, `users/${user.id}`);
         throw error;
       }
