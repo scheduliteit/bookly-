@@ -352,11 +352,20 @@ const App: React.FC = () => {
   const handleNewBooking = async (newBooking: Appointment) => {
     try {
       console.log('[DEBUG] Attempting to save booking:', newBooking);
+      // Optimistic update for immediate feedback
+      setAppointments(prev => [newBooking, ...prev]);
+      
       const saved = await api.appointments.create(newBooking);
       console.log('[DEBUG] Booking saved successfully:', saved);
-      showToast(`Session locked for ${saved.clientName}`);
+      
+      // Replace the optimistic one with the real one from server (which has the real ID)
+      setAppointments(prev => prev.map(a => a.id === newBooking.id ? saved : a));
+      
+      showToast(`Session scheduled for ${saved.clientName}`);
     } catch (err: any) {
       console.error('[DEBUG] Booking save failed:', err);
+      // Revert optimistic update on failure
+      setAppointments(prev => prev.filter(a => a.id !== newBooking.id));
       const errorMessage = err?.message || JSON.stringify(err);
       showToast(`Failed to save booking: ${errorMessage}`, "error");
     }
@@ -681,6 +690,8 @@ const App: React.FC = () => {
                 return <Earnings appointments={appointments} currency={currency} businessName={businessName} />;
               case 'help':
                 return <HelpCenter language={language} onOpenAiAssistant={() => setActiveTab('ai-assistant')} />;
+              case 'diagnostic':
+                return <DiagnosticTool />;
               case 'subscription':
                 return <Pricing currentPlan={subscriptionPlan} onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} user={user!} />;
               case 'settings':
