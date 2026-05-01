@@ -42,7 +42,8 @@ const App: React.FC = () => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [publicUserId, setPublicUserId] = useState<string | null>(() => {
-    const match = window.location.pathname.match(/^\/book\/([^/]+)/);
+    // Look for /book/ID structure anywhere in the path, ignoring potential trailing slashes or query params
+    const match = window.location.pathname.match(/\/book\/([^/?#]+)/);
     return match ? match[1] : null;
   });
   const [isPublicRoute] = useState(() => !!publicUserId);
@@ -649,21 +650,40 @@ const App: React.FC = () => {
                              </p>
                            </div>
                            
-                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group/link">
-                             <code className="text-[10px] font-bold text-slate-400 truncate pr-4">
-                               {window.location.origin}/book/{user?.id || 'default'}
-                             </code>
-                             <button 
-                               onClick={() => {
-                                 const url = `${window.location.origin}/book/${user?.id || 'default'}`;
-                                 navigator.clipboard.writeText(url);
-                                 showToast(t.copyLinkToast);
-                               }}
-                               className="p-2 text-brand-blue hover:bg-white rounded-xl transition-all shadow-sm"
-                             >
-                               <ExternalLink size={16} />
-                             </button>
-                           </div>
+                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-4 group/link">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.bookingUrl || 'Your Personal Booking URL'}</span>
+                                <div className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[8px] font-black uppercase tracking-tighter">Live</div>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <code className="text-xs font-bold text-slate-600 truncate flex-1 font-mono">
+                                  {window.location.origin}/book/{user?.id || 'default'}
+                                </code>
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => {
+                                      const url = `${window.location.origin}/book/${user?.id || 'default'}`;
+                                      navigator.clipboard.writeText(url);
+                                      showToast(t.copyLinkToast);
+                                    }}
+                                    className="p-3 bg-white border border-slate-200 text-brand-blue hover:text-brand-dark rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95"
+                                    title="Copy to clipboard"
+                                  >
+                                    <LinkIcon size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      const url = `${window.location.origin}/book/${user?.id || 'default'}`;
+                                      window.open(url, '_blank');
+                                    }}
+                                    className="p-3 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95"
+                                    title="Open in new tab"
+                                  >
+                                    <ExternalLink size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                         </div>
 
                         <div className="mt-10 pt-10 border-t border-slate-50 grid grid-cols-2 gap-4">

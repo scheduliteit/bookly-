@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, ChevronRight, CheckCircle2, User, Phone, ShieldCheck, Check, Globe, Loader2, Lock, Languages, Info, ArrowLeft, ArrowRight, CalendarDays, Star, Zap, Users, Shield, MessageSquareText, Globe2, Sparkles, Send, X, Radio, Video } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
+import { db, doc, onSnapshot } from '../firebase';
 import { Service } from '../types';
 import Logo from './Logo';
 import { geminiAssistant } from '../services/geminiService';
@@ -49,6 +50,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const [confirmedMeetingLink, setConfirmedMeetingLink] = useState<string | null>(null);
   const [confirmedMeetingPassword, setConfirmedMeetingPassword] = useState<string | null>(null);
   const [gatewayError, setGatewayError] = useState<{error: string, details: string, hint: string, version?: string} | null>(null);
@@ -85,25 +87,61 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
 
   useEffect(() => {
     if (!initialBusinessName && userId !== 'default') {
-      const fetchProfile = async () => {
-        try {
-          const data = await api.publicProfile.get(userId);
-          if (data) {
-            setBusinessName(data.businessName);
-            setServices(data.services);
-            setLegalData(data.legalData);
-            setCurrency(data.currency);
-            setBusinessTimezone(data.timezone || 'UTC');
-            setLanguage((data as any).language || 'en');
-          }
-        } catch (err) {
-          console.error("Failed to fetch public profile", err);
-        } finally {
+      setIsLoading(true);
+      setNotFound(false);
+      console.log(`[PUBLIC-BOOKING] Starting real-time sync for userId: ${userId}`);
+      
+      // Real-time sync for public profile
+      const unsubPublic = onSnapshot(doc(db, 'public_profiles', userId), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          console.log(`[PUBLIC-BOOKING] Received public profile sync for ${userId}:`, data);
+          setBusinessName(data.businessName || 'Consultant');
+          setServices(data.services || []);
+          setLegalData(data.legalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
+          setCurrency(data.currency || 'USD');
+          setBusinessTimezone(data.timezone || 'UTC');
+          setLanguage((data as any).language || 'en');
           setIsLoading(false);
+          setNotFound(false);
+        } else {
+          // Fallback to users collection if public_profile doesn't exist yet
+          console.log(`[PUBLIC-BOOKING] Public profile ${userId} not found. Trying users collection sync...`);
+          const unsubUser = onSnapshot(doc(db, 'users', userId), (userSnap) => {
+             if (userSnap.exists()) {
+                const userData = userSnap.data();
+                console.log(`[PUBLIC-BOOKING] Received user profile sync for ${userId}:`, userData);
+                setBusinessName(userData.businessName || 'Consultant');
+                setServices(userData.services || []);
+                setLegalData(userData.legalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
+                setCurrency(userData.currency || 'USD');
+                setBusinessTimezone(userData.timezone || 'UTC');
+                setLanguage((userData as any).language || 'en');
+                setNotFound(false);
+             } else {
+                console.warn(`[PUBLIC-BOOKING] No user document found for ${userId}`);
+                setNotFound(true);
+             }
+             setIsLoading(false);
+          }, (err) => {
+             console.error("[PUBLIC-BOOKING] Error syncing user collection:", err);
+             setNotFound(true);
+             setIsLoading(false);
+          });
+          return () => unsubUser();
         }
+      }, (err) => {
+        console.error("[PUBLIC-BOOKING] Error syncing public profile:", err);
+        setNotFound(true);
+        setIsLoading(false);
+      });
+
+      return () => {
+        unsubPublic();
       };
-      fetchProfile();
     } else if (initialBusinessName) {
+      console.log("[PUBLIC-BOOKING] Initialized with props data");
+      setNotFound(false);
       setIsLoading(false);
     }
   }, [initialBusinessName, userId]);
@@ -225,6 +263,26 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
     today.setHours(0,0,0,0);
     return day < today;
   };
+
+  if (notFound) {
+    return (
+       <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center justify-center p-8 text-center" dir={t.dir}>
+          <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-300 mb-6">
+             <AlertCircle size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-2">{language === 'he' ? 'פרופיל לא נמצא' : language === 'ar' ? 'الملف الشخصي غير موجود' : 'Profile Not Found'}</h2>
+          <p className="text-slate-500 max-w-xs mb-8">
+            {language === 'he' ? 'דף ההזמנות שחיפשת אינו קיים או שהוא פרטי כרגע.' : language === 'ar' ? 'صفحة الحجز التي تبحث عنها غير موجودة أو أنها خاصة حاليًا.' : 'The booking page you\'re looking for doesn\'t exist or is currently private.'}
+          </p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="px-8 py-3 bg-brand-blue text-white rounded-full font-black text-sm uppercase tracking-widest shadow-lg shadow-brand-blue/20"
+          >
+            {t.returnToApp || 'Go to Homepage'}
+          </button>
+       </div>
+    );
+  }
 
   if (isLoading) {
     return (
