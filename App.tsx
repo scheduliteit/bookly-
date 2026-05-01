@@ -272,6 +272,7 @@ const App: React.FC = () => {
       }
 
       const unsubUser = api.user.sync(user.id, (updatedUser) => {
+        setUser(prev => ({ ...prev, ...updatedUser }));
         setBusinessName(updatedUser.businessName);
         setBusinessCategory(updatedUser.businessCategory || 'Consulting');
         setIsOnboarded(updatedUser.onboardingCompleted);

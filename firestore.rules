@@ -81,8 +81,8 @@ service cloud.firestore {
       allow get: if true; // Allow public lookups for business details
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt'])) ||
-        (request.auth.token.email == 'm.elsalameen@gmail.com' && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt']))
+        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'subscriptionPlan'])) ||
+        (request.auth.token.email == 'm.elsalameen@gmail.com' && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language']))
       );
       allow delete: if false; 
     }

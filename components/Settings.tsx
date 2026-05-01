@@ -61,16 +61,36 @@ const Settings: React.FC<SettingsProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+  useEffect(() => {
+    setName(businessName);
+  }, [businessName]);
+
   const [newService, setNewService] = useState<Partial<Service>>({ name: '', duration: 30, price: 0, color: '#006bff', locationType: 'online' });
 
   const handleAddService = () => {
-    if (!newService.name) {
+    if (!newService.name?.trim()) {
       if (showToast) showToast('Please enter an event name', 'error');
       return;
     }
-    onUpdateServices([...services, newService as Service]);
+    
+    if (!newService.duration || newService.duration <= 0) {
+      if (showToast) showToast('Duration must be at least 1 minute', 'error');
+      return;
+    }
+
+    const serviceToAdd: Service = {
+      name: newService.name.trim(),
+      duration: newService.duration || 30,
+      price: newService.price || 0,
+      color: newService.color || '#006bff',
+      locationType: (newService.locationType as any) || 'online'
+    };
+
+    console.log('[SETTINGS] Adding new service:', serviceToAdd);
+    onUpdateServices([...services, serviceToAdd]);
     setNewService({ name: '', duration: 30, price: 0, color: '#006bff', locationType: 'online' });
-    if (showToast) showToast(`Added "${newService.name}" to your events`);
+    
+    if (showToast) showToast(`"${serviceToAdd.name}" added successfully!`, 'success');
   };
 
   const handleDeleteService = (serviceName: string) => {
@@ -248,79 +268,104 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
             <div className="p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {services.map((service) => (
-                  <div key={service.name} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: service.color || '#006bff' }} />
-                      <div>
-                        <p className="text-sm font-bold text-brand-dark">{service.name}</p>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[10px] text-slate-500 font-medium">{service.duration} mins • ${service.price}</p>
-                          <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter ${service.locationType === 'online' ? 'bg-brand-blue/10 text-brand-blue' : 'bg-slate-100 text-slate-500'}`}>
-                            {service.locationType || 'Office'}
-                          </span>
+              {services.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-300 mb-4 shadow-sm">
+                    <Zap size={32} />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-400">No event types yet</h4>
+                  <p className="text-xs text-slate-400 mt-1">Add your first service below to start booking.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {services.map((service) => (
+                    <div key={service.name} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: service.color || '#006bff' }} />
+                        <div>
+                          <p className="text-sm font-bold text-brand-dark">{service.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[10px] text-slate-500 font-medium">{service.duration} mins • ${service.price}</p>
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter ${service.locationType === 'online' ? 'bg-brand-blue/10 text-brand-blue' : 'bg-slate-100 text-slate-500'}`}>
+                              {service.locationType || 'Office'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <button 
+                        onClick={() => handleDeleteService(service.name)}
+                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => handleDeleteService(service.name)}
-                      className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <div className="pt-6 border-t border-slate-100">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Add New Event Type</h4>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div className="md:col-span-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Add New Event Type</h4>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Event Name</label>
                     <input 
                       type="text" 
-                      placeholder="Event Name (e.g. 30 Min Meeting)" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
+                      placeholder="e.g. 30 Min Meeting" 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue font-bold transition-all"
                       value={newService.name}
                       onChange={e => setNewService({...newService, name: e.target.value})}
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Duration (min)</label>
                     <input 
                       type="number" 
-                      placeholder="Duration (min)" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
+                      placeholder="30" 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue font-bold transition-all"
                       value={newService.duration}
                       onChange={e => setNewService({...newService, duration: Number(e.target.value)})}
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Price ($)</label>
                     <input 
                       type="number" 
-                      placeholder="Price ($)" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
+                      placeholder="0" 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue font-bold transition-all"
                       value={newService.price}
                       onChange={e => setNewService({...newService, price: Number(e.target.value)})}
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Location</label>
                     <select 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-brand-blue font-bold"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue font-bold transition-all appearance-none cursor-pointer"
                       value={newService.locationType}
                       onChange={e => setNewService({...newService, locationType: e.target.value as any})}
                     >
-                      <option value="online">Integrated Video Call (Built-in)</option>
+                      <option value="online">Integrated Private Video Link</option>
                       <option value="office">In-Person (Office)</option>
                       <option value="phone">Phone Call</option>
                     </select>
                   </div>
                 </div>
-                <button 
-                  onClick={handleAddService}
-                  className="mt-4 px-6 py-2.5 bg-brand-blue text-white rounded-lg font-bold text-sm hover:bg-brand-dark transition-all flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Event Type
-                </button>
+                <div className="mt-6 flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-brand-blue shadow-sm">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-brand-dark">Pro Tip</p>
+                      <p className="text-[10px] text-slate-500">Adding a price enables automated client billing.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleAddService}
+                    className="px-6 py-3 bg-brand-blue text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition-all flex items-center gap-2 shadow-lg shadow-brand-blue/20"
+                  >
+                    <Plus size={16} /> Add Event Type
+                  </button>
+                </div>
               </div>
             </div>
           </div>
