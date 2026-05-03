@@ -41,14 +41,15 @@ service cloud.firestore {
     // --- Entity Validations ---
 
     function isValidUser(data) {
-      let isMasterAdmin = data.email == 'm.elsalameen@gmail.com' || 
-                         request.auth.token.email == 'm.elsalameen@gmail.com' ||
-                         data.email == 'scheduliteit@gmail.com' ||
-                         request.auth.token.email == 'scheduliteit@gmail.com';
+      let isMasterAdmin = (data.email != null && (data.email.lower() == 'm.elsalameen@gmail.com' || data.email.lower() == 'scheduliteit@gmail.com')) || 
+                         (request.auth.token.email != null && (request.auth.token.email.lower() == 'm.elsalameen@gmail.com' || request.auth.token.email.lower() == 'scheduliteit@gmail.com'));
+      
       return data.id is string && data.id == request.auth.uid &&
              data.email is string && data.email.size() <= 128 &&
              (!('role' in data) || data.role == 'user' || (data.role == 'admin' && isMasterAdmin)) && 
-             (!('subscriptionPlan' in data) || data.subscriptionPlan in ['basic', 'premium']);
+             (!('subscriptionPlan' in data) || data.subscriptionPlan in ['basic', 'premium']) &&
+             (!('services' in data) || data.services is list) &&
+             (!('onboardingCompleted' in data) || data.onboardingCompleted is bool);
     }
 
     function isValidClient(data) {

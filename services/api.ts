@@ -112,7 +112,7 @@ export const api = {
       try {
         const docSnap = await getDoc(doc(db, 'users', userId));
         if (docSnap.exists()) {
-          return docSnap.data() as User;
+          return { id: docSnap.id, ...docSnap.data() } as User;
         }
         return null;
       } catch (error) {
@@ -144,14 +144,14 @@ export const api = {
         try {
           const publicRef = doc(db, 'public_profiles', user.id);
           await setDoc(publicRef, {
-            userId: user.id,
-            businessName: user.businessName,
-            businessCategory: user.businessCategory,
-            services: user.services,
-            currency: user.currency,
-            legalData: user.legalData,
-            timezone: user.timezone,
-            language: user.language
+            userId: user.id || uid,
+            businessName: user.businessName || '',
+            businessCategory: user.businessCategory || '',
+            services: user.services || [],
+            currency: user.currency || 'USD',
+            legalData: user.legalData || {},
+            timezone: user.timezone || 'UTC',
+            language: user.language || 'en'
           }, { merge: true });
           console.log(`[API-USER] Public profile sync successful for ${user.id}`);
         } catch (pubErr) {
@@ -166,7 +166,7 @@ export const api = {
     sync: (userId: string, callback: (data: User) => void) => {
       return onSnapshot(doc(db, 'users', userId), (docSnap) => {
         if (docSnap.exists()) {
-          callback(docSnap.data() as User);
+          callback({ id: docSnap.id, ...docSnap.data() } as User);
         }
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `users/${userId}`);

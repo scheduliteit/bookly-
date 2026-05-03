@@ -154,18 +154,27 @@ const App: React.FC = () => {
           }
 
           if (fetchWorked) {
+            const userEmail = firebaseUser.email?.toLowerCase();
+            const isMasterEmail = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
+
             if (userData) {
-              console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}`);
-              // Auto-upgrade if email matches
-              const userEmail = firebaseUser.email?.toLowerCase();
-              let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
-              const isMasterEmail = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
+              console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}. Onboarded: ${userData.onboardingCompleted}`);
               
-              if (isMasterEmail && userData.role !== 'admin') {
-                 console.log("[AUTH] Upgrading master email to Admin role...");
-                 effectiveUser.role = 'admin';
-                 // Non-blocking save
-                 api.user.save(effectiveUser).catch(e => console.error("Role save failed:", e));
+              // Ensure doc has consistent ID
+              if (!userData.id) userData.id = firebaseUser.uid;
+
+              // Auto-upgrade if email matches
+              let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
+              
+              if (isMasterEmail) {
+                 if (userData.role !== 'admin') {
+                   console.log("[AUTH] Upgrading master email to Admin role...");
+                   effectiveUser.role = 'admin';
+                 }
+                 if (!userData.onboardingCompleted) {
+                   console.log("[AUTH] Forcing onboarding completion for master email...");
+                   effectiveUser.onboardingCompleted = true;
+                 }
               }
               
               // Update login tracking
@@ -188,9 +197,9 @@ const App: React.FC = () => {
               if (updatedUser.role === 'admin' && activeTab === 'dashboard') {
                 setActiveTab('management');
               }
-              setBusinessName(userData.businessName || '');
-              setBusinessCategory(userData.businessCategory || 'Consulting');
-              setIsOnboarded(userData.onboardingCompleted || false);
+              setBusinessName(userData.businessName || (isMasterEmail ? 'EasyBookly HQ' : ''));
+              setBusinessCategory(userData.businessCategory || (isMasterEmail ? 'Technology' : 'Consulting'));
+              setIsOnboarded(isMasterEmail ? true : (userData.onboardingCompleted || false));
               setServices(userData.services || []);
               setConnectedApps(userData.connectedApps || []);
               setLegalData(userData.legalData || legalData);
@@ -210,7 +219,7 @@ const App: React.FC = () => {
               const initialPlan = 'premium';
               setSubscriptionPlan(initialPlan);
 
-              const isMaster = firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com' || firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com';
+              const isMaster = isMasterEmail;
               
               // New user
               const newUser: User = {
@@ -396,7 +405,7 @@ const App: React.FC = () => {
   };
 
   const updateUserSettings = async (updates: Partial<User>) => {
-    if (!auth.currentUser) {
+    if (!auth.currentUser || !user) {
       showToast("You must be logged in to save changes", "error");
       return;
     }
@@ -404,53 +413,35 @@ const App: React.FC = () => {
     const uid = auth.currentUser.uid;
     console.log(`[UPDATE-SETTINGS] Starting update for ${uid}:`, Object.keys(updates));
 
+    // Calculate the new state object before updating
+    const updatedUser = { ...user, ...updates, id: uid };
+
+    // Optimistic UI updates
+    setUser(updatedUser);
+    
+    // Sync auxiliary states
+    if (updates.businessName !== undefined) setBusinessName(updates.businessName);
+    if (updates.services !== undefined) setServices(updates.services);
+    if (updates.connectedApps !== undefined) setConnectedApps(updates.connectedApps);
+    if (updates.legalData !== undefined) setLegalData(updates.legalData);
+    if (updates.currency !== undefined) setCurrency(updates.currency);
+    if (updates.timezone !== undefined) setTimezone(updates.timezone);
+    if (updates.reminderSettings !== undefined) setReminderSettings(updates.reminderSettings);
+    if (updates.subscriptionPlan !== undefined) setSubscriptionPlan(updates.subscriptionPlan);
+    if (updates.onboardingCompleted !== undefined) setIsOnboarded(updates.onboardingCompleted);
+    if (updates.language !== undefined) {
+       setLanguage(updates.language as Language);
+       localStorage.setItem('easybookly_lang', updates.language);
+    }
+
     try {
-      // Use a functional update to ensure we use latest state
-      // We wrap the save in a way that we can track it
-      let latestUpdated: User | null = null;
-      
-      setUser(prev => {
-        if (!prev) return prev;
-        
-        // Safety check: ensure ID consistency
-        if (prev.id !== uid) {
-           console.warn(`[UPDATE-SETTINGS] ID Mismatch! State has ${prev.id}, Auth has ${uid}. Correcting...`);
-        }
-
-        const updated = { ...prev, ...updates, id: uid };
-        latestUpdated = updated;
-        
-        // Sync auxiliary states
-        if (updates.businessName !== undefined) setBusinessName(updates.businessName);
-        if (updates.services !== undefined) setServices(updates.services);
-        if (updates.connectedApps !== undefined) setConnectedApps(updates.connectedApps);
-        if (updates.legalData !== undefined) setLegalData(updates.legalData);
-        if (updates.currency !== undefined) setCurrency(updates.currency);
-        if (updates.timezone !== undefined) setTimezone(updates.timezone);
-        if (updates.reminderSettings !== undefined) setReminderSettings(updates.reminderSettings);
-        if (updates.subscriptionPlan !== undefined) setSubscriptionPlan(updates.subscriptionPlan);
-        if (updates.onboardingCompleted !== undefined) setIsOnboarded(updates.onboardingCompleted);
-        if (updates.language !== undefined) {
-           setLanguage(updates.language as Language);
-           localStorage.setItem('easybookly_lang', updates.language);
-        }
-
-        return updated;
-      });
-
-      // Now save the result of the block
-      if (latestUpdated) {
-        try {
-          await api.user.save(latestUpdated);
-          console.log(`[UPDATE-SETTINGS] Persistence successful for ${uid}`);
-        } catch (saveErr) {
-          console.error(`[UPDATE-SETTINGS] Persistence failed for ${uid}:`, saveErr);
-          showToast("Failed to sync changes with the cloud", "error");
-        }
-      }
-    } catch (err: any) {
-      console.error("[UPDATE-SETTINGS] Unexpected error:", err);
-      showToast("Update error: " + (err.message || String(err)), "error");
+      console.log(`[UPDATE-SETTINGS] Persisting updated profile for ${uid}...`);
+      await api.user.save(updatedUser);
+      console.log(`[UPDATE-SETTINGS] Persistence successful for ${uid}`);
+      showToast("Changes saved successfully", "success");
+    } catch (saveErr) {
+      console.error(`[UPDATE-SETTINGS] Persistence failed for ${uid}:`, saveErr);
+      showToast("Failed to sync changes with the cloud", "error");
     }
   };
 
