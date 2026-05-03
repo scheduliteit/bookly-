@@ -210,17 +210,19 @@ const App: React.FC = () => {
               const initialPlan = 'premium';
               setSubscriptionPlan(initialPlan);
 
+              const isMaster = firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com' || firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com';
+              
               // New user
               const newUser: User = {
                 id: firebaseUser.uid,
                 email: firebaseUser.email || '',
                 name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                businessName: '',
-                businessCategory: 'Consulting',
+                businessName: isMaster ? 'EasyBookly Admin' : '',
+                businessCategory: isMaster ? 'Management' : 'Consulting',
                 services: [],
                 currency: 'USD',
                 subscriptionPlan: initialPlan,
-                role: (firebaseUser.email?.toLowerCase() === 'm.elsalameen@gmail.com' || firebaseUser.email?.toLowerCase() === 'scheduliteit@gmail.com') ? 'admin' : undefined,
+                role: isMaster ? 'admin' : undefined,
                 createdAt: new Date().toISOString(),
                 workingHours: {
                   monday: { start: '09:00', end: '17:00', active: true },
@@ -232,7 +234,7 @@ const App: React.FC = () => {
                   sunday: { start: '09:00', end: '17:00', active: false },
                 },
                 legalData: legalData,
-                onboardingCompleted: false,
+                onboardingCompleted: isMaster ? true : false,
                 loginCount: 1,
                 lastLoginAt: new Date().toISOString(),
                 lastSeenAt: new Date().toISOString()
@@ -241,8 +243,11 @@ const App: React.FC = () => {
               if (newUser.role === 'admin') {
                 setActiveTab('management');
               }
+              if (isMaster) setIsOnboarded(true);
+              
+              console.log("[AUTH] Saving initial profile for new user:", newUser.email);
               await api.user.save(newUser);
-              console.log("[AUTH] Initial profile created successfully.");
+              console.log("[AUTH] Initial profile persistence successful.");
             }
           }
         } else {
