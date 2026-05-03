@@ -476,13 +476,16 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
       }
     }
 
+    const { id: _, ...rest } = req.body;
     const appointmentData = { 
-      ...req.body, 
+      ...rest, 
       userId, 
       meetingLink, 
       meetingPassword,
       createdAt: new Date().toISOString()
     };
+    
+    console.log(`[AUTH-BOOKING] Finalizing appointment for user ${userId}. Name: ${appointmentData.clientName}`);
     
     // Sync to Google if connected
     const googleEventId = await pushToGoogleCalendar(userId, appointmentData);
@@ -500,7 +503,7 @@ app.post('/api/appointments', requireAuth, async (req: any, res: any) => {
 
     console.log('[AUTH-BOOKING] Saving to Firestore:', JSON.stringify(appointmentData));
     const docRef = await db.collection('appointments').add(appointmentData);
-    console.log('[AUTH-BOOKING SUCCESS] ID:', docRef.id);
+    console.log(`[AUTH-BOOKING SUCCESS] Saved with Firestore ID: ${docRef.id}`);
     res.status(201).json({ ...appointmentData, id: docRef.id });
   } catch (error: any) {
     console.error('[AUTH-BOOKING ERROR]:', error);
