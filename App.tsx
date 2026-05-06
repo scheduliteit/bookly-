@@ -62,8 +62,18 @@ const App: React.FC = () => {
   const [registrationEmail, setRegistrationEmail] = useState<string | undefined>(undefined);
   const [pendingPlan, setPendingPlan] = useState<'basic' | 'premium' | undefined>(undefined);
   const [isPublicView, setIsPublicView] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>('profile');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('easybookly_active_tab') || 'dashboard');
+
+  useEffect(() => {
+    localStorage.setItem('easybookly_active_tab', activeTab);
+  }, [activeTab]);
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal'>(() => 
+    (localStorage.getItem('easybookly_settings_tab') as any) || 'profile'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('easybookly_settings_tab', settingsTab);
+  }, [settingsTab]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showMobileGuide, setShowMobileGuide] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
