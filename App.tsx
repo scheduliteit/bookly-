@@ -149,6 +149,9 @@ const App: React.FC = () => {
       console.log(`[AUTH] State changed. User: ${firebaseUser?.email || 'NONE'}`);
       try {
         if (firebaseUser) {
+          const userEmail = firebaseUser.email?.toLowerCase() || '';
+          const isMaster = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
+
           // Fetch user settings from Firestore
           let userData: User | null = null;
           let fetchWorked = false;
@@ -161,8 +164,6 @@ const App: React.FC = () => {
           }
 
           if (fetchWorked) {
-            const userEmail = firebaseUser.email?.toLowerCase();
-
             if (userData) {
               console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}. Onboarded: ${userData.onboardingCompleted}`);
               
@@ -173,7 +174,7 @@ const App: React.FC = () => {
               // Auto-upgrade if email matches
               let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
               
-              if (isMasterEmail) {
+              if (isMaster) {
                  if (userData.role !== 'admin') {
                    console.log("[AUTH] Upgrading master email to Admin role...");
                    effectiveUser.role = 'admin';
@@ -204,9 +205,9 @@ const App: React.FC = () => {
               if (updatedUser.role === 'admin' && activeTab === 'dashboard') {
                 setActiveTab('management');
               }
-              setBusinessName(userData.businessName || (isMasterEmail ? 'EasyBookly HQ' : ''));
-              setBusinessCategory(userData.businessCategory || (isMasterEmail ? 'Technology' : 'Consulting'));
-              setIsOnboarded(isMasterEmail ? true : (userData.onboardingCompleted || false));
+              setBusinessName(userData.businessName || (isMaster ? 'EasyBookly HQ' : ''));
+              setBusinessCategory(userData.businessCategory || (isMaster ? 'Technology' : 'Consulting'));
+              setIsOnboarded(isMaster ? true : (userData.onboardingCompleted || false));
               setServices(userData.services || []);
               setConnectedApps(userData.connectedApps || []);
               setLegalData(userData.legalData || legalData);
@@ -226,7 +227,7 @@ const App: React.FC = () => {
               const initialPlan = 'premium';
               setSubscriptionPlan(initialPlan);
 
-              const isMaster = isMasterEmail;
+              // Use correctly scoped isMaster
               
               // New user
               const newUser: User = {
@@ -250,7 +251,7 @@ const App: React.FC = () => {
                   sunday: { start: '09:00', end: '17:00', active: false },
                 },
                 legalData: legalData,
-                onboardingCompleted: isMaster ? true : false,
+                onboardingCompleted: isMaster,
                 loginCount: 1,
                 lastLoginAt: new Date().toISOString(),
                 lastSeenAt: new Date().toISOString()

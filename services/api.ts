@@ -128,7 +128,7 @@ export const api = {
       }
       
       // Safety: Force onboarding for master emails
-      const isMaster = user.email === 'scheduliteit@gmail.com' || user.email === 'm.elsalameen@gmail.com';
+      const isMaster = user.email?.toLowerCase() === 'scheduliteit@gmail.com' || user.email?.toLowerCase() === 'm.elsalameen@gmail.com';
       const userToSave = isMaster ? { ...user, onboardingCompleted: true, role: 'admin' } : user;
 
       console.log(`[API-USER] Saving user profile for ${user.id}...`, { 
