@@ -40,6 +40,7 @@ export {
   updateDoc, 
   deleteDoc, 
   addDoc, 
+  getDocFromServer,
   Timestamp 
 };
 export type { FirebaseUser };

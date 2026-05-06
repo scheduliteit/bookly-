@@ -46,8 +46,15 @@ const App: React.FC = () => {
     const match = window.location.pathname.match(/\/book\/([^/?#]+)/);
     return match ? match[1] : null;
   });
+  
   const [isPublicRoute] = useState(() => !!publicUserId);
   const [user, setUser] = useState<User | null>(null);
+  
+  const isMasterEmail = user?.email?.toLowerCase() === 'm.elsalameen@gmail.com' || 
+                       user?.email?.toLowerCase() === 'scheduliteit@gmail.com' ||
+                       auth.currentUser?.email?.toLowerCase() === 'm.elsalameen@gmail.com' ||
+                       auth.currentUser?.email?.toLowerCase() === 'scheduliteit@gmail.com';
+
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
   const [showPricingGate, setShowPricingGate] = useState(false);
@@ -155,13 +162,13 @@ const App: React.FC = () => {
 
           if (fetchWorked) {
             const userEmail = firebaseUser.email?.toLowerCase();
-            const isMasterEmail = userEmail === 'm.elsalameen@gmail.com' || userEmail === 'scheduliteit@gmail.com';
 
             if (userData) {
               console.log(`[AUTH] Existing user record found for ${firebaseUser.uid}. Onboarded: ${userData.onboardingCompleted}`);
               
-              // Ensure doc has consistent ID
+              // Ensure doc has consistent ID and email
               if (!userData.id) userData.id = firebaseUser.uid;
+              if (!userData.email) userData.email = firebaseUser.email || '';
 
               // Auto-upgrade if email matches
               let effectiveUser = { ...userData, subscriptionPlan: userData.subscriptionPlan || 'premium' };
@@ -414,7 +421,13 @@ const App: React.FC = () => {
     console.log(`[UPDATE-SETTINGS] Starting update for ${uid}:`, Object.keys(updates));
 
     // Calculate the new state object before updating
-    const updatedUser = { ...user, ...updates, id: uid };
+    const updatedUser: User = { 
+      ...user, 
+      ...updates, 
+      id: uid, 
+      email: user?.email || auth.currentUser?.email || '',
+      role: user?.role || (isMasterEmail ? 'admin' : 'user')
+    } as User;
 
     // Optimistic UI updates
     setUser(updatedUser);

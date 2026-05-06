@@ -49,7 +49,12 @@ service cloud.firestore {
              (!('role' in data) || data.role == 'user' || (data.role == 'admin' && isMasterAdmin)) && 
              (!('subscriptionPlan' in data) || data.subscriptionPlan in ['basic', 'premium']) &&
              (!('services' in data) || data.services is list) &&
-             (!('onboardingCompleted' in data) || data.onboardingCompleted is bool);
+             (!('onboardingCompleted' in data) || data.onboardingCompleted is bool) &&
+             (!('googleCalendarTokens' in data) || data.googleCalendarTokens is map) &&
+             (!('outlookCalendarTokens' in data) || data.outlookCalendarTokens is map) &&
+             (!('workingHours' in data) || data.workingHours is map) &&
+             (!('legalData' in data) || data.legalData is map) &&
+             (!('reminderSettings' in data) || data.reminderSettings is map);
     }
 
     function isValidClient(data) {
@@ -85,8 +90,8 @@ service cloud.firestore {
       allow get: if true; // Allow public lookups for business details
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'subscriptionPlan'])) ||
-        ((request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com') && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language']))
+        (incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'subscriptionPlan', 'googleCalendarTokens', 'outlookCalendarTokens'])) ||
+        ((request.auth.token.email == 'm.elsalameen@gmail.com' || request.auth.token.email == 'scheduliteit@gmail.com') && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'googleCalendarTokens', 'outlookCalendarTokens']))
       );
       allow delete: if false; 
     }

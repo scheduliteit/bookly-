@@ -1,6 +1,6 @@
 
 import { Appointment, Client, User } from '../types';
-import { db, auth, doc, getDoc, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, handleFirestoreError, OperationType } from '../firebase';
+import { db, auth, doc, getDoc, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, handleFirestoreError, OperationType, getDocFromServer } from '../firebase';
 
 export const api = {
   appointments: {
@@ -110,7 +110,8 @@ export const api = {
   user: {
     get: async (userId: string): Promise<User | null> => {
       try {
-        const docSnap = await getDoc(doc(db, 'users', userId));
+        // Use getDocFromServer to ensure we get the latest data on initial load
+        const docSnap = await getDocFromServer(doc(db, 'users', userId));
         if (docSnap.exists()) {
           return { id: docSnap.id, ...docSnap.data() } as User;
         }
