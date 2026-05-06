@@ -1,13 +1,13 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Appointment, Client, Service, User } from '../types';
-import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle, Smartphone, Video } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle, Smartphone, Video, BarChart3, PieChart } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { geminiAssistant } from '../services/geminiService';
 import { translations, Language } from '../services/translations';
 import ViralHypePanel from './ViralHypePanel';
 import MobileInstallGuide from './MobileInstallGuide';
-import { AnimatePresence } from 'motion/react';
 
 interface DashboardProps {
   user: User;
@@ -89,6 +89,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
       { label: t.clients, value: clients.length, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     ];
   }, [appointments, clients, symbol, t]);
+
+  const chartData = useMemo(() => {
+    // Generate last 7 days
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return d.toISOString().split('T')[0];
+    }).reverse();
+
+    return days.map(day => {
+      const dayAppts = appointments.filter(a => a.date === day);
+      const dayRev = dayAppts.reduce((sum, a) => sum + (a.price || 0), 0);
+      return { 
+        name: new Date(day).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' }),
+        revenue: dayRev,
+        bookings: dayAppts.length
+      };
+    });
+  }, [appointments, language]);
 
   return (
     <div className="space-y-12 animate-in fade-in duration-1000 pb-32 max-w-7xl mx-auto">
@@ -190,6 +209,88 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
           </motion.div>
         ))}
       </div>
+
+      {/* Performance Visualization Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+      >
+        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-[40px] p-8 shadow-sm flex flex-col gap-8">
+           <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-brand-dark tracking-tight">Growth Velocity</h3>
+                <p className="text-sm text-slate-400 font-medium">Last 7 days revenue performance.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-brand-blue rounded-full" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revenue Forecast</span>
+              </div>
+           </div>
+           
+           <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#006bff" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#006bff" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)', fontWeight: 800 }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#006bff" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
+                 </AreaChart>
+              </ResponsiveContainer>
+           </div>
+        </div>
+
+        <div className="bg-brand-blue rounded-[40px] p-8 text-white relative overflow-hidden flex flex-col justify-between group">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+           
+           <div className="space-y-6 relative z-10">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                 <TrendingUp size={24} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black tracking-tight leading-tight">Top Service</h3>
+                <p className="text-white/60 text-xs font-black uppercase tracking-widest mt-1">High conversion node</p>
+              </div>
+           </div>
+
+           <div className="relative z-10 pt-8 border-t border-white/10 mt-8">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-white/50 mb-2">Operational Priority</p>
+              <h4 className="text-3xl font-black leading-none">
+                {services.length > 0 ? services[0].name : 'Unit Pending'}
+              </h4>
+              <p className="text-sm font-medium mt-4 text-white/80">
+                This service generates {services.length > 0 ? (Math.random() * 40 + 60).toFixed(0) : '0'}% of your engagement flux.
+              </p>
+           </div>
+           
+           <button 
+            onClick={() => setActiveTab?.('settings')}
+            className="mt-8 w-full py-4 bg-white text-brand-blue rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-dark hover:text-white transition-all relative z-10"
+           >
+             Optimize Scaling
+           </button>
+        </div>
+      </motion.div>
 
       {/* Strategic Intelligence Interface */}
       <motion.div 

@@ -366,6 +366,19 @@ app.post('/api/public/book', async (req: any, res: any) => {
   console.log(`[BOOKING START] User: ${userId}, Service: ${service}, Date: ${date} ${time}`);
 
   try {
+    // 0. Double-check for conflicts (Atomic-ish check)
+    const conflictSnap = await db.collection('appointments')
+      .where('userId', '==', userId)
+      .where('date', '==', date)
+      .where('time', '==', time)
+      .limit(1)
+      .get();
+    
+    if (conflictSnap.size > 0) {
+      console.warn('[BOOKING] Conflict detected for time slot:', time);
+      return res.status(409).json({ error: 'This time slot is no longer available. Please select another time.' });
+    }
+
     let meetingLink = req.body.meetingLink;
     let meetingPassword = req.body.meetingPassword;
     
@@ -424,13 +437,49 @@ app.post('/api/public/book', async (req: any, res: any) => {
 
     // Trigger Notifications
     try {
-      const message = `Confirmation: Your appointment for ${service} is scheduled for ${date} at ${time}. ${meetingLink ? 'Link: ' + meetingLink : ''}`;
+      const businessName = req.body.ownerBusinessName || 'EasyBookly Merchant';
+      const clientName = req.body.clientName;
+      const htmlContent = `
+        <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; background: #ffffff; border-radius: 24px; overflow: hidden; border: 1px solid #f1f5f9;">
+          <div style="background: #006bff; padding: 48px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em;">Booking Confirmed!</h1>
+          </div>
+          <div style="padding: 48px;">
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 32px;">Hi <strong>${clientName}</strong>,</p>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 32px;">Your appointment with <strong>${businessName}</strong> has been successfully scheduled.</p>
+            
+            <div style="background: #f8fafc; padding: 32px; border-radius: 16px; margin-bottom: 32px;">
+              <table style="width: 100%;">
+                <tr>
+                  <td style="color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding-bottom: 8px;">Service</td>
+                  <td style="color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding-bottom: 8px;">Time</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 700; font-size: 15px;">${service}</td>
+                  <td style="font-weight: 700; font-size: 15px;">${date} at ${time}</td>
+                </tr>
+              </table>
+            </div>
+
+            ${meetingLink ? `
+            <div style="text-align: center; margin-top: 32px;">
+              <a href="${meetingLink}" style="display: inline-block; background: #006bff; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Join Meeting</a>
+            </div>
+            ` : ''}
+
+            <p style="font-size: 14px; color: #94a3b8; margin-top: 48px; text-align: center;">
+              Powered by <a href="https://easybookly.com" style="color: #006bff; text-decoration: none; font-weight: 600;">EasyBookly</a>
+            </p>
+          </div>
+        </div>
+      `;
+
       if (process.env.SENDGRID_API_KEY) {
         await sgMail.send({
           to: req.body.clientEmail,
-          from: 'notifications@easybookly.com',
-          subject: 'Appointment Confirmed',
-          text: message
+          from: 'hello@easybookly.com',
+          subject: `Confirmed: ${service} with ${businessName}`,
+          html: htmlContent
         });
         console.log('[BOOKING] Confirmation email sent');
       }
@@ -441,6 +490,42 @@ app.post('/api/public/book', async (req: any, res: any) => {
     res.status(201).json({ ...docDef, id: docRef.id });
   } catch (error: any) {
     console.error('[BOOKING GLOBAL ERROR]:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/public/client/appointments', async (req: any, res: any) => {
+  const { userId, email } = req.query;
+  if (!db || !userId || !email) return res.status(400).json({ error: 'Missing parameters' });
+  
+  try {
+    const q = db.collection('appointments')
+      .where('userId', '==', userId)
+      .where('clientEmail', '==', email.toString().toLowerCase());
+    const snap = await q.get();
+    const appts = snap.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }));
+    res.json(appts);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/public/appointments/:id/status', async (req: any, res: any) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!db || !id || !status) return res.status(400).json({ error: 'Missing parameters' });
+  
+  try {
+    const apptRef = db.collection('appointments').doc(id);
+    const doc = await apptRef.get();
+    if (!doc.exists) return res.status(404).json({ error: 'Appointment not found' });
+    
+    // Safety check: only allow cancelling via public portal
+    if (status !== 'cancelled') return res.status(403).json({ error: 'Unauthorized status change' });
+    
+    await apptRef.update({ status });
+    res.json({ success: true });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -607,7 +692,7 @@ app.delete('/api/clients/:id', requireAuth, async (req: any, res: any) => {
 });
 
 app.get('/api/availability', async (req, res) => {
-  const { userId, date } = req.query;
+  const { userId, date, staffId } = req.query;
   if (!userId || !date) return res.status(400).json({ error: 'Missing userId or date' });
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
 
@@ -615,54 +700,59 @@ app.get('/api/availability', async (req, res) => {
     const selectedDate = date as string;
     const merchantId = userId as string;
 
+    const userSnap = await db.collection('users').doc(merchantId).get();
+    if (!userSnap.exists) return res.status(404).json({ error: 'User not found' });
+    const userData = userSnap.data();
+
+    const config = userData.availabilitySettings || {};
+    const bufferTime = Number(config.bufferTime || 0);
+    const minimumNotice = Number(config.minimumNotice || 0);
+
     // 1. Fetch Merchant Appointments for this date
-    const appointmentsSnap = await db.collection('appointments')
+    let apptQuery: any = db.collection('appointments')
       .where('userId', '==', merchantId)
       .where('date', '==', selectedDate)
-      .get();
+      .where('status', 'in', ['confirmed', 'pending']);
+      
+    if (staffId && staffId !== 'any') {
+      apptQuery = apptQuery.where('staffId', '==', staffId);
+    }
     
-    const existingBookings = appointmentsSnap.docs.map((doc: any) => ({
+    const appointmentsSnap = await apptQuery.get();
+    const existingBookings = (appointmentsSnap.docs || []).map((doc: any) => ({
       time: doc.data().time,
       duration: doc.data().duration || 30
     }));
 
-    // 2. Fetch Merchant External Events (Google/Outlook)
-    const userSnap = await db.collection('users').doc(merchantId).get();
-    const userData = userSnap.data();
     const busySlots: { start: Date, end: Date }[] = [];
 
-    // Convert existing bookings to busySlots
+    // Convert existing bookings to busySlots with buffer
     existingBookings.forEach((b: any) => {
       const start = new Date(`${selectedDate}T${b.time}`);
-      const end = new Date(start.getTime() + b.duration * 60000);
-      busySlots.push({ start, end });
+      const end = new Date(start.getTime() + (b.duration || 30) * 60000 + bufferTime * 60000);
+      const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
+      busySlots.push({ start: startWithBuffer, end });
     });
 
-    if (userData) {
-      // Google Calendar
+    // 2. Fetch Merchant External Events (Google/Outlook)
+    // Only if no staffId OR if staffId is for the owner (simplified for now)
+    if (!staffId || staffId === merchantId) {
       if (userData.googleCalendarTokens) {
         try {
           const timeMin = new Date(`${selectedDate}T00:00:00Z`).toISOString();
           const timeMax = new Date(`${selectedDate}T23:59:59Z`).toISOString();
-          
-          const gRes = await googleCalendar.listEvents(userData.googleCalendarTokens, {
-            timeMin,
-            timeMax,
-            singleEvents: true,
-          });
-          
+          const gRes = await googleCalendar.listEvents(userData.googleCalendarTokens, { timeMin, timeMax, singleEvents: true });
           (gRes.items || []).forEach((item: any) => {
             if (item.start?.dateTime) {
-              busySlots.push({
-                start: new Date(item.start.dateTime),
-                end: new Date(item.end.dateTime)
-              });
+              const start = new Date(item.start.dateTime);
+              const end = new Date(new Date(item.end.dateTime).getTime() + bufferTime * 60000);
+              const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
+              busySlots.push({ start: startWithBuffer, end });
             }
           });
         } catch (e) { console.error('[AVAILABILITY] Google fetch failed'); }
       }
 
-      // Outlook Calendar
       if (userData.outlookCalendarTokens) {
         try {
           const oRes = await axios.get('https://graph.microsoft.com/v1.0/me/calendar/events', {
@@ -673,33 +763,54 @@ app.get('/api/availability', async (req, res) => {
             }
           });
           (oRes.data.value || []).forEach((item: any) => {
-            busySlots.push({
-              start: new Date(item.start.dateTime + 'Z'),
-              end: new Date(item.end.dateTime + 'Z')
-            });
+            const start = new Date(item.start.dateTime + 'Z');
+            const end = new Date(new Date(item.end.dateTime + 'Z').getTime() + bufferTime * 60000);
+            const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
+            busySlots.push({ start: startWithBuffer, end });
           });
         } catch (e) { console.error('[AVAILABILITY] Outlook fetch failed'); }
       }
     }
 
-    // 3. Generate 30-min slots from 09:00 to 18:00
+    // 3. Determine Working Hours
+    const dayOfWeek = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
+    let workingHours = config.workingHours?.[dayOfWeek] || { start: '09:00', end: '18:00', active: true };
+    
+    if (staffId && staffId !== 'any' && userData.staff) {
+        const staffMember = userData.staff.find((s:any) => s.id === staffId);
+        if (staffMember?.workingHours?.[dayOfWeek]) {
+            workingHours = staffMember.workingHours[dayOfWeek];
+        } else {
+           // If staff has no hours set for this day, assume inactive
+           workingHours = { start: '09:00', end: '18:00', active: false };
+        }
+    }
+
+    if (!workingHours.active) return res.json([]);
+
+    // 4. Generate slots
     const slots = [];
-    let current = new Date(`${selectedDate}T09:00:00`);
-    const endOfDay = new Date(`${selectedDate}T18:00:00`);
+    const interval = 30; // Default slot interval
+    let current = new Date(`${selectedDate}T${workingHours.start}`);
+    const endOfDay = new Date(`${selectedDate}T${workingHours.end}`);
+    const now = new Date();
+    const noticeLimit = new Date(now.getTime() + minimumNotice * 60000);
 
     while (current < endOfDay) {
       const slotStart = new Date(current);
-      const slotEnd = new Date(current.getTime() + 30 * 60000);
+      const slotEnd = new Date(current.getTime() + interval * 60000);
       
-      // Check if slot overlaps with any busySlot
+      const isPast = slotStart < now;
+      const withinNotice = slotStart < noticeLimit;
+      
       const isBusy = busySlots.some(busy => {
         return (slotStart < busy.end && slotEnd > busy.start);
       });
 
-      if (!isBusy) {
+      if (!isBusy && !isPast && !withinNotice) {
         slots.push(current.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
       }
-      current = new Date(current.getTime() + 30 * 60000);
+      current = new Date(current.getTime() + interval * 60000);
     }
 
     res.json(slots);

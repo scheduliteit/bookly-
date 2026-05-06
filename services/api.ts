@@ -69,6 +69,19 @@ export const api = {
         handleFirestoreError(error, OperationType.UPDATE, 'appointments');
         throw error;
       }
+    },
+    getByClientEmail: async (userId: string, email: string): Promise<Appointment[]> => {
+      const response = await fetch(`/api/public/client/appointments?userId=${userId}&email=${email}`);
+      if (!response.ok) throw new Error('Failed to fetch client appointments');
+      return response.json();
+    },
+    updateStatus: async (id: string, status: string): Promise<void> => {
+      const response = await fetch(`/api/public/appointments/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (!response.ok) throw new Error('Failed to update status');
     }
   },
   clients: {
@@ -194,8 +207,9 @@ export const api = {
     }
   },
   system: {
-    checkAvailability: async (userId: string, date: string): Promise<string[]> => {
-      const response = await fetch(`/api/availability?userId=${userId}&date=${date}`);
+    checkAvailability: async (userId: string, date: string, staffId?: string): Promise<string[]> => {
+      const url = `/api/availability?userId=${userId}&date=${date}${staffId ? `&staffId=${staffId}` : ''}`;
+      const response = await fetch(url);
       if (!response.ok) return [];
       return response.json();
     },

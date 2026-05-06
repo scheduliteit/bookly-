@@ -37,6 +37,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   const [businessName, setBusinessName] = useState(initialBusinessName || '');
   const [businessTimezone, setBusinessTimezone] = useState(initialBusinessTimezone || 'UTC');
   const [services, setServices] = useState<Service[]>(initialServices || []);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [legalData, setLegalData] = useState(initialLegalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
   const [currency, setCurrency] = useState<'ILS' | 'USD' | 'EUR' | 'GBP'>(initialCurrency || 'USD');
   const [isLoading, setIsLoading] = useState(!initialBusinessName);
@@ -98,6 +100,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
           console.log(`[PUBLIC-BOOKING] Received public profile sync for ${userId}:`, data);
           setBusinessName(data.businessName || 'Consultant');
           setServices(data.services || []);
+          setStaff(data.staff || []);
           setLegalData(data.legalData || { privacyPolicy: '', termsOfService: '', gdprStrict: true });
           setCurrency(data.currency || 'USD');
           setBusinessTimezone(data.timezone || 'UTC');
@@ -149,12 +152,12 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
   useEffect(() => {
     if (selectedDate && userId) {
       const fetchSlots = async () => {
-        const slots = await api.system.checkAvailability(userId, selectedDate);
+        const slots = await api.system.checkAvailability(userId, selectedDate, selectedStaff?.id);
         setAvailableSlots(slots);
       };
       fetchSlots();
     }
-  }, [selectedDate, userId]);
+  }, [selectedDate, userId, selectedStaff]);
 
   const handleBook = async () => {
     if (!selectedService) return;
@@ -168,6 +171,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
       const result = await api.appointments.create({ 
         id: Math.random().toString(36).substr(2, 9), 
         userId: userId, 
+        staffId: selectedStaff?.id || (staff.length === 1 ? staff[0].id : null),
         clientId: 'public-' + Date.now(),
         clientName: clientInfo.name, 
         service: selectedService.name, 
@@ -576,9 +580,9 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         <div className="flex-1 p-6 md:p-10 bg-[#fdfdfd] overflow-y-auto custom-scroll relative">
           
           {/* Step Progress */}
-          {step <= 3 && (
+          {step <= 4 && (
             <div className={`flex items-center gap-4 mb-16 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
-              {[1, 2, 3].map((s) => (
+              {[1, 2, 3, 4].map((s) => (
                 <React.Fragment key={s}>
                   <div className={`flex items-center gap-3 transition-all duration-500 ${step === s ? 'flex-[2]' : 'flex-1'}`}>
                     <div className={`h-2.5 rounded-full transition-all duration-700 ${step >= s ? 'bg-brand-blue w-full' : 'bg-slate-100 w-full'}`} />
@@ -599,7 +603,11 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                  {services.length > 0 ? services.map(s => (
                    <button 
                     key={s.name} 
-                    onClick={() => { setSelectedService(s); setStep(2); }}
+                    onClick={() => { 
+                      setSelectedService(s); 
+                      if (staff.length > 1) setStep(2);
+                      else setStep(3);
+                    }}
                     className={`p-8 bg-white border border-slate-200 rounded-2xl hover:border-brand-blue hover:shadow-xl hover:shadow-brand-blue/5 transition-all group flex items-center justify-between ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : 'text-left'}`}
                    >
                      <div className={`flex items-center gap-6 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
@@ -633,8 +641,47 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
               </div>
             </div>
           )}
-                {/* Step 2: Date & Time Selection */}
+                {/* Step 2: Staff Selection */}
           {step === 2 && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+               <div className={t.dir === 'rtl' ? 'text-right' : 'text-left'}>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Who would you like to see?</h2>
+                <p className="text-sm text-slate-500 mt-1">Select a professional from our team.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <button 
+                  onClick={() => { setSelectedStaff(null); setStep(3); }}
+                  className={`p-6 bg-white border-2 rounded-2xl transition-all group flex items-center gap-4 ${!selectedStaff ? 'border-brand-blue bg-brand-blue/5' : 'border-slate-100 hover:border-brand-blue/30'}`}
+                 >
+                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-brand-blue transition-colors">
+                       <Users size={24} />
+                    </div>
+                    <div className="text-left">
+                       <p className="font-bold text-slate-900">Anyone</p>
+                       <p className="text-xs text-slate-400">First available professional</p>
+                    </div>
+                 </button>
+                 {staff.map(member => (
+                   <button 
+                    key={member.id} 
+                    onClick={() => { setSelectedStaff(member); setStep(3); }}
+                    className={`p-6 bg-white border-2 rounded-2xl transition-all group flex items-center gap-4 ${selectedStaff?.id === member.id ? 'border-brand-blue bg-brand-blue/5' : 'border-slate-100 hover:border-brand-blue/30'}`}
+                   >
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black" style={{ backgroundColor: member.color }}>
+                         {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="text-left">
+                         <p className="font-bold text-slate-900">{member.name}</p>
+                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{member.role}</p>
+                      </div>
+                   </button>
+                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Date & Time Selection */}
+          {step === 3 && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-700">
                <h2 className={`text-3xl font-black text-slate-900 mb-10 tracking-tight ${t.dir === 'rtl' ? 'text-right' : ''}`}>{t.chooseYourTime}</h2>
                <div className={`flex flex-col lg:flex-row gap-8 lg:gap-16 ${t.dir === 'rtl' ? 'lg:flex-row-reverse' : ''}`}>
@@ -709,7 +756,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                                   </button>
                                   {selectedTime === time && (
                                     <button 
-                                     onClick={() => setStep(3)}
+                                     onClick={() => setStep(4)}
                                      className="w-full py-4 bg-brand-blue text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] shadow-xl shadow-brand-blue/20 animate-in zoom-in-95"
                                     >
                                       {t.confirmTime}
@@ -730,8 +777,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
             </div>
           )}
 
-          {/* Step 3: Confirmation Details */}
-          {step === 3 && (
+          {/* Step 4: Confirmation Details */}
+          {step === 4 && (
             <div className={`max-w-md mx-auto space-y-12 animate-in fade-in slide-in-from-right-8 duration-700 ${t.dir === 'rtl' ? 'text-right' : ''}`}>
                <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest">
@@ -872,6 +919,13 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         <div className={`flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-50 ${t.dir === 'rtl' ? 'flex-row-reverse' : ''}`}>
           <ShieldCheck size={14} /> {t.verifiedSecure}
         </div>
+
+        <button 
+          onClick={() => window.location.href = `/manage/${userId}`}
+          className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-brand-blue transition-colors mt-2"
+        >
+          Already have a booking? <span className="underline">Manage here</span>
+        </button>
       </div>
     </div>
   );

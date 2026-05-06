@@ -41,6 +41,30 @@ export interface User {
   outlookCalendarTokens?: any;
   language?: string;
   reminderSettings?: ReminderSettings;
+  staff?: Staff[];
+  availabilitySettings?: {
+    bufferTime?: number; // in minutes
+    minimumNotice?: number; // in minutes
+    workingHours?: {
+      [key: string]: { start: string; end: string; active: boolean };
+    };
+  };
+}
+
+export interface Staff {
+  id: string;
+  name: string;
+  email: string;
+  role: 'member' | 'manager';
+  workingHours?: {
+    [key: string]: {
+      start: string;
+      end: string;
+      active: boolean;
+    };
+  };
+  services?: string[]; // Names of services they can perform
+  color: string;
 }
 
 export type AppointmentStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed';
@@ -80,6 +104,7 @@ export interface Appointment {
   duration: number; // minutes
   status: AppointmentStatus;
   price: number;
+  staffId?: string;
   reminderSent?: boolean;
   reminderTimestamp?: string;
   locationType?: LocationType;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download, Bell, Info, Search } from 'lucide-react';
+import { Save, Trash2, MessageSquare, Mail, Zap, Globe, Calendar, Loader2, Sparkles, ShieldCheck, FileText, Lock, Languages, DollarSign, Activity, Server, Radio, Database, CreditCard, Send, Wallet, ArrowUpRight, Landmark, ExternalLink, Check, History, Receipt, Banknote, SmartphoneNfc, Clock, Plus, Palette, Copy, ChevronDown, Smartphone, Download, Bell, Info, Search, Users, AlertCircle } from 'lucide-react';
 import { paymentService, MerchantStats, Transaction } from '../services/paymentService';
 import { Service } from '../types';
 import { translations, Language } from '../services/translations';
@@ -25,8 +25,12 @@ interface SettingsProps {
     messageTemplate: string;
   };
   onUpdateReminderSettings: (settings: any) => void;
+  availabilitySettings?: any;
+  onUpdateAvailabilitySettings?: (settings: any) => void;
+  staff?: any[];
+  onUpdateStaff?: (staff: any[]) => void;
   userId: string;
-  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit';
+  initialTab?: 'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit' | 'staff';
   language: Language;
   onUpdateLanguage: (lang: Language) => void;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
@@ -47,14 +51,47 @@ const Settings: React.FC<SettingsProps> = ({
   onUpdateTimezone,
   reminderSettings,
   onUpdateReminderSettings,
+  availabilitySettings,
+  onUpdateAvailabilitySettings,
+  staff = [],
+  onUpdateStaff,
   userId,
   initialTab,
   language,
   onUpdateLanguage,
   showToast
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit'>(initialTab || 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit' | 'staff'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
+
+  const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'member', color: '#006bff' });
+
+  const handleAddStaff = () => {
+    if (!newStaff.name || !newStaff.email) {
+      if (showToast) showToast('Please enter name and email', 'error');
+      return;
+    }
+    const staffToAdd = {
+      ...newStaff,
+      id: `staff-${Date.now()}`,
+      workingHours: {
+        'Monday': { start: '09:00', end: '17:00', active: true },
+        'Tuesday': { start: '09:00', end: '17:00', active: true },
+        'Wednesday': { start: '09:00', end: '17:00', active: true },
+        'Thursday': { start: '09:00', end: '17:00', active: true },
+        'Friday': { start: '09:00', end: '17:00', active: true },
+        'Saturday': { start: '09:00', end: '17:00', active: false },
+        'Sunday': { start: '09:00', end: '17:00', active: false },
+      }
+    };
+    if (onUpdateStaff) onUpdateStaff([...staff, staffToAdd]);
+    setNewStaff({ name: '', email: '', role: 'member', color: '#006bff' });
+    if (showToast) showToast('Staff member added!', 'success');
+  };
+
+  const handleDeleteStaff = (id: string) => {
+    if (onUpdateStaff) onUpdateStaff(staff.filter(s => s.id !== id));
+  };
 
   useEffect(() => {
     if (initialTab) {
@@ -236,6 +273,7 @@ const Settings: React.FC<SettingsProps> = ({
         <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
           {[
             { id: 'profile', label: t.profile },
+            { id: 'staff', label: 'Staff' },
             { id: 'services', label: t.services },
             { id: 'reminders', label: 'Reminders' },
             { id: 'availability', label: t.availability },
@@ -254,6 +292,129 @@ const Settings: React.FC<SettingsProps> = ({
           ))}
         </div>
       </div>
+
+      {activeTab === 'staff' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+             <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+               <div>
+                 <h3 className="font-bold text-brand-dark">Team Management</h3>
+                 <p className="text-xs text-slate-500 mt-1">Add staff members and manage their individual availability.</p>
+               </div>
+               <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
+                 <Users size={20} />
+               </div>
+             </div>
+             
+             <div className="p-8 space-y-8">
+               {staff.length === 0 ? (
+                 <div className="py-12 flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-300 mb-4 shadow-sm">
+                      <Users size={32} />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-400">No team members yet</h4>
+                    <p className="text-xs text-slate-400 mt-1">Add your team to expand your business capacity.</p>
+                 </div>
+               ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {staff.map((member: any) => (
+                      <div key={member.id} className="relative group bg-white border border-slate-100 p-6 rounded-[24px] shadow-sm hover:shadow-md transition-all">
+                         <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black" style={{ backgroundColor: member.color }}>
+                               {member.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                               <h4 className="font-black text-brand-dark">{member.name}</h4>
+                               <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{member.role}</p>
+                            </div>
+                         </div>
+                         <div className="space-y-2 mb-6">
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                               <Mail size={12} className="shrink-0" />
+                               <span className="truncate">{member.email}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                               <Clock size={12} className="shrink-0" />
+                               <span>Standard Hours</span>
+                            </div>
+                         </div>
+                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                            <button className="text-[10px] font-black text-brand-blue uppercase tracking-widest hover:underline">Edit Hours</button>
+                            <button 
+                              onClick={() => handleDeleteStaff(member.id)}
+                              className="text-slate-300 hover:text-rose-600 transition-colors"
+                            >
+                               <Trash2 size={16} />
+                            </button>
+                         </div>
+                      </div>
+                    ))}
+                 </div>
+               )}
+
+               <div className="pt-8 border-t border-slate-100">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <Plus size={14} className="text-brand-blue" /> Add Team Member
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Full Name</label>
+                        <input 
+                          type="text" 
+                          placeholder="John Doe" 
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-brand-blue outline-none font-bold"
+                          value={newStaff.name}
+                          onChange={e => setNewStaff({...newStaff, name: e.target.value})}
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Email Address</label>
+                        <input 
+                          type="email" 
+                          placeholder="john@example.com" 
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-brand-blue outline-none font-bold"
+                          value={newStaff.email}
+                          onChange={e => setNewStaff({...newStaff, email: e.target.value})}
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Role</label>
+                        <select 
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-brand-blue outline-none font-bold cursor-pointer"
+                           value={newStaff.role}
+                           onChange={e => setNewStaff({...newStaff, role: e.target.value as any})}
+                        >
+                           <option value="member">Staff Member</option>
+                           <option value="manager">Manager</option>
+                        </select>
+                     </div>
+                  </div>
+                  <div className="mt-8 flex items-center justify-between p-6 bg-brand-blue/5 rounded-[24px] border border-brand-blue/10">
+                     <div className="flex items-center gap-4">
+                        <div className="flex gap-2">
+                           {['#006bff', '#7c3aed', '#ec4899', '#f97316', '#10b981'].map(c => (
+                              <button 
+                                key={c}
+                                onClick={() => setNewStaff({...newStaff, color: c})}
+                                className={`w-8 h-8 rounded-full border-4 transition-all ${newStaff.color === c ? 'border-white scale-110 shadow-sm' : 'border-transparent opacity-40 hover:opacity-100'}`}
+                                style={{ backgroundColor: c }}
+                              />
+                           ))}
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-500">Pick a distinct color for this member's calendar entries.</p>
+                     </div>
+                     <button 
+                       onClick={handleAddStaff}
+                       className="px-8 py-3 bg-brand-blue text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition-all shadow-lg shadow-brand-blue/20"
+                     >
+                       Add to Team
+                     </button>
+                  </div>
+               </div>
+             </div>
+           </div>
+        </div>
+      )}
 
       {activeTab === 'services' && (
         <div className="space-y-8 animate-in slide-in-from-bottom-4">
@@ -756,6 +917,57 @@ const Settings: React.FC<SettingsProps> = ({
                       <span>Select <strong>"Add to Home Screen"</strong></span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100">
+              <h3 className="font-bold text-brand-dark">Booking Rules</h3>
+              <p className="text-xs text-slate-500 mt-1">Fine-tune your availability with buffer times and notice periods.</p>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Buffer Time (Between Bookings)</label>
+                  <div className="relative">
+                    <select 
+                      className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-brand-blue outline-none transition-all"
+                      value={availabilitySettings?.bufferTime || 0}
+                      onChange={(e) => onUpdateAvailabilitySettings({ ...availabilitySettings, bufferTime: parseInt(e.target.value) })}
+                    >
+                      <option value="0">No Buffer</option>
+                      <option value="5">5 Minutes</option>
+                      <option value="10">10 Minutes</option>
+                      <option value="15">15 Minutes</option>
+                      <option value="30">30 Minutes</option>
+                      <option value="60">1 Hour</option>
+                    </select>
+                    <Clock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Adds a gap before and after every appointment to prevent back-to-back fatigue.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Minimum Notice Period</label>
+                  <div className="relative">
+                    <select 
+                      className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-brand-blue outline-none transition-all"
+                      value={availabilitySettings?.minimumNotice || 0}
+                      onChange={(e) => onUpdateAvailabilitySettings({ ...availabilitySettings, minimumNotice: parseInt(e.target.value) })}
+                    >
+                      <option value="0">Instant Booking</option>
+                      <option value="15">15 Minutes before</option>
+                      <option value="30">30 Minutes before</option>
+                      <option value="60">1 Hour before</option>
+                      <option value="120">2 Hours before</option>
+                      <option value="240">4 Hours before</option>
+                      <option value="1440">24 Hours before</option>
+                    </select>
+                    <AlertCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Prevents clients from booking a slot too close to the current time.</p>
                 </div>
               </div>
             </div>

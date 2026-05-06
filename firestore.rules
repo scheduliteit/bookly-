@@ -55,7 +55,8 @@ service cloud.firestore {
              (!('outlookCalendarTokens' in data) || data.outlookCalendarTokens is map) &&
              (!('workingHours' in data) || data.workingHours is map) &&
              (!('legalData' in data) || data.legalData is map) &&
-             (!('reminderSettings' in data) || data.reminderSettings is map);
+             (!('reminderSettings' in data) || data.reminderSettings is map) &&
+             (!('staff' in data) || data.staff is list);
     }
 
     function isValidClient(data) {
@@ -66,6 +67,8 @@ service cloud.firestore {
     function isValidAppointment(data) {
       return data.userId is string && data.userId.size() <= 128 &&
              (!('clientId' in data) || data.clientId is string) &&
+             (!('staffId' in data) || data.staffId is string) &&
+             (!('reminderSent' in data) || data.reminderSent is bool) &&
              data.date is string && data.date.size() <= 16 &&
              (!('time' in data) || data.time is string) &&
              data.status in ['confirmed', 'pending', 'cancelled', 'completed'];
@@ -91,8 +94,8 @@ service cloud.firestore {
       allow get: if true; // Allow public lookups for business details
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'subscriptionPlan', 'googleCalendarTokens', 'outlookCalendarTokens', 'role'])) ||
-        ((request.auth.token.email != null && (request.auth.token.email.lower() == 'm.elsalameen@gmail.com' || request.auth.token.email.lower() == 'scheduliteit@gmail.com')) && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'googleCalendarTokens', 'outlookCalendarTokens']))
+        (incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'subscriptionPlan', 'googleCalendarTokens', 'outlookCalendarTokens', 'role', 'staff'])) ||
+        ((request.auth.token.email != null && (request.auth.token.email.lower() == 'm.elsalameen@gmail.com' || request.auth.token.email.lower() == 'scheduliteit@gmail.com')) && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'googleCalendarTokens', 'outlookCalendarTokens', 'staff']))
       );
       allow delete: if false; 
     }

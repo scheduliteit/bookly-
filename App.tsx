@@ -23,6 +23,7 @@ import LandingPage from './components/LandingPage';
 import FeedbackModal from './components/FeedbackModal';
 import Login from './components/Login';
 import Logo from './components/Logo';
+import ClientPortal from './components/ClientPortal';
 import MobileInstallGuide from './components/MobileInstallGuide';
 import { Appointment, Client, User, Service } from './types';
 import { api } from './services/api';
@@ -47,7 +48,12 @@ const App: React.FC = () => {
     return match ? match[1] : null;
   });
   
-  const [isPublicRoute] = useState(() => !!publicUserId);
+  const [portalUserId] = useState(() => {
+    const match = window.location.pathname.match(/\/manage\/([^/?#]+)/);
+    return match ? match[1] : null;
+  });
+  
+  const [isPublicRoute] = useState(() => !!publicUserId || !!portalUserId);
   const [user, setUser] = useState<User | null>(null);
   
   const isMasterEmail = user?.email?.toLowerCase() === 'm.elsalameen@gmail.com' || 
@@ -103,6 +109,20 @@ const App: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [availabilitySettings, setAvailabilitySettings] = useState<any>({
+    bufferTime: 0,
+    minimumNotice: 0,
+    workingHours: {
+      'Monday': { start: '09:00', end: '17:00', active: true },
+      'Tuesday': { start: '09:00', end: '17:00', active: true },
+      'Wednesday': { start: '09:00', end: '17:00', active: true },
+      'Thursday': { start: '09:00', end: '17:00', active: true },
+      'Friday': { start: '09:00', end: '17:00', active: true },
+      'Saturday': { start: '09:00', end: '17:00', active: false },
+      'Sunday': { start: '09:00', end: '17:00', active: false },
+    }
+  });
   const [legalData, setLegalData] = useState({
     privacyPolicy: "We value your privacy. Your data is used solely for scheduling and communication regarding your appointments. We do not sell your information to third parties.",
     termsOfService: "By booking an appointment, you agree to show up at the scheduled time. Cancellations must be made 24 hours in advance for a full refund.",
@@ -223,12 +243,9 @@ const App: React.FC = () => {
               setLegalData(userData.legalData || legalData);
               setCurrency(userData.currency || 'USD');
               setSubscriptionPlan(planToSet);
-              setReminderSettings(userData.reminderSettings || {
-                enabled: true,
-                channels: ['email'],
-                timing: 60,
-                messageTemplate: "Hi {clientName}, just a reminder for your {serviceName} at {businessName} on {date} at {time}."
-              });
+              setAvailabilitySettings(userData.availabilitySettings || availabilitySettings);
+              setReminderSettings(userData.reminderSettings || reminderSettings);
+              setStaff(userData.staff || []);
               setTimezone(userData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
             } else {
               console.log("[AUTH] No user record found in Firestore. Initializing new profile...");
@@ -508,6 +525,9 @@ const App: React.FC = () => {
   }
 
   if (isPublicRoute) {
+    if (portalUserId) {
+      return <ClientPortal businessId={portalUserId} />;
+    }
     return (
       <PublicBookingPage 
         userId={publicUserId || 'default'}
@@ -811,6 +831,16 @@ const App: React.FC = () => {
                     onUpdateTimezone={(val) => updateUserSettings({ timezone: val })}
                     reminderSettings={reminderSettings}
                     onUpdateReminderSettings={(val) => updateUserSettings({ reminderSettings: val })}
+                    availabilitySettings={availabilitySettings}
+                    onUpdateAvailabilitySettings={(val) => {
+                      setAvailabilitySettings(val);
+                      updateUserSettings({ availabilitySettings: val });
+                    }}
+                    staff={staff}
+                    onUpdateStaff={(val) => {
+                      setStaff(val);
+                      updateUserSettings({ staff: val });
+                    }}
                     userId={user!.id}
                     initialTab={settingsTab}
                     language={language}
