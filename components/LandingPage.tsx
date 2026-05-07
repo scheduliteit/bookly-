@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, ShieldCheck, Sparkles, Globe, ArrowRight, Play, Check, 
-  Crown, Rocket, Star, Heart, Activity, DollarSign, Timer, CreditCard, X, Users
+  Crown, Rocket, Star, Heart, Activity, DollarSign, Timer, CreditCard, X, Users, MessageSquare
 } from 'lucide-react';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -35,8 +35,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Logo size="md" />
           <div className="hidden md:flex items-center gap-10">
-            {[t.product, t.features, t.pricing, t.aiAssistant].map((item, idx) => (
-              <a key={idx} href={`#${item.toLowerCase()}`} className="text-sm font-black text-slate-400 hover:text-brand-blue transition-all uppercase tracking-widest">{item}</a>
+            {[
+              { label: t.product, id: 'staff' },
+              { label: t.features, id: 'features' },
+              { label: t.pricing, id: 'pricing' },
+              { label: t.aiAssistant, id: 'ai' }
+            ].map((item, idx) => (
+              <a key={idx} href={`#${item.id}`} className="text-sm font-black text-slate-400 hover:text-brand-blue transition-all uppercase tracking-widest">{item.label}</a>
             ))}
           </div>
           <div className="flex items-center gap-4">
@@ -67,7 +72,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
               <Sparkles size={14} className="animate-pulse" /> {t.heroTag}
             </motion.div>
             
-            <motion.h1 
+            <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -78,13 +83,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
               ) : (
                 <> {t.heroTitle1}<br /> {t.heroTitle2} </>
               )}
-            </motion.h1>
+            </motion.div>
 
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-xl md:text-2xl text-slate-500 font-medium max-w-2xl leading-relaxed"
+              className="text-xl md:text-3xl text-slate-500 font-medium max-w-3xl leading-relaxed"
             >
               {t.heroSubtitle}
             </motion.p>
@@ -93,36 +98,48 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center gap-6 pt-6"
+              className="flex flex-col lg:flex-row items-center gap-6 pt-6"
             >
               <button 
                 onClick={() => onStart()}
-                className="w-full sm:w-auto px-12 py-6 bg-brand-blue text-white rounded-[32px] font-black text-xl shadow-2xl shadow-brand-blue/30 hover:bg-brand-dark transition-all transform hover:-translate-y-1 flex items-center justify-center gap-4"
+                className="w-full lg:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-3xl shadow-brand-blue/30 hover:bg-brand-dark transition-all transform hover:-translate-y-1 flex items-center justify-center gap-4"
               >
-                {t.accessDashboard} <ArrowRight size={24} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
+                {t.accessDashboard} <ArrowRight size={28} className={t.dir === 'rtl' ? 'rotate-180' : ''} />
               </button>
-              <button 
-                onClick={() => setShowMagic(true)}
-                className="flex items-center gap-4 text-brand-dark font-black uppercase tracking-widest text-sm hover:scale-105 transition-all p-4"
-              >
-                <div className="w-14 h-14 bg-brand-dark rounded-full flex items-center justify-center text-white"><Play size={20} fill="currentColor" className={t.dir === 'rtl' ? 'rotate-180' : ''} /></div>
-                {t.watchMagic}
-              </button>
+              <div className="flex items-center gap-6">
+                <button 
+                  onClick={() => setShowMagic(true)}
+                  className="flex items-center gap-4 text-brand-dark font-black uppercase tracking-widest text-sm hover:scale-105 transition-all p-4"
+                >
+                  <div className="w-14 h-14 bg-brand-dark rounded-full flex items-center justify-center text-white"><Play size={20} fill="currentColor" className={t.dir === 'rtl' ? 'rotate-180' : ''} /></div>
+                  {t.watchMagic}
+                </button>
+              </div>
             </motion.div>
 
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="flex items-center gap-10 pt-10"
+              className="flex items-center gap-6 md:gap-12 pt-10 flex-wrap"
             >
                <div className="flex -space-x-4">
                   <div className="w-12 h-12 rounded-2xl border-4 border-white bg-brand-blue flex items-center justify-center text-white font-black text-xs shadow-lg"><Globe size={18} /></div>
                   <div className="w-12 h-12 rounded-2xl border-4 border-white bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">BETA</div>
+                  <div className="w-12 h-12 rounded-2xl border-4 border-white bg-emerald-500 flex items-center justify-center text-white font-black text-xs shadow-lg"><Check size={18} /></div>
                </div>
-               <div>
-                  <div className="flex gap-1 text-emerald-500 items-center"><Check size={14} strokeWidth={4} /><span className="text-[10px] font-black uppercase tracking-widest leading-none">{t.globalBetaActive}</span></div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">{t.joinFuture}</p>
+               <div className="space-y-1">
+                  <div className="flex gap-1 text-emerald-500 items-center"><Check size={14} strokeWidth={4} /><span className="text-[10px] font-black uppercase tracking-widest leading-none">FREE PRO ACCESS</span></div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">{t.joinFuture}</p>
+               </div>
+               <div className="h-8 w-px bg-slate-100 hidden md:block" />
+               <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" />
+                    ))}
+                  </div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">120+ Active Pilots</p>
                </div>
             </motion.div>
           </div>
@@ -130,173 +147,240 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
       </section>
 
       {/* Proof Section - Logo Wall */}
-      <section className="py-20 bg-slate-50/50 border-y border-slate-100 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-           <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mb-12">{t.builtForProfessionals}</p>
-           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-30 grayscale hover:grayscale-0 transition-all duration-1000">
-              {['Architects', 'Consultants', 'Engineers', 'Coaches', 'Designers'].map(name => (
-                <span key={name} className="text-2xl font-black tracking-tighter text-slate-900">{name}</span>
+      <section className="py-12 bg-slate-50/30 border-y border-slate-100/50 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 flex items-center gap-12 overflow-x-auto no-scrollbar">
+           <p className="whitespace-nowrap text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] leading-none">{t.builtForProfessionals}</p>
+           <div className="flex items-center gap-12 md:gap-24 opacity-20 grayscale hover:grayscale-0 transition-all duration-1000">
+              {['Architects', 'Consultants', 'Engineers', 'Coaches', 'Designers', 'Lawyers', 'Developers'].map(name => (
+                <span key={name} className="text-xl font-black tracking-tighter text-slate-900 whitespace-nowrap">{name}</span>
               ))}
            </div>
         </div>
       </section>
 
-      {/* The AI Showcase */}
-      <section id="ai-assistant" className="py-32 bg-brand-dark text-white overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-blue/20 rounded-full blur-[120px]" />
-        
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
+      {/* Staff & Team Section */}
+      <section id="staff" className="py-32 px-6 overflow-hidden">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+          <div className="order-2 lg:order-1 relative">
+             <div className="absolute inset-0 bg-brand-blue/5 blur-3xl transform -rotate-6 scale-110" />
+             <div className="bg-white border border-slate-100 rounded-[48px] p-8 shadow-2xl relative">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-xl flex items-center justify-center"><Users size={20} /></div>
+                    <h4 className="font-black text-brand-dark uppercase tracking-widest text-xs">Team Management</h4>
+                  </div>
+                  <div className="flex -space-x-3">
+                    {[1,2,3,4].map(i => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-100" />
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: 'Sarah Miller', role: 'Senior Strategy', status: 'Available' },
+                    { name: 'David Chen', role: 'Technical Lead', status: 'Booked' },
+                    { name: 'Elena Rodriguez', role: 'Product Design', status: 'On Break' }
+                  ].map((s, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-100" />
+                        <div>
+                          <p className="text-sm font-black text-brand-dark">{s.name}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.role}</p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                        s.status === 'Available' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        {s.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-8 pt-8 border-t border-slate-100 flex items-center justify-between">
+                   <div className="space-y-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Auto-Assignment</p>
+                      <p className="text-xs font-black text-brand-dark">Load Balancing Active</p>
+                   </div>
+                   <div className="w-12 h-6 bg-brand-blue rounded-full relative">
+                      <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
+                   </div>
+                </div>
+             </div>
+          </div>
+          
+          <div className="order-1 lg:order-2 space-y-10">
+             <div className="w-16 h-16 bg-brand-blue/10 text-brand-blue rounded-3xl flex items-center justify-center shadow-lg"><Users size={32} /></div>
+             <h2 className="text-5xl md:text-7xl font-black text-brand-dark leading-[0.9] tracking-tighter">
+                {t.staffManagementTitle || "Built for Teams & Solopreneurs"}
+             </h2>
+             <p className="text-xl text-slate-500 font-medium leading-relaxed">
+                {t.staffManagementDesc || "Manage multiple staff members with individual calendars, specialized roles, and automatic cross-calendar availability syncing."}
+             </p>
+             <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                   <p className="text-sm font-black text-brand-dark">{t.unlimitedStaff || "Unlimited Staff"}</p>
+                   <p className="text-xs text-slate-400 font-medium">Scale without per-seat costs during our beta phase.</p>
+                </div>
+                <div className="space-y-2">
+                   <p className="text-sm font-black text-brand-dark">Smart Routing</p>
+                   <p className="text-xs text-slate-400 font-medium">Auto-assign bookings to the next available specialist.</p>
+                </div>
+             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Reminders & Conversational AI */}
+      <section id="ai" className="py-32 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-tr from-brand-blue/10 via-transparent to-transparent opacity-50" />
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center relative z-10">
            <div className="space-y-10">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 text-brand-blue rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
-                 Gemini 1.5 Integration
-              </div>
-              <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tighter">{t.aiAssistantTitle}</h2>
-              <div className="space-y-6">
-              {['Automate bookings with an AI concierge', 'Accept payments globally (USD/EUR/GBP)', 'Zero maintenance, maximum performance'].map(text => (
-                   <div key={text} className="flex items-center gap-4 text-white/70 font-bold">
-                      <div className="w-6 h-6 bg-brand-blue/20 text-brand-blue rounded-full flex items-center justify-center shrink-0"><Check size={14} strokeWidth={4} /></div>
-                      {text}
+              <div className="w-16 h-16 bg-white/10 text-brand-blue rounded-3xl flex items-center justify-center shadow-lg backdrop-blur-xl"><Zap size={32} /></div>
+              <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tighter">
+                 {t.remindersTitle || "Zero No-Shows, Guaranteed."}
+              </h2>
+              <p className="text-xl text-white/50 font-medium leading-relaxed italic">
+                 "Professional reminders reduce missed appointments by up to 80%."
+              </p>
+              <div className="space-y-8">
+                 {[
+                   { icon: MessageSquare, title: 'WhatsApp Reminders', desc: 'Direct engagement on the world\'s most popular platform.' },
+                   { icon: Activity, title: 'Real-time Updates', desc: 'Clients get instantly notified of any schedule changes.' }
+                 ].map((item, i) => (
+                   <div key={i} className="flex gap-6">
+                      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center shrink-0 border border-white/5"><item.icon size={24} className="text-brand-blue" /></div>
+                      <div>
+                        <h4 className="font-black text-lg mb-1">{item.title}</h4>
+                        <p className="text-white/40 text-sm font-medium leading-relaxed">{item.desc}</p>
+                      </div>
                    </div>
                  ))}
               </div>
-              <button 
-                onClick={() => onStart()}
-                className="px-10 py-5 bg-white text-brand-dark rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue hover:text-white transition-all shadow-2xl"
-              >
-                {t.startFreeTrial}
-              </button>
            </div>
            
            <div className="relative">
-              <div className="absolute inset-0 bg-brand-blue/30 blur-[100px] rounded-full scale-75" />
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[48px] shadow-2xl relative">
-                  <div className="flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-brand-blue rounded-2xl flex items-center justify-center"><Sparkles size={24} /></div>
-                       <div>
-                         <h4 className="font-black text-sm">AI Response Generator</h4>
-                         <p className="text-[10px] text-white/40 uppercase tracking-widest">Processing Inquiry...</p>
-                       </div>
-                    </div>
-                    <div className="hidden md:block">
-                       <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20">
-                          <Activity size={10} /> Live
-                       </div>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div className="bg-white/10 p-5 rounded-2xl text-xs leading-relaxed text-white/60 italic border-l-4 border-brand-blue">
-                      "I see you want to book a Strategic Consulting session. Jane specializes in Fintech pivots. Would you like to see her available slots for Friday?"
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div initial={{ x: '-100%' }} animate={{ x: '0%' }} transition={{ duration: 2, repeat: Infinity }} className="h-full w-1/2 bg-brand-blue" />
+              <div className="bg-white/5 backdrop-blur-3xl border border-white/10 p-10 rounded-[48px] shadow-3xl">
+                 <div className="space-y-8">
+                   <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/40 leading-none">Reminder Engine Active</p>
                       </div>
-                    </div>
-                  </div>
+                      <Globe size={18} className="text-white/20" />
+                   </div>
+                   
+                   <div className="space-y-6">
+                      <div className="flex justify-end">
+                         <div className="bg-brand-blue p-5 rounded-3xl rounded-tr-none max-w-[280px]">
+                            <p className="text-sm font-bold leading-relaxed">Hi Sarah, reminder for your Strategy Audit at 10:00 AM tomorrow.</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest text-white/40 mt-3">SMS DELIVERED • 9:02 AM</p>
+                         </div>
+                      </div>
+                      <div className="flex justify-start">
+                         <div className="bg-white/10 border border-white/10 p-5 rounded-3xl rounded-tl-none max-w-[280px]">
+                            <p className="text-sm font-bold text-white/80 leading-relaxed italic">"Thanks! I'll be there. Can I invite my co-founder?"</p>
+                         </div>
+                      </div>
+                      <div className="flex justify-end">
+                         <div className="bg-brand-blue p-5 rounded-3xl rounded-tr-none max-w-[280px]">
+                            <p className="text-sm font-bold leading-relaxed">Yes! You can manage participants here: <span className="underline opacity-50">easybk.ly/p/x942</span></p>
+                         </div>
+                      </div>
+                   </div>
+                 </div>
               </div>
               
-              {/* Floating Live Tooltip */}
-              <motion.div 
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="absolute -bottom-6 -right-6 bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex items-center gap-4 z-20 hidden md:flex"
-              >
-                 <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-                    <DollarSign size={20} />
-                 </div>
+              <div className="absolute -bottom-10 -left-10 bg-white p-6 rounded-[32px] shadow-3xl text-brand-dark flex items-center gap-4 z-20 border border-slate-100 hidden md:flex">
+                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center"><Check size={24} strokeWidth={3} /></div>
                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Payout</p>
-                    <p className="text-sm font-black text-brand-dark">$2,450.00 <span className="text-[10px] text-emerald-500 font-bold ml-1">SETTLED</span></p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Session Verified</p>
+                    <p className="text-sm font-black">All Reminders Delivered</p>
                  </div>
-              </motion.div>
+              </div>
            </div>
         </div>
       </section>
+
+      {/* Feature Bento Grid */}
       <section id="features" className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24 max-w-3xl mx-auto space-y-6">
-            <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">{t.whyFounders}</h2>
+            <h2 className="text-5xl md:text-8xl font-black text-brand-dark tracking-tight leading-[0.8]">{t.whyFounders}</h2>
             <p className="text-xl text-slate-500 font-medium">{t.autonomousEngine}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {[
-              { 
-                title: 'AI Booking Concierge', 
-                desc: 'Your private AI agent answers client questions and clarifies value before they even book—available in multiple languages.', 
-                icon: Sparkles,
-                color: 'bg-brand-blue'
-              },
-              { 
-                title: 'Global Payouts', 
-                desc: 'Support for independent professionals worldwide. Accept payments in any major currency with regional compliance automated.', 
-                icon: CreditCard,
-                color: 'bg-emerald-500' 
-              },
-              { 
-                title: 'Zero Ad Pollution', 
-                desc: 'Total white-labeling. Your brand. Your domain. Your rules. Not even a "Powered by" footer.', 
-                icon: ShieldCheck,
-                color: 'bg-brand-dark' 
-              }
-            ].map((f, i) => (
-              <motion.div 
-                key={i}
-                whileHover={{ y: -10 }}
-                className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-2xl transition-all"
-              >
-                <div className={`w-16 h-16 ${f.color} text-white rounded-[24px] flex items-center justify-center mb-8 shadow-xl`}><f.icon size={32} /></div>
-                <h3 className="text-2xl font-black text-brand-dark mb-4">{f.title}</h3>
-                <p className="text-slate-500 font-medium leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 h-auto">
+             <div className="md:col-span-8 bg-white p-10 md:p-16 rounded-[60px] border border-slate-100 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden group">
+                <div className="relative z-10 space-y-6 max-w-lg">
+                   <div className="w-16 h-16 bg-brand-blue text-white rounded-3xl flex items-center justify-center shadow-xl mb-10"><Sparkles size={32} /></div>
+                   <h3 className="text-4xl font-black text-brand-dark mb-4">{t.aiAssistantTitle}</h3>
+                   <p className="text-xl text-slate-500 font-medium leading-relaxed">Your AI concierge clarifies value, answers complex questions, and books sessions automatically across 90+ languages.</p>
+                </div>
+                <div className="absolute bottom-0 right-0 w-80 h-80 bg-brand-blue/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 group-hover:scale-150 transition-transform duration-1000" />
+             </div>
+             
+             <div className="md:col-span-4 bg-emerald-500 p-10 rounded-[60px] text-white space-y-6 flex flex-col justify-between hover:scale-[1.02] transition-all cursor-pointer group shadow-xl shadow-emerald-500/20">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-all"><DollarSign size={32} /></div>
+                <div>
+                   <h3 className="text-3xl font-black leading-tight mb-2">{t.payoutGlobal || "Global Payouts"}</h3>
+                   <p className="text-emerald-50 font-medium italic opacity-80">Connected to 135+ currencies.</p>
+                </div>
+             </div>
+
+             <div className="md:col-span-4 bg-brand-dark p-10 rounded-[60px] text-white flex flex-col justify-between h-80 hover:shadow-2xl transition-all cursor-pointer group">
+                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center group-hover:-rotate-6 transition-all"><ShieldCheck size={32} /></div>
+                <h3 className="text-3xl font-black leading-tight">{t.whiteLabelTitle || "100% White-labelled"}</h3>
+             </div>
+
+             <div className="md:col-span-8 bg-slate-50 p-10 md:p-16 rounded-[60px] border border-slate-100 flex flex-col md:flex-row items-center gap-10 hover:shadow-xl transition-all">
+                <div className="flex-1 space-y-4">
+                   <h3 className="text-3xl font-black text-brand-dark">{t.portalPreviewTitle || "Professional Client Experience"}</h3>
+                   <p className="text-slate-500 font-medium">Give your clients a passwordless portal to manage sessions, access meetings, and sync their own calendars.</p>
+                </div>
+                <div className="w-full md:w-64 h-48 bg-white rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                   <div className="absolute inset-x-0 top-0 h-6 bg-slate-50 border-b border-slate-100 flex items-center px-4 gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                   </div>
+                   <div className="p-6 pt-10 space-y-4">
+                      <div className="h-4 w-2/3 bg-slate-100 rounded-full" />
+                      <div className="h-4 w-full bg-slate-50 rounded-full" />
+                      <div className="h-10 w-full bg-brand-blue/10 rounded-xl" />
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
       </section>
 
-
-
-      {/* Pricing / Value Deck */}
-      <section id="pricing" className="py-32 px-6 bg-slate-50/50">
+      {/* The Real Pricing / Beta Offer */}
+      <section id="pricing" className="py-40 px-6 bg-white overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-brand-blue/[0.03] rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2" />
+        
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 max-w-3xl mx-auto space-y-6">
-              <h2 className="text-5xl font-black text-brand-dark tracking-tight leading-[0.9]">Free for <span className="text-brand-blue underline decoration-slate-200">Early Adopters.</span></h2>
-              <p className="text-xl text-slate-500 font-medium font-black italic">INVITE-ONLY BETA: ALL PLANS $0 FOR NOW</p>
-              
-              <div className="flex flex-col items-center gap-6 pt-8 opacity-50 pointer-events-none">
-                <div className="flex items-center gap-5 p-1.5 bg-white rounded-[20px] border border-slate-200 w-fit shadow-sm">
-                  <button 
-                    onClick={() => setBillingCycle('monthly')} 
-                    className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all ${billingCycle === 'monthly' ? 'bg-brand-blue text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    Monthly
-                  </button>
-                  <button 
-                    onClick={() => setBillingCycle('annual')} 
-                    className={`px-8 py-3 rounded-[15px] text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'annual' ? 'bg-brand-blue text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    Annual <span className={`text-[10px] px-2 py-0.5 rounded-full ${billingCycle === 'annual' ? 'bg-white/20 text-white' : 'bg-emerald-500 text-white'}`}>Save 45%</span>
-                  </button>
-                </div>
+          <div className="text-center mb-20 max-w-4xl mx-auto space-y-8">
+              <div className="inline-flex items-center gap-3 px-6 py-2 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-500/20">
+                 <Crown size={16} /> {t.betaTitle || "Early Adopter Beta"}
               </div>
+              <h2 className="text-6xl md:text-[8rem] font-black text-brand-dark tracking-tight leading-[0.8]">{t.betaBadge || "Lifetime Free Access."}</h2>
+              <p className="text-xl md:text-3xl text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed">
+                 {t.betaOffer || "Join our invite-only beta today and get a Lifetime Premium account for $0. No credit card required, no catch—just pure performance."}
+              </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto relative z-10">
              {/* Starter */}
-             <div className="bg-white p-12 rounded-[50px] border border-slate-100 flex flex-col hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
+             <div className="bg-white p-12 rounded-[60px] border border-slate-100 flex flex-col hover:shadow-3xl transition-all duration-700 opacity-60">
                 <div className="shrink-0 mb-10">
                   <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mb-6"><Rocket size={24} /></div>
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">Starting Out</p>
-                  <h3 className="text-3xl font-black text-brand-dark">Essentials</h3>
+                  <h3 className="text-2xl font-black text-brand-dark uppercase tracking-wide">Essentials</h3>
                 </div>
                 <div className="flex items-baseline gap-2 mb-10">
-                  <span className="text-6xl font-black text-brand-dark tracking-tighter">
-                    $0
-                  </span>
-                  <span className="text-xl font-bold text-slate-400 line-through decoration-brand-blue">
-                    ${billingCycle === 'annual' ? annualStarter : monthlyStarter}
-                  </span>
+                  <span className="text-6xl font-black text-brand-dark tracking-tighter">$0</span>
                   <span className="text-slate-400 font-bold text-xl">/mo</span>
                 </div>
                 <div className="flex-1 space-y-6 mb-12">
@@ -306,81 +390,108 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
                      </div>
                    ))}
                 </div>
-                <button onClick={() => onStart()} className="w-full py-6 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-blue transition-all shadow-xl">
-                  {isLoggedIn ? 'Dashboard' : 'Activate Free Account'}
+                <button onClick={() => onStart()} className="w-full py-6 bg-slate-100 text-slate-400 rounded-3xl font-black uppercase tracking-widest text-sm cursor-not-allowed">
+                  Use Pro Instead
                 </button>
              </div>
 
-             {/* Pro */}
-             <div className="bg-brand-blue p-12 rounded-[50px] text-white flex flex-col scale-105 shadow-[0_40px_80px_-15px_rgba(0,107,255,0.3)] relative overflow-hidden group">
+             {/* Professional */}
+             <div className="bg-brand-blue p-12 md:p-16 rounded-[60px] text-white flex flex-col shadow-3xl shadow-brand-blue/30 scale-105 relative group overflow-hidden">
                 <div className="absolute top-0 right-0 p-8">
-                   <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest">Best Value</div>
+                   <div className="px-5 py-2 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-[0.2em] animate-bounce">Limited Invite</div>
                 </div>
+                
                 <div className="shrink-0 mb-10">
-                  <div className="w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center mb-6"><Crown size={24} /></div>
-                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">Global Growth</p>
-                  <h3 className="text-3xl font-black text-white">Professional</h3>
+                  <div className="w-16 h-16 bg-white/20 text-white rounded-3xl flex items-center justify-center mb-8 shadow-inner"><Crown size={32} /></div>
+                  <h3 className="text-4xl font-black text-white">Professional</h3>
+                  <p className="text-white/40 font-black uppercase tracking-widest text-[10px] mt-2">The Complete OS</p>
                 </div>
-                <div className="flex items-baseline gap-2 mb-10">
-                  <span className="text-6xl font-black text-white tracking-tighter text-shadow-xl">
-                    $0
-                  </span>
-                  <span className="text-xl font-bold text-white/40 line-through decoration-white/20">
-                    ${billingCycle === 'annual' ? annualElite : monthlyElite}
-                  </span>
+                
+                <div className="flex items-baseline gap-2 mb-12">
+                  <div className="relative">
+                    <span className="text-8xl font-black text-white tracking-tighter">$0</span>
+                    <div className="absolute -top-4 -right-12 rotate-12 bg-rose-500 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter">LIFETIME</div>
+                  </div>
+                  <span className="text-2xl font-bold text-white/40 line-through">$25</span>
                   <span className="text-white/60 font-bold text-xl">/mo</span>
                 </div>
-                <div className="flex-1 space-y-6 mb-12">
-                   {['Full AI Concierge', 'Automated Payouts', 'Strategic AI Audit', 'Priority API Access', 'Team Management'].map(f => (
-                     <div key={f} className="flex items-center gap-3 text-sm font-black text-white">
-                        <Check size={18} className="text-white" /> {f}
+                
+                <div className="flex-1 space-y-6 mb-16">
+                   {[
+                     'Full AI Concierge (Unlimited)', 
+                     'Team & Staff Management', 
+                     'WhatsApp/SMS Reminders', 
+                     'Professional Client Portal',
+                     'Build-in Video Meetings',
+                     '100% White-labelled Page'
+                   ].map(f => (
+                     <div key={f} className="flex items-center gap-4 text-base font-black text-white">
+                        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center shrink-0"><Check size={14} className="text-white" strokeWidth={4} /></div>
+                        {f}
                      </div>
                    ))}
                 </div>
-                <button onClick={() => onStart()} className="w-full py-6 bg-white text-brand-blue rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-brand-dark hover:text-white transition-all shadow-2xl">
-                  {isLoggedIn ? 'Dashboard' : 'Activate Free Pro'}
+                
+                <button 
+                  onClick={() => onStart()} 
+                  className="w-full py-8 bg-white text-brand-blue rounded-3xl font-black uppercase tracking-widest text-lg shadow-2xl hover:bg-brand-dark hover:text-white transition-all transform hover:-translate-y-2 active:scale-95"
+                >
+                  {isLoggedIn ? 'Access Core' : 'Activate Lifetime Pro'}
                 </button>
+             </div>
+          </div>
+          
+          <div className="mt-40 text-center space-y-6">
+             <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Global Standards Compliance</p>
+             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-30 grayscale">
+                {['GDPR COMPLIANT', 'SSL SECURED', 'PCI DSS READY', '256-BIT ENCRYPTION'].map(t => (
+                  <span key={t} className="text-[9px] font-black tracking-widest text-slate-900 border border-slate-900/10 px-3 py-1 rounded">{t}</span>
+                ))}
              </div>
           </div>
         </div>
       </section>
 
-      {/* FOMO Countdown / Footer */}
-      <section className="bg-brand-dark py-32 text-white relative overflow-hidden px-6">
-        <div className="max-w-4xl mx-auto text-center space-y-12 relative z-10">
-            <div className="w-20 h-20 bg-brand-blue mx-auto rounded-3xl flex items-center justify-center shadow-2xl shadow-brand-blue/20 rotate-12 mb-10"><Zap size={40} fill="currentColor" /></div>
-            <h2 className="text-5xl md:text-8xl font-black leading-[0.8] tracking-tighter">{t.itIsHere}</h2>
-            <p className="text-xl text-white/60 font-medium max-w-xl mx-auto">
-               {t.dontLetMeetingSlip}
+      {/* CTA Footer */}
+      <section className="bg-brand-dark py-40 text-white relative overflow-hidden px-6">
+        <div className="absolute inset-0">
+           <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-brand-blue/10 rounded-full blur-[150px] translate-x-1/3 translate-y-1/3 rotate-45" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center space-y-16 relative z-10">
+            <div className="w-24 h-24 bg-brand-blue mx-auto rounded-[32px] flex items-center justify-center shadow-3xl shadow-brand-blue/40 rotate-12 mb-10"><Zap size={48} fill="currentColor" /></div>
+            <h2 className="text-6xl md:text-9xl font-black leading-[0.8] tracking-tighter">{t.itIsHere}</h2>
+            <p className="text-xl md:text-3xl text-white/60 font-medium max-w-2xl mx-auto leading-relaxed">
+               Ready to upgrade your business infrastructure? Join the elite professionals moving to AI-native scheduling.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-6 pt-10">
-               <button onClick={() => onStart()} className="w-full sm:w-auto px-16 py-8 bg-brand-blue text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-brand-blue/40 hover:scale-105 transition-all">{t.beginToday}</button>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-8 pt-10">
+               <button onClick={() => onStart()} className="w-full sm:w-auto px-20 py-10 bg-brand-blue text-white rounded-[40px] font-black text-3xl shadow-3xl shadow-brand-blue/50 hover:scale-105 active:scale-95 transition-all">{t.beginToday}</button>
             </div>
             
-            <div className="pt-24 grid grid-cols-1 md:grid-cols-4 gap-10 text-left border-t border-white/5">
+            <div className="pt-32 grid grid-cols-1 md:grid-cols-4 gap-16 text-left border-t border-white/5">
                <div className="col-span-2">
-                  <Logo size="lg" className="mb-6" />
-                  <p className="text-sm text-white/40 font-medium max-w-xs">Building the global infrastructure for autonomous scheduling and high-velocity commerce.</p>
+                  <Logo size="lg" className="mb-8" />
+                  <p className="text-base text-white/30 font-medium max-w-xs leading-relaxed">Building the global infrastructure for autonomous scheduling and high-velocity commerce.</p>
                </div>
                <div>
-                  <h5 className="text-[10px] font-black uppercase tracking-[0.2em] mb-6 text-white/40">Product</h5>
-                  <div className="flex flex-col gap-4 text-sm font-bold text-white/60">
-                     <a href="#" className="hover:text-white transition-all">Features</a>
-                     <a href="#" className="hover:text-white transition-all">Integrations</a>
-                     <a href="#" className="hover:text-white transition-all">Pricing</a>
+                  <h5 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-white/20">Product</h5>
+                  <div className="flex flex-col gap-6 text-sm font-bold text-white/50">
+                     <a href="#features" className="hover:text-white transition-all uppercase tracking-widest text-[10px]">Features</a>
+                     <a href="#staff" className="hover:text-white transition-all uppercase tracking-widest text-[10px]">Staff Management</a>
+                     <a href="#ai" className="hover:text-white transition-all uppercase tracking-widest text-[10px]">AI Concierge</a>
                   </div>
                </div>
                <div>
-                  <h5 className="text-[10px] font-black uppercase tracking-[0.2em] mb-6 text-white/40">Company</h5>
-                  <div className="flex flex-col gap-4 text-sm font-bold text-white/60">
-                     <a href="#" className="hover:text-white transition-all">About</a>
-                     <a href="#" className="hover:text-white transition-all">Careers</a>
-                     <a href="#" className="hover:text-white transition-all">Privacy</a>
+                  <h5 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-white/20">Company</h5>
+                  <div className="flex flex-col gap-6 text-sm font-bold text-white/50">
+                     <a href="#" className="hover:text-white transition-all uppercase tracking-widest text-[10px]">Privacy</a>
+                     <a href="#" className="hover:text-white transition-all uppercase tracking-widest text-[10px]">Terms</a>
+                     <a href="#" className="hover:text-white transition-all uppercase tracking-widest text-[10px]">Support</a>
                   </div>
                </div>
             </div>
             
-            <p className="pt-20 text-[10px] font-black text-white/10 uppercase tracking-[0.5em]">© 2024 EasyBookly Global. All rights reserved.</p>
+            <p className="pt-24 text-[10px] font-black text-white/5 uppercase tracking-[1em]">© 2024 EasyBookly Global. v1.2 Pro Edition.</p>
         </div>
       </section>
 

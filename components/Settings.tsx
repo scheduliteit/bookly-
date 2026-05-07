@@ -27,6 +27,8 @@ interface SettingsProps {
   onUpdateReminderSettings: (settings: any) => void;
   availabilitySettings?: any;
   onUpdateAvailabilitySettings?: (settings: any) => void;
+  dateOverrides?: { [date: string]: { active: boolean; start?: string; end?: string } };
+  onUpdateDateOverrides?: (overrides: any) => void;
   staff?: any[];
   onUpdateStaff?: (staff: any[]) => void;
   userId: string;
@@ -53,6 +55,8 @@ const Settings: React.FC<SettingsProps> = ({
   onUpdateReminderSettings,
   availabilitySettings,
   onUpdateAvailabilitySettings,
+  dateOverrides = {},
+  onUpdateDateOverrides,
   staff = [],
   onUpdateStaff,
   userId,
@@ -63,6 +67,28 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'services' | 'availability' | 'payouts' | 'legal' | 'localization' | 'reminders' | 'audit' | 'staff'>(initialTab || 'profile');
   const [name, setName] = useState(businessName);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [newOverrideDate, setNewOverrideDate] = useState('');
+  const [newOverrideStart, setNewOverrideStart] = useState('09:00');
+  const [newOverrideEnd, setNewOverrideEnd] = useState('17:00');
+  const [newOverrideActive, setNewOverrideActive] = useState(false);
+
+  const handleUpdateStaffHours = (staffId: string, day: string, data: any) => {
+    if (!onUpdateStaff) return;
+    const updatedStaff = staff.map(s => {
+      if (s.id === staffId) {
+        return {
+          ...s,
+          workingHours: {
+            ...s.workingHours,
+            [day]: { ...s.workingHours[day], ...data }
+          }
+        };
+      }
+      return s;
+    });
+    onUpdateStaff(updatedStaff);
+  };
 
   const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'member', color: '#006bff' });
 
@@ -318,7 +344,8 @@ const Settings: React.FC<SettingsProps> = ({
                ) : (
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {staff.map((member: any) => (
-                      <div key={member.id} className="relative group bg-white border border-slate-100 p-6 rounded-[24px] shadow-sm hover:shadow-md transition-all">
+                      <React.Fragment key={member.id}>
+                        <div className="relative group bg-white border border-slate-100 p-6 rounded-[24px] shadow-sm hover:shadow-md transition-all">
                          <div className="flex items-center gap-4 mb-4">
                             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black" style={{ backgroundColor: member.color }}>
                                {member.name.charAt(0).toUpperCase()}
@@ -339,7 +366,12 @@ const Settings: React.FC<SettingsProps> = ({
                             </div>
                          </div>
                          <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                            <button className="text-[10px] font-black text-brand-blue uppercase tracking-widest hover:underline">Edit Hours</button>
+                            <button 
+                              onClick={() => setEditingStaffId(member.id === editingStaffId ? null : member.id)}
+                              className="text-[10px] font-black text-brand-blue uppercase tracking-widest hover:underline"
+                            >
+                               {editingStaffId === member.id ? 'Close' : 'Edit Hours'}
+                            </button>
                             <button 
                               onClick={() => handleDeleteStaff(member.id)}
                               className="text-slate-300 hover:text-rose-600 transition-colors"
@@ -348,7 +380,48 @@ const Settings: React.FC<SettingsProps> = ({
                             </button>
                          </div>
                       </div>
-                    ))}
+                      {editingStaffId === member.id && (
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-slate-50/50 p-8 rounded-[32px] border border-slate-100 animate-in slide-in-from-top-4">
+                           <div className="flex items-center justify-between mb-6">
+                              <h4 className="text-sm font-black text-brand-dark uppercase tracking-widest">Working Hours for {member.name}</h4>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Manage individual availability</p>
+                           </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {Object.entries(member.workingHours || {}).map(([day, hours]: [string, any]) => (
+                                <div key={day} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                   <div className="flex items-center gap-3">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={hours.active} 
+                                        onChange={(e) => handleUpdateStaffHours(member.id, day, { active: e.target.checked })}
+                                        className="w-4 h-4 rounded text-brand-blue" 
+                                      />
+                                      <span className="text-xs font-bold w-20">{day}</span>
+                                   </div>
+                                   {hours.active && (
+                                     <div className="flex items-center gap-2">
+                                        <input 
+                                          type="time" 
+                                          value={hours.start} 
+                                          onChange={(e) => handleUpdateStaffHours(member.id, day, { start: e.target.value })}
+                                          className="px-2 py-1 bg-slate-50 border-0 rounded text-[10px] font-bold outline-none" 
+                                        />
+                                        <span className="text-[10px] text-slate-300">–</span>
+                                        <input 
+                                          type="time" 
+                                          value={hours.end} 
+                                          onChange={(e) => handleUpdateStaffHours(member.id, day, { end: e.target.value })}
+                                          className="px-2 py-1 bg-slate-50 border-0 rounded text-[10px] font-bold outline-none" 
+                                        />
+                                     </div>
+                                   )}
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
                  </div>
                )}
 
@@ -534,51 +607,160 @@ const Settings: React.FC<SettingsProps> = ({
       )}
 
       {activeTab === 'availability' && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-bottom-4">
-          <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-             <div className="flex items-center gap-4">
-               <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
-                 <Clock size={20} />
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                 <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center">
+                   <Clock size={20} />
+                 </div>
+                 <div>
+                   <h3 className="font-bold text-brand-dark">Standard Working Hours</h3>
+                   <p className="text-xs text-slate-500">Global defaults for the business.</p>
+                 </div>
                </div>
-               <div>
-                 <h3 className="font-bold text-brand-dark">Working Hours</h3>
-                 <p className="text-xs text-slate-500">Active Schedule: Global Standard</p>
-               </div>
-             </div>
-             <button 
-               onClick={() => alert('Global schedule settings coming soon!')}
-               className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50"
-             >
-               Edit
-             </button>
+            </div>
+            
+            <div className="p-0">
+               {Object.entries(availabilitySettings?.workingHours || {}).map(([day, hours]: [string, any]) => (
+                 <div key={day} className={`px-8 py-5 flex items-center justify-between border-b border-slate-50 last:border-0 ${!hours.active ? 'bg-slate-50/30' : ''}`}>
+                    <div className="flex items-center gap-6 w-48">
+                       <input 
+                        type="checkbox" 
+                        checked={hours.active} 
+                        onChange={(e) => onUpdateAvailabilitySettings?.({
+                          ...availabilitySettings,
+                          workingHours: {
+                            ...availabilitySettings.workingHours,
+                            [day]: { ...hours, active: e.target.checked }
+                          }
+                        })}
+                        className="w-4 h-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" 
+                       />
+                       <span className={`text-sm font-bold ${hours.active ? 'text-brand-dark' : 'text-slate-400'}`}>{day}</span>
+                    </div>
+                    {hours.active ? (
+                      <div className="flex items-center gap-4">
+                         <input 
+                           type="time" 
+                           value={hours.start} 
+                           onChange={(e) => onUpdateAvailabilitySettings?.({
+                             ...availabilitySettings,
+                             workingHours: {
+                               ...availabilitySettings.workingHours,
+                               [day]: { ...hours, start: e.target.value }
+                             }
+                           })}
+                           className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" 
+                         />
+                         <span className="text-slate-300 font-bold">to</span>
+                         <input 
+                           type="time" 
+                           value={hours.end} 
+                           onChange={(e) => onUpdateAvailabilitySettings?.({
+                             ...availabilitySettings,
+                             workingHours: {
+                               ...availabilitySettings.workingHours,
+                               [day]: { ...hours, end: e.target.value }
+                             }
+                           })}
+                           className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" 
+                         />
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400 italic">Business Closed</span>
+                    )}
+                 </div>
+               ))}
+            </div>
           </div>
-          
-          <div className="p-0">
-             {schedule.map((item, idx) => (
-               <div key={item.day} className={`px-8 py-5 flex items-center justify-between border-b border-slate-50 last:border-0 ${!item.active ? 'bg-slate-50/30' : ''}`}>
-                  <div className="flex items-center gap-6 w-48">
-                     <input type="checkbox" checked={item.active} readOnly className="w-4 h-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" />
-                     <span className={`text-sm font-bold ${item.active ? 'text-brand-dark' : 'text-slate-400'}`}>{item.day}</span>
-                  </div>
-                  <div className={`flex-1 text-sm font-medium ${item.active ? 'text-brand-dark' : 'text-slate-400 italic'}`}>
-                     {item.hours}
-                  </div>
-                  {item.active && (
-                     <div className="flex items-center gap-4">
-                        <Plus 
-                          size={16} 
-                          onClick={() => alert('Add hours segment')}
-                          className="text-slate-400 cursor-pointer hover:text-brand-blue" 
-                        />
-                        <Trash2 
-                          size={16} 
-                          onClick={() => alert('Remove hours segment')}
-                          className="text-slate-400 cursor-pointer hover:text-rose-600" 
-                        />
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+             <div className="p-8 border-b border-slate-100">
+               <h3 className="font-bold text-brand-dark">Date Overrides & Absence</h3>
+               <p className="text-xs text-slate-500 mt-1">Set specific days as closed or with custom hours (e.g. holidays).</p>
+             </div>
+             <div className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Date</label>
+                      <input 
+                        type="date" 
+                        value={newOverrideDate}
+                        onChange={e => setNewOverrideDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none"
+                      />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                      <select 
+                        value={newOverrideActive ? 'open' : 'closed'}
+                        onChange={e => setNewOverrideActive(e.target.value === 'open')}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none"
+                      >
+                         <option value="closed">Closed / Vacation</option>
+                         <option value="open">Custom Hours</option>
+                      </select>
+                   </div>
+                   {newOverrideActive && (
+                     <>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start</label>
+                           <input type="time" value={newOverrideStart} onChange={e => setNewOverrideStart(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none" />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">End</label>
+                           <input type="time" value={newOverrideEnd} onChange={e => setNewOverrideEnd(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none" />
+                        </div>
+                     </>
+                   )}
+                   <button 
+                     disabled={!newOverrideDate}
+                     onClick={() => {
+                        onUpdateDateOverrides?.({
+                          ...dateOverrides,
+                          [newOverrideDate]: {
+                            active: newOverrideActive,
+                            start: newOverrideActive ? newOverrideStart : undefined,
+                            end: newOverrideActive ? newOverrideEnd : undefined
+                          }
+                        });
+                        setNewOverrideDate('');
+                     }}
+                     className="px-6 py-3 bg-brand-blue text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition-all disabled:opacity-50"
+                   >
+                     Add Override
+                   </button>
+                </div>
+
+                {Object.keys(dateOverrides).length > 0 && (
+                  <div className="space-y-4 pt-8 border-t border-slate-50">
+                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Active Overrides</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(dateOverrides).map(([date, data]: [string, any]) => (
+                          <div key={date} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
+                             <div>
+                                <p className="text-sm font-black text-slate-900">{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest ${data.active ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                   {data.active ? `${data.start} – ${data.end}` : 'Business Closed'}
+                                </p>
+                             </div>
+                             <button 
+                               onClick={() => {
+                                 const updated = { ...dateOverrides };
+                                 delete updated[date];
+                                 onUpdateDateOverrides?.(updated);
+                               }}
+                               className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
+                             >
+                                <Trash2 size={16} />
+                             </button>
+                          </div>
+                        ))}
                      </div>
-                  )}
-               </div>
-             ))}
+                  </div>
+                )}
+             </div>
           </div>
         </div>
       )}

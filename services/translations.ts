@@ -210,7 +210,19 @@ export const translations: Record<Language, any> = {
     syncNow: "Sync Now",
     syncing: "Syncing...",
     calendarSynced: "Calendar Synced",
-    audit: "Audit"
+    audit: "Audit",
+    staffManagementTitle: "Built for Teams & Solopreneurs",
+    staffManagementDesc: "Manage multiple staff members with individual calendars, specialized roles, and automatic cross-calendar availability syncing.",
+    remindersTitle: "Zero No-Shows, Guaranteed.",
+    remindersDesc: "Automated high-delivery reminders via Email, SMS, and WhatsApp. Keep your clients informed and your schedule full without lifting a finger.",
+    portalPreviewTitle: "A Professional Client Experience",
+    portalPreviewDesc: "Give your clients a beautiful, passwordless portal to manage their own bookings, join video calls, and access shared documents.",
+    betaTitle: "Early Adopter Beta",
+    betaBadge: "Limited Access",
+    betaOffer: "Join our invite-only beta today and get a Lifetime Premium account for $0. No credit card required.",
+    teamSupport: "Team Support",
+    unlimitedStaff: "Unlimited Staff Members",
+    payoutGlobal: "Global Payouts (135+ Currencies)"
   },
   he: {
     dashboard: "לוח בקרה",

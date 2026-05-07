@@ -7,6 +7,7 @@ import { Language, translations } from '../services/translations';
 interface AppointmentCalendarProps {
   appointments: Appointment[];
   externalEvents?: any[];
+  staff?: any[];
   language: Language;
   onAddClick: () => void;
   onUpdateAppointment?: (apt: Appointment) => void;
@@ -21,6 +22,7 @@ interface AppointmentCalendarProps {
 const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   appointments,
   externalEvents = [],
+  staff = [],
   language,
   onAddClick,
   onUpdateAppointment,
@@ -35,6 +37,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const [localActiveTab, setLocalActiveTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [view, setView] = useState<'list' | 'grid'>('list');
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
+  const [staffFilter, setStaffFilter] = useState<string>('all');
 
   const combined = [
     ...appointments,
@@ -53,6 +56,11 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   ];
 
   const filtered = combined.filter(apt => {
+    // Apply staff filter
+    if (staffFilter !== 'all') {
+      if (apt.staffId !== staffFilter) return false;
+    }
+
     const aptDate = new Date(apt.date);
     const now = new Date();
     now.setHours(0,0,0,0);
@@ -70,9 +78,26 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">
             {t.yourSchedule || 'Schedule'}
           </h1>
-          <p className="text-slate-500 font-medium mt-1">
-            {filtered.length} {localActiveTab} {filtered.length === 1 ? 'event' : 'events'}
-          </p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-slate-500 font-medium">
+              {filtered.length} {localActiveTab} {filtered.length === 1 ? 'event' : 'events'}
+            </p>
+            {staff.length > 0 && (
+              <>
+                <span className="text-slate-200">/</span>
+                <select 
+                  value={staffFilter}
+                  onChange={(e) => setStaffFilter(e.target.value)}
+                  className="text-xs font-black text-brand-blue uppercase tracking-widest bg-transparent outline-none cursor-pointer"
+                >
+                  <option value="all">All Team</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center gap-3">

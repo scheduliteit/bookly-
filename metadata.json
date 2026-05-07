@@ -1,6 +1,6 @@
 {
-  "name": "EasyBookly - Intelligent Scheduling",
-  "description": "The ultimate intelligent scheduling platform for modern businesses",
+  "name": "EasyBookly PRO",
+  "description": "Enterprise-grade AI scheduling infrastructure for modern professionals. Automate bookings, manage staff, and accept global payments with our autonomous commerce engine.",
   "requestFramePermissions": [
     "camera",
     "microphone",

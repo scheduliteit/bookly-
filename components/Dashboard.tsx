@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Appointment, Client, Service, User } from '../types';
-import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, TrendingUp, ArrowRight, CheckCircle, Smartphone, Video, BarChart3, PieChart } from 'lucide-react';
+import { Plus, Link as LinkIcon, Copy, Check, Settings, MoreHorizontal, Globe, Calendar, Clock, Sparkles, LayoutGrid, Search, ExternalLink, Activity, Info, Eye, Users, User as UserIcon, TrendingUp, ArrowRight, CheckCircle, Smartphone, Video, BarChart3, PieChart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { geminiAssistant } from '../services/geminiService';
@@ -12,6 +12,7 @@ import MobileInstallGuide from './MobileInstallGuide';
 interface DashboardProps {
   user: User;
   services: Service[];
+  staff?: any[];
   businessName: string;
   appointments: Appointment[];
   externalEvents?: any[];
@@ -27,7 +28,7 @@ interface DashboardProps {
   onJoinMeeting?: (room: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, appointments, externalEvents = [], clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide, onJoinMeeting }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, services, staff = [], businessName, appointments, externalEvents = [], clients, connectedApps, legalData, currency, language, onOpenPublicView, onAddEventType, setActiveTab, onOpenMobileGuide, onJoinMeeting }) => {
   const t = translations[language];
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState(t.analyzing);
@@ -147,33 +148,101 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white border-2 border-brand-blue/10 rounded-[40px] p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8"
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-8"
       >
-        <div className="flex items-center gap-6">
-           <div className="w-16 h-16 bg-brand-blue/10 rounded-[28px] flex items-center justify-center text-brand-blue shrink-0">
-             <LinkIcon size={32} />
-           </div>
-           <div>
-             <h3 className="text-xl font-black text-brand-dark tracking-tight">{t.shareBookingLink}</h3>
-             <p className="text-sm text-slate-400 font-medium">{t.bookingLinkSubtitle}</p>
-           </div>
+        <div className="lg:col-span-8 bg-white border-2 border-brand-blue/10 rounded-[40px] p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-6">
+             <div className="w-16 h-16 bg-brand-blue/10 rounded-[28px] flex items-center justify-center text-brand-blue shrink-0">
+               <LinkIcon size={32} />
+             </div>
+             <div>
+               <h3 className="text-xl font-black text-brand-dark tracking-tight">{t.shareBookingLink}</h3>
+               <p className="text-sm text-slate-400 font-medium">{t.bookingLinkSubtitle}</p>
+             </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+             <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 flex items-center gap-4 min-w-[200px] lg:min-w-[300px]">
+                <Globe size={18} className="text-slate-300" />
+                <span className="text-sm font-bold text-slate-600 truncate">
+                  {window.location.origin}/book/{user.id}
+                </span>
+             </div>
+             <button 
+               onClick={() => handleCopyLink('master-link')}
+               className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all flex items-center justify-center gap-3 shrink-0"
+             >
+               {copiedId === 'master-link' ? <Check size={18} /> : <Copy size={18} />}
+               {copiedId === 'master-link' ? t.linkCopied : t.copyLink}
+             </button>
+          </div>
         </div>
-        
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
-           <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 flex items-center gap-4 min-w-[200px] lg:min-w-[400px]">
-              <Globe size={18} className="text-slate-300" />
-              <span className="text-sm font-bold text-slate-600 truncate">
-                {window.location.origin}/book/{user.id}
-              </span>
+
+        {/* Live Next Up Card */}
+        <div className="lg:col-span-4 group relative">
+           <div className="absolute inset-0 bg-brand-blue rounded-[40px] rotate-2 scale-[1.02] opacity-5 -z-10 group-hover:rotate-0 transition-transform duration-500" />
+           <div className="bg-white border border-slate-100 rounded-[40px] p-8 shadow-sm h-full flex flex-col justify-between">
+              {allEvents.filter(a => new Date(`${a.date}T${a.time}`) > new Date()).length > 0 ? (
+                (() => {
+                  const next = allEvents.filter(a => new Date(`${a.date}T${a.time}`) > new Date())[0];
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="px-3 py-1 bg-brand-blue text-white rounded-full text-[8px] font-black uppercase tracking-[0.2em] animate-pulse">Next Up</div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{next.time}</p>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-2xl font-black text-brand-dark leading-tight line-clamp-1">{next.clientName}</h4>
+                          {(next as any).staffId && staff.length > 0 && (
+                            <div className="flex items-center gap-1.5 mt-1 text-slate-400">
+                              <UserIcon size={10} strokeWidth={3} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">
+                                {staff.find((s: any) => s.id === (next as any).staffId)?.name || 'Team Member'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-400">
+                          <Activity size={14} />
+                          <p className="text-xs font-bold uppercase tracking-widest">{next.service}</p>
+                        </div>
+                      </div>
+                      <div className="mt-6 flex items-center gap-3">
+                        <button 
+                          onClick={() => {
+                            if (next.meetingLink) {
+                               const room = next.meetingLink?.split('/').pop();
+                               if (room && onJoinMeeting) onJoinMeeting(room);
+                               else window.open(next.meetingLink, '_blank');
+                            } else {
+                               setActiveTab?.('calendar');
+                            }
+                          }}
+                          className="flex-1 py-3 bg-brand-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-dark transition-all"
+                        >
+                          {next.meetingLink ? 'Join Call' : 'Review Details'}
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab?.('calendar')}
+                          className="w-12 h-12 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors"
+                        >
+                          <Eye size={18} />
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center py-4">
+                   <div className="w-12 h-12 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center mb-4">
+                      <Clock size={24} />
+                   </div>
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No upcoming sessions</p>
+                </div>
+              )}
            </div>
-           <button 
-             onClick={() => handleCopyLink('master-link')}
-             className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all flex items-center justify-center gap-3 shrink-0"
-           >
-             {copiedId === 'master-link' ? <Check size={18} /> : <Copy size={18} />}
-             {copiedId === 'master-link' ? t.linkCopied : t.copyLink}
-           </button>
         </div>
       </motion.div>
 
@@ -456,6 +525,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, services, businessName, app
                          <h4 className="text-base font-black text-brand-dark leading-tight">{apt.clientName}</h4>
                          {apt.origin === 'external' && (
                            <span className="text-[8px] font-black text-brand-blue uppercase bg-brand-blue/10 px-1.5 py-0.5 rounded-md">Synced</span>
+                         )}
+                         {(apt as any).staffId && (
+                           <span className="text-[8px] font-black text-slate-400 uppercase bg-slate-100 px-1.5 py-0.5 rounded-md">
+                             {staff.find(s => s.id === (apt as any).staffId)?.name || 'Team'}
+                           </span>
                          )}
                        </div>
                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 italic">{apt.service}</p>

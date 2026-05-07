@@ -666,12 +666,13 @@ const App: React.FC = () => {
           {(() => {
             switch (activeTab) {
               case 'dashboard':
-                return <Dashboard user={user!} services={services} businessName={businessName} appointments={appointments} externalEvents={externalEvents} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} onJoinMeeting={setActiveMeetingRoom} />;
+                return <Dashboard user={user!} services={services} staff={staff} businessName={businessName} appointments={appointments} externalEvents={externalEvents} clients={clients} connectedApps={connectedApps} legalData={legalData} currency={currency} language={language} onOpenPublicView={() => setIsPublicView(true)} onAddEventType={() => { setSettingsTab('services'); setActiveTab('settings'); }} setActiveTab={setActiveTab} onOpenMobileGuide={() => setShowMobileGuide(true)} onJoinMeeting={setActiveMeetingRoom} />;
               case 'calendar':
                 return (
                   <AppointmentCalendar 
                     appointments={appointments} 
                     externalEvents={externalEvents}
+                    staff={staff}
                     onAddClick={() => setShowAddModal(true)} 
                     onUpdateAppointment={(a) => api.appointments.update(a)} 
                     onDeleteAppointment={(id) => api.appointments.delete(id)} 
@@ -835,6 +836,10 @@ const App: React.FC = () => {
                     onUpdateAvailabilitySettings={(val) => {
                       setAvailabilitySettings(val);
                       updateUserSettings({ availabilitySettings: val });
+                    }}
+                    dateOverrides={user?.dateOverrides || {}}
+                    onUpdateDateOverrides={(val) => {
+                      updateUserSettings({ dateOverrides: val });
                     }}
                     staff={staff}
                     onUpdateStaff={(val) => {

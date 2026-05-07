@@ -49,6 +49,7 @@ export interface User {
       [key: string]: { start: string; end: string; active: boolean };
     };
   };
+  dateOverrides?: { [date: string]: { active: boolean; start?: string; end?: string } };
 }
 
 export interface Staff {

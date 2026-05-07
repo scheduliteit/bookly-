@@ -188,6 +188,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
         note: clientInfo.note,
         meetingLink: clientInfo.meetingLink,
         meetingPassword: clientInfo.meetingPassword,
+        ownerBusinessName: businessName
       } as any);
 
       setConfirmedMeetingLink(result.meetingLink || clientInfo.meetingLink || null);
@@ -388,6 +389,15 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                       <p className="font-bold">{formatInTimezone(selectedTime, selectedDate, timezone)} <span className="text-slate-400 font-medium">({selectedService?.duration} min)</span></p>
                     </div>
                   </div>
+                  {selectedStaff && (
+                    <div className={`flex items-start gap-3 text-sm text-slate-600 ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : ''}`}>
+                      <User size={18} className="text-slate-300 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Professional</p>
+                        <p className="font-bold">{selectedStaff.name}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -605,8 +615,12 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({
                     key={s.name} 
                     onClick={() => { 
                       setSelectedService(s); 
-                      if (staff.length > 1) setStep(2);
-                      else setStep(3);
+                      if (staff.length > 1) {
+                        setStep(2);
+                      } else {
+                        if (staff.length === 1) setSelectedStaff(staff[0]);
+                        setStep(3);
+                      }
                     }}
                     className={`p-8 bg-white border border-slate-200 rounded-2xl hover:border-brand-blue hover:shadow-xl hover:shadow-brand-blue/5 transition-all group flex items-center justify-between ${t.dir === 'rtl' ? 'flex-row-reverse text-right' : 'text-left'}`}
                    >

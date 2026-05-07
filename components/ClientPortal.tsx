@@ -20,6 +20,29 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ businessId }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check for email in URL for auto-login
+    const params = new URLSearchParams(window.location.search);
+    const urlEmail = params.get('email');
+    if (urlEmail && urlEmail.includes('@')) {
+      setEmail(urlEmail);
+      // Auto-trigger login
+      const autoTrigger = async () => {
+        setIsVerifying(true);
+        try {
+          const appts = await api.appointments.getByClientEmail(businessId, urlEmail);
+          if (appts.length > 0) {
+            setAppointments(appts);
+            setIsLoggedIn(true);
+          }
+        } catch (err) {
+          console.error("Auto-login failed:", err);
+        } finally {
+          setIsVerifying(false);
+        }
+      };
+      autoTrigger();
+    }
+
     // Fetch business name
     const unsub = onSnapshot(doc(db, 'users', businessId), (docSnap) => {
       if (docSnap.exists()) {

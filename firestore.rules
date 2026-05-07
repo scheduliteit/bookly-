@@ -56,6 +56,7 @@ service cloud.firestore {
              (!('workingHours' in data) || data.workingHours is map) &&
              (!('legalData' in data) || data.legalData is map) &&
              (!('reminderSettings' in data) || data.reminderSettings is map) &&
+             (!('availabilitySettings' in data) || data.availabilitySettings is map) &&
              (!('staff' in data) || data.staff is list);
     }
 
@@ -94,8 +95,8 @@ service cloud.firestore {
       allow get: if true; // Allow public lookups for business details
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'subscriptionPlan', 'googleCalendarTokens', 'outlookCalendarTokens', 'role', 'staff'])) ||
-        ((request.auth.token.email != null && (request.auth.token.email.lower() == 'm.elsalameen@gmail.com' || request.auth.token.email.lower() == 'scheduliteit@gmail.com')) && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'language', 'googleCalendarTokens', 'outlookCalendarTokens', 'staff']))
+        (incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'availabilitySettings', 'language', 'subscriptionPlan', 'googleCalendarTokens', 'outlookCalendarTokens', 'role', 'staff'])) ||
+        ((request.auth.token.email != null && (request.auth.token.email.lower() == 'm.elsalameen@gmail.com' || request.auth.token.email.lower() == 'scheduliteit@gmail.com')) && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'email', 'createdAt', 'name', 'businessName', 'businessCategory', 'services', 'connectedApps', 'legalData', 'currency', 'onboardingCompleted', 'timezone', 'workingHours', 'role', 'subscriptionPlan', 'loginCount', 'lastLoginAt', 'lastSeenAt', 'reminderSettings', 'availabilitySettings', 'language', 'googleCalendarTokens', 'outlookCalendarTokens', 'staff']))
       );
       allow delete: if false; 
     }
@@ -108,20 +109,20 @@ service cloud.firestore {
 
     // /clients/{clientId}
     match /clients/{clientId} {
-      allow list: if true; 
-      allow get: if true; 
-      allow create: if true; 
-      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid) || (!isSignedIn());
-      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid) || (!isSignedIn());
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid; 
+      allow get: if true; // Public portal verification
+      allow create: if isSignedIn(); // Only admins can create clients directly
+      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
     }
 
     // /appointments/{appointmentId}
     match /appointments/{appointmentId} {
-      allow list: if true; 
-      allow get: if true; 
-      allow create: if true; 
-      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid) || (!isSignedIn());
-      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid) || (!isSignedIn());
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid; 
+      allow get: if true; // Public portal verification
+      allow create: if isSignedIn(); // Only admins/staff can create directly
+      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid); 
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
     }
 
     // /feedback/{feedbackId}

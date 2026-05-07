@@ -151,16 +151,27 @@ const initDb = async () => {
     if (admin.apps.length > 0) {
       adminApp = admin.app();
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-      adminApp = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log('[SERVER] Firebase Admin initialized with Service Account');
+      try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+        adminApp = admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
+        console.log('[SERVER] Firebase Admin initialized with Service Account from ENV');
+      } catch (e: any) {
+        console.error('[SERVER] Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:', e.message);
+        adminApp = null;
+      }
     } else {
-      // If no service account, we don't initialize adminApp to avoid "Default Credentials" errors
-      // Token verification will use fallback mock for dev mode
-      console.warn('[SERVER] No service account found. Using Web SDK for Firestore and Mock Auth.');
-      adminApp = null;
+      // Check for default credentials (GCP/Cloud Run)
+      try {
+        adminApp = admin.initializeApp({
+          projectId: firebaseConfig.projectId
+        });
+        console.log('[SERVER] Firebase Admin initialized with Default Credentials for project:', firebaseConfig.projectId);
+      } catch (e) {
+        console.warn('[SERVER] No service account or default credentials. Falling back to Web SDK.');
+        adminApp = null;
+      }
     }
 
     if (adminApp) {
@@ -362,17 +373,66 @@ app.post('/api/public/book', async (req: any, res: any) => {
     return res.status(500).json({ error: 'Database not initialized' });
   }
   const { userId, service, date, time, duration, locationType } = req.body;
+  let staffId = req.body.staffId;
   
-  console.log(`[BOOKING START] User: ${userId}, Service: ${service}, Date: ${date} ${time}`);
+  console.log(`[BOOKING START] User: ${userId}, Service: ${service}, Date: ${date} ${time}, Staff: ${staffId || 'Any'}`);
 
   try {
-    // 0. Double-check for conflicts (Atomic-ish check)
-    const conflictSnap = await db.collection('appointments')
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists) return res.status(404).json({ error: 'Merchant not found' });
+    const userData = userSnap.data();
+
+    // 0. Staff Assignment Logic for "Any"
+    const allStaff = userData.staff || [];
+    if (!staffId && allStaff.length > 0) {
+      // Find someone available at this exact time
+      // This is a simple version: pick the first staff who doesn't have an appointment at this time
+      for (const s of allStaff) {
+        const conflict = await db.collection('appointments')
+          .where('userId', '==', userId)
+          .where('staffId', '==', s.id)
+          .where('date', '==', date)
+          .where('time', '==', time)
+          .where('status', 'in', ['confirmed', 'pending'])
+          .limit(1).get();
+        
+        if (conflict.size === 0) {
+          staffId = s.id;
+          console.log(`[BOOKING] Auto-assigned staff: ${s.name} (${s.id})`);
+          break;
+        }
+      }
+      
+      if (!staffId) {
+        return res.status(409).json({ error: 'No staff available at this time.' });
+      }
+    }
+
+    // 0. Validation: Minimum Notice Check
+    const config = userData.availabilitySettings || {};
+    const minimumNotice = Number(config.minimumNotice || 0);
+    if (minimumNotice > 0) {
+      const now = new Date();
+      const noticeLimit = new Date(now.getTime() + minimumNotice * 60000);
+      const bookDate = new Date(`${date}T${time}`);
+      if (bookDate < noticeLimit) {
+        return res.status(400).json({ error: `Bookings must be made at least ${minimumNotice} minutes in advance.` });
+      }
+    }
+
+    // 0. Double-check for conflicts (Staff-specific)
+    let conflictQuery = db.collection('appointments')
       .where('userId', '==', userId)
       .where('date', '==', date)
-      .where('time', '==', time)
-      .limit(1)
-      .get();
+      .where('status', 'in', ['confirmed', 'pending'])
+      .where('time', '==', time);
+    
+    // Use the assigned staffId (either from request or auto-assigned)
+    if (staffId) {
+      conflictQuery = conflictQuery.where('staffId', '==', staffId);
+    }
+    
+    const conflictSnap = await conflictQuery.limit(1).get();
     
     if (conflictSnap.size > 0) {
       console.warn('[BOOKING] Conflict detected for time slot:', time);
@@ -398,6 +458,7 @@ app.post('/api/public/book', async (req: any, res: any) => {
       ...req.body, 
       meetingLink, 
       meetingPassword,
+      reminderSent: false,
       createdAt: new Date().toISOString()
     };
     
@@ -461,13 +522,18 @@ app.post('/api/public/book', async (req: any, res: any) => {
               </table>
             </div>
 
-            ${meetingLink ? `
-            <div style="text-align: center; margin-top: 32px;">
-              <a href="${meetingLink}" style="display: inline-block; background: #006bff; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Join Meeting</a>
+            <div style="display: flex; gap: 16px; justify-content: center; margin-top: 32px;">
+              ${meetingLink ? `
+                <a href="${meetingLink}" style="display: inline-block; background: #006bff; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 8px;">Join Meeting</a>
+              ` : ''}
+              <a href="${process.env.APP_URL || 'https://easybookly.com'}/manage/${userId}?email=${encodeURIComponent(req.body.clientEmail || '')}" style="display: inline-block; background: #f1f5f9; color: #1e293b; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Manage Booking</a>
             </div>
-            ` : ''}
 
-            <p style="font-size: 14px; color: #94a3b8; margin-top: 48px; text-align: center;">
+            <p style="font-size: 12px; color: #94a3b8; margin-top: 48px; text-align: center; font-style: italic;">
+              Need to reschedule? Use the "Manage Booking" link above to change your appointment details in our portal.
+            </p>
+
+            <p style="font-size: 14px; color: #94a3b8; margin-top: 24px; text-align: center;">
               Powered by <a href="https://easybookly.com" style="color: #006bff; text-decoration: none; font-weight: 600;">EasyBookly</a>
             </p>
           </div>
@@ -478,7 +544,7 @@ app.post('/api/public/book', async (req: any, res: any) => {
         await sgMail.send({
           to: req.body.clientEmail,
           from: 'hello@easybookly.com',
-          subject: `Confirmed: ${service} with ${businessName}`,
+          subject: `Confirmed: ${service} with ${req.body.ownerBusinessName || 'the business'}`,
           html: htmlContent
         });
         console.log('[BOOKING] Confirmation email sent');
@@ -721,22 +787,14 @@ app.get('/api/availability', async (req, res) => {
     const appointmentsSnap = await apptQuery.get();
     const existingBookings = (appointmentsSnap.docs || []).map((doc: any) => ({
       time: doc.data().time,
-      duration: doc.data().duration || 30
+      duration: doc.data().duration || 30,
+      staffId: doc.data().staffId
     }));
 
-    const busySlots: { start: Date, end: Date }[] = [];
-
-    // Convert existing bookings to busySlots with buffer
-    existingBookings.forEach((b: any) => {
-      const start = new Date(`${selectedDate}T${b.time}`);
-      const end = new Date(start.getTime() + (b.duration || 30) * 60000 + bufferTime * 60000);
-      const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
-      busySlots.push({ start: startWithBuffer, end });
-    });
+    const externalBusySlots: { start: Date, end: Date }[] = [];
 
     // 2. Fetch Merchant External Events (Google/Outlook)
-    // Only if no staffId OR if staffId is for the owner (simplified for now)
-    if (!staffId || staffId === merchantId) {
+    if (!staffId || staffId === merchantId || staffId === 'any') {
       if (userData.googleCalendarTokens) {
         try {
           const timeMin = new Date(`${selectedDate}T00:00:00Z`).toISOString();
@@ -747,7 +805,7 @@ app.get('/api/availability', async (req, res) => {
               const start = new Date(item.start.dateTime);
               const end = new Date(new Date(item.end.dateTime).getTime() + bufferTime * 60000);
               const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
-              busySlots.push({ start: startWithBuffer, end });
+              externalBusySlots.push({ start: startWithBuffer, end });
             }
           });
         } catch (e) { console.error('[AVAILABILITY] Google fetch failed'); }
@@ -766,7 +824,7 @@ app.get('/api/availability', async (req, res) => {
             const start = new Date(item.start.dateTime + 'Z');
             const end = new Date(new Date(item.end.dateTime + 'Z').getTime() + bufferTime * 60000);
             const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
-            busySlots.push({ start: startWithBuffer, end });
+            externalBusySlots.push({ start: startWithBuffer, end });
           });
         } catch (e) { console.error('[AVAILABILITY] Outlook fetch failed'); }
       }
@@ -774,46 +832,83 @@ app.get('/api/availability', async (req, res) => {
 
     // 3. Determine Working Hours
     const dayOfWeek = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
-    let workingHours = config.workingHours?.[dayOfWeek] || { start: '09:00', end: '18:00', active: true };
     
-    if (staffId && staffId !== 'any' && userData.staff) {
-        const staffMember = userData.staff.find((s:any) => s.id === staffId);
-        if (staffMember?.workingHours?.[dayOfWeek]) {
-            workingHours = staffMember.workingHours[dayOfWeek];
-        } else {
-           // If staff has no hours set for this day, assume inactive
-           workingHours = { start: '09:00', end: '18:00', active: false };
+    // Helper to get busy slots for a specific staff member
+    const getStaffBusySlots = (sId: string) => {
+        const slots: { start: Date, end: Date }[] = [];
+        
+        // Internal bookings for this staff on this date
+        // Note: existingBookings was fetched earlier as an array of data
+        existingBookings.filter((b: any) => b.staffId === sId).forEach((b: any) => {
+            const start = new Date(`${selectedDate}T${b.time}`);
+            const end = new Date(start.getTime() + (b.duration || 30) * 60000 + bufferTime * 60000);
+            const startWithBuffer = new Date(start.getTime() - bufferTime * 60000);
+            slots.push({ start: startWithBuffer, end });
+        });
+
+        // External events - only apply to merchant/owner
+        if (sId === merchantId) {
+            externalBusySlots.forEach(slot => slots.push(slot));
         }
+        return slots;
+    };
+
+    const getStaffAvailability = (member: any) => {
+        let hours = member.workingHours?.[dayOfWeek] || { start: '09:00', end: '18:00', active: false };
+        
+        // Apply Global Date Overrides (Vacation / Special Closure)
+        if (userData.dateOverrides?.[selectedDate]) {
+          const override = userData.dateOverrides[selectedDate];
+          if (!override.active) return []; // Explicitly closed
+          hours = { ...hours, ...override };
+        }
+
+        if (!hours.active) return [];
+        
+        const staffBusy = getStaffBusySlots(member.id);
+        const stSlots = [];
+        const interval = 30;
+        let curr = new Date(`${selectedDate}T${hours.start}`);
+        const endDay = new Date(`${selectedDate}T${hours.end}`);
+        const now = new Date();
+        const noticeLimit = new Date(now.getTime() + minimumNotice * 60000);
+
+        while (curr < endDay) {
+            const slotStart = new Date(curr);
+            const slotEnd = new Date(curr.getTime() + interval * 60000);
+            const isBusy = staffBusy.some(busy => slotStart < busy.end && slotEnd > busy.start);
+            if (!isBusy && slotStart >= now && slotStart >= noticeLimit) {
+                stSlots.push(curr.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+            }
+            curr = new Date(curr.getTime() + interval * 60000);
+        }
+        return stSlots;
+    };
+
+    if (staffId && staffId !== 'any') {
+        const staffMember = (userData.staff || []).find((s: any) => s.id === staffId);
+        if (!staffMember) return res.json([]);
+        const slots = getStaffAvailability(staffMember);
+        return res.json(slots);
+    } else {
+        // Aggregate availability across all active staff, or fallback to merchant
+        const allStaff = userData.staff || [];
+        if (allStaff.length === 0) {
+            // No staff defined, use merchant's global availability
+            const merchantAsStaff = { 
+                id: merchantId, 
+                name: userData.businessName || 'Business Owner', 
+                workingHours: userData.availabilitySettings?.workingHours || (userData as any).workingHours 
+            };
+            return res.json(getStaffAvailability(merchantAsStaff));
+        }
+        
+        const aggregatedSlots = new Set<string>();
+        allStaff.forEach((s: any) => {
+            getStaffAvailability(s).forEach(slot => aggregatedSlots.add(slot));
+        });
+        return res.json(Array.from(aggregatedSlots).sort());
     }
-
-    if (!workingHours.active) return res.json([]);
-
-    // 4. Generate slots
-    const slots = [];
-    const interval = 30; // Default slot interval
-    let current = new Date(`${selectedDate}T${workingHours.start}`);
-    const endOfDay = new Date(`${selectedDate}T${workingHours.end}`);
-    const now = new Date();
-    const noticeLimit = new Date(now.getTime() + minimumNotice * 60000);
-
-    while (current < endOfDay) {
-      const slotStart = new Date(current);
-      const slotEnd = new Date(current.getTime() + interval * 60000);
-      
-      const isPast = slotStart < now;
-      const withinNotice = slotStart < noticeLimit;
-      
-      const isBusy = busySlots.some(busy => {
-        return (slotStart < busy.end && slotEnd > busy.start);
-      });
-
-      if (!isBusy && !isPast && !withinNotice) {
-        slots.push(current.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-      }
-      current = new Date(current.getTime() + interval * 60000);
-    }
-
-    res.json(slots);
   } catch (error: any) {
     console.error('[AVAILABILITY] Error:', error);
     res.status(500).json({ error: error.message });
@@ -844,7 +939,15 @@ async function callGemini(prompt: string, modelName: string = 'gemini-3-flash-pr
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-  keyGenerator: (req: any) => req.user?.uid || req.ip,
+  keyGenerator: (req: any) => {
+    // Satisfy IPv6 warning by using request IP properly or falling back to UID
+    // Using x-forwarded-for if behind a proxy (common in cloud environments)
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+    return (req.user?.uid || ip || 'anonymous').toString();
+  },
+  validate: {
+    ip: false, // Disabling this specific validation to silence the IPv6 warning while we use a custom key
+  },
   message: { error: 'Too many requests, please try again later.' }
 });
 
@@ -875,7 +978,7 @@ app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: 
 app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const config = {
@@ -898,7 +1001,7 @@ app.post('/api/admin/ai-architect', requireAuth, async (req: any, res: any) => {
   const { systemContext } = req.body;
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const insight = await callGemini(systemContext);
@@ -1728,7 +1831,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
     const requesterDoc = await db.collection('users').doc(req.user.uid).get();
     const userData = requesterDoc.data();
     
-    const isAdmin = userData?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = userData?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     
     if (!isAdmin) {
        return res.status(403).json({ error: 'Forbidden: Admin access required' });
@@ -1812,7 +1915,7 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
 app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const usersSnap = await db.collection('users').get();
@@ -1826,7 +1929,7 @@ app.get('/api/admin/users', requireAuth, async (req: any, res: any) => {
 app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const aptsSnap = await db.collection('appointments').get();
@@ -1853,7 +1956,7 @@ app.get('/api/admin/activities', requireAuth, async (req: any, res: any) => {
 app.get('/api/admin/feedback', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const snap = await db.collection('feedback').orderBy('createdAt', 'desc').get();
@@ -1867,7 +1970,7 @@ app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) 
   const { userId, role } = req.body;
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     await db.collection('users').doc(userId).update({ role });
@@ -1880,7 +1983,7 @@ app.post('/api/admin/update-user-role', requireAuth, async (req: any, res: any) 
 app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     await db.collection('users').doc(req.params.id).delete();
@@ -1893,7 +1996,7 @@ app.delete('/api/admin/users/:id', requireAuth, async (req: any, res: any) => {
 app.post('/api/admin/generate-insights', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || req.user.email === 'm.elsalameen@gmail.com';
+    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
     const usersSnap = await db.collection('users').get();
@@ -1938,14 +2041,15 @@ const checkAndSendReminders = async () => {
     const now = new Date();
     // Check appointments in the next 24 hours that haven't had a reminder
     // We check all 'confirmed' appointments where reminderSent is false or undefined
+    // Fetch all confirmed appointments and filter missing reminderSent fields manually for robustness
     const snapshot = await db.collection('appointments')
       .where('status', '==', 'confirmed')
-      .where('reminderSent', '!=', true)
       .get();
     
-    console.log(`[REMINDERS] Found ${snapshot.size} potential candidates for reminders`);
+    const candidates = snapshot.docs.filter((d: any) => !d.data().reminderSent);
+    console.log(`[REMINDERS] Found ${candidates.length} potential candidates for reminders`);
     
-    for (const appointmentDoc of snapshot.docs) {
+    for (const appointmentDoc of candidates) {
       const appointment = appointmentDoc.data();
       if (!appointment.date || !appointment.time) continue;
 
@@ -1966,13 +2070,16 @@ const checkAndSendReminders = async () => {
       if (diffMinutes > 0 && diffMinutes <= timingMinutes) {
         console.log(`[REMINDERS] Sending reminder for appointment ${appointmentDoc.id} to ${appointment.clientName}`);
         
-        const message = (settings.messageTemplate || "Hi {clientName}, reminder for your {serviceName} at {time}.")
+        const manageLink = `${process.env.APP_URL || 'https://easybookly.com'}/manage/${appointment.userId}?email=${encodeURIComponent(appointment.clientEmail || appointment.email || '')}`;
+        
+        const message = (settings.messageTemplate || "Hi {clientName}, reminder for your {serviceName} at {time}. Join here: {link} or manage at: {manageLink}")
           .replace(/{clientName}/g, appointment.clientName || 'valued client')
           .replace(/{serviceName}/g, appointment.service || 'session')
           .replace(/{businessName}/g, userData.businessName || 'the business')
           .replace(/{date}/g, appointment.date)
           .replace(/{time}/g, appointment.time)
-          .replace(/{link}/g, appointment.meetingLink || 'No link provided');
+          .replace(/{link}/g, appointment.meetingLink || 'No link provided')
+          .replace(/{manageLink}/g, manageLink);
 
         // Send through channels
         if (settings.channels.includes('email') && (appointment.clientEmail || appointment.email)) {

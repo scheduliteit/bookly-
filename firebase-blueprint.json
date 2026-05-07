@@ -39,6 +39,28 @@
         },
         "currency": { "type": "string", "enum": ["USD", "EUR", "GBP", "ILS"] },
         "subscriptionPlan": { "type": "string", "enum": ["basic", "premium"] },
+        "staff": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "role": { "type": "string" },
+              "color": { "type": "string" },
+              "workingHours": { "type": "object" }
+            }
+          }
+        },
+        "availabilitySettings": {
+          "type": "object",
+          "properties": {
+            "bufferTime": { "type": "number" },
+            "minimumNotice": { "type": "number" },
+            "workingHours": { "type": "object" }
+          }
+        },
         "reminderSettings": {
           "type": "object",
           "properties": {
@@ -76,6 +98,7 @@
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
+        "staffId": { "type": "string" },
         "clientId": { "type": "string" },
         "clientName": { "type": "string" },
         "service": { "type": "string" },
@@ -106,6 +129,18 @@
               "price": { "type": "number" },
               "duration": { "type": "number" },
               "description": { "type": "string" },
+              "color": { "type": "string" }
+            }
+          }
+        },
+        "staff": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "role": { "type": "string" },
               "color": { "type": "string" }
             }
           }
