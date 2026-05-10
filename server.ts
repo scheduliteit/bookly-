@@ -135,6 +135,7 @@ const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'fire
 // Firebase Admin Initialization (Security Fix #6)
 let adminApp: admin.app.App | null = null;
 let db: any;
+let isPrivileged = false;
 
 // Unified Firestore Field Values
 let firestoreValues: any = {
@@ -150,28 +151,25 @@ const initDb = async () => {
   try {
     if (admin.apps.length > 0) {
       adminApp = admin.app();
+      isPrivileged = true;
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
       try {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
         adminApp = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount)
         });
+        isPrivileged = true;
         console.log('[SERVER] Firebase Admin initialized with Service Account from ENV');
       } catch (e: any) {
         console.error('[SERVER] Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:', e.message);
         adminApp = null;
       }
     } else {
-      // Check for default credentials (GCP/Cloud Run)
-      try {
-        adminApp = admin.initializeApp({
-          projectId: firebaseConfig.projectId
-        });
-        console.log('[SERVER] Firebase Admin initialized with Default Credentials for project:', firebaseConfig.projectId);
-      } catch (e) {
-        console.warn('[SERVER] No service account or default credentials. Falling back to Web SDK.');
-        adminApp = null;
-      }
+      // NOTE: We DO NOT call initializeApp with just projectId anymore because it triggers
+      // "Could not load default credentials" errors if ADC is missing.
+      // Instead, we skip Admin and go directly to Web SDK fallback.
+      console.warn('[SERVER] No Service Account found. Skipping Admin SDK to avoid Credential errors.');
+      adminApp = null;
     }
 
     if (adminApp) {
@@ -271,10 +269,9 @@ const requireAuth = async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   const idToken = authHeader?.startsWith('Bearer ') ? authHeader.split('Bearer ')[1] : null;
 
-  if (!adminApp) {
-    // FALLBACK: If Admin SDK is offline, we attempt to extract the UID from the JWT token
+  if (!isPrivileged) {
+    // FALLBACK: If Admin SDK is offline OR unprivileged, we attempt to extract the UID from the JWT token
     // so that queries match the user's actual data in Firestore.
-    // NOTE: This is only for development/preview mode where credentials may be missing.
     try {
       if (idToken && idToken !== 'null' && idToken !== 'undefined') {
         const payloadParts = idToken.split('.');
@@ -286,7 +283,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
             email: payload.email,
             email_verified: payload.email_verified || true
           };
-          console.log(`[AUTH-DEBUG] [MANUAL-DECODE] Extracted UID: ${req.user.uid} Email: ${req.user.email}`);
+          console.log(`[AUTH-DEBUG] [MANUAL-DECODE] UID: ${req.user.uid} Email: ${req.user.email}`);
           return next();
         }
       }
@@ -294,7 +291,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
       console.warn('[AUTH] Failed to decode token payload:', e.message);
     }
 
-    console.warn('[AUTH] Admin SDK offline and no valid token found. Using default mock.');
+    console.warn('[AUTH] Privileged Admin SDK offline. Using mock for development.');
     req.user = { 
       uid: 'dev-user-mock', 
       email: 'scheduliteit@gmail.com', 
@@ -977,9 +974,16 @@ app.post('/api/ai/growth-advice', requireAuth, aiLimiter, async (req: any, res: 
 
 app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
   try {
-    const requesterSnap = await db.collection('users').doc(req.user.uid).get();
-    const isAdmin = requesterSnap.data()?.role === 'admin' || (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
-    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    const isAdmin = (req.user.email === 'm.elsalameen@gmail.com' || req.user.email === 'scheduliteit@gmail.com');
+    // If not obviously an admin by email, then check DB (might fail if unprivileged)
+    if (!isAdmin && db) {
+       try {
+         const requesterSnap = await db.collection('users').doc(req.user.uid).get();
+         if (requesterSnap.data()?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+       } catch (e) {
+         return res.status(403).json({ error: 'Forbidden: Access could not be verified' });
+       }
+    }
 
     const config = {
       google: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
@@ -988,7 +992,8 @@ app.get('/api/admin/config-status', requireAuth, async (req: any, res: any) => {
       stripe: !!process.env.STRIPE_SECRET_KEY,
       sendgrid: !!process.env.SENDGRID_API_KEY,
       twilio: !!process.env.TWILIO_ACCOUNT_SID,
-      firebase: !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      firebase: !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+      ai: !!(process.env.GEMINI_API_KEY || process.env.API_KEY)
     };
 
     res.json(config);
@@ -1673,25 +1678,24 @@ app.get('/api/dashboard/stats', requireAuth, async (req: any, res: any) => {
   try {
     if (!db) return res.status(503).json({ error: 'Database initializing' });
     
-    // If the server is using the Web SDK fallback, it's unauthenticated and might fail rules.
-    // For the dashboard stats, we attempt to fetch, but handle permission errors gracefully by returning partial data.
     try {
-      const userDoc = await db.collection('users').doc(req.user.uid).get();
-      const apptsSnap = await db.collection('appointments').where('userId', '==', req.user.uid).get();
-      const clientsSnap = await db.collection('clients').where('userId', '==', req.user.uid).get();
+      const userDocPromise = db.collection('users').doc(req.user.uid).get();
+      const apptsSnapPromise = db.collection('appointments').where('userId', '==', req.user.uid).get();
+      const clientsSnapPromise = db.collection('clients').where('userId', '==', req.user.uid).get();
       
+      const [userDoc, apptsSnap, clientsSnap] = await Promise.all([userDocPromise, apptsSnapPromise, clientsSnapPromise]);
+
       res.json({
         appointments: apptsSnap.size || 0,
         clients: clientsSnap.size || 0,
         onboarding: (userDoc.exists ? userDoc.data()?.onboardingCompleted : false) || false,
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        privileged: !!adminApp
+        privileged: isPrivileged
       });
     } catch (dbError: any) {
-      if (dbError.message?.includes('permissions') || dbError.code === 'permission-denied') {
-        // Return success but with zero/empty data if we can't read due to rules (server-side limitation in dev)
-        console.warn('[STATS] Permission Denied for server-side read. This is expected in dev fallback mode.');
+      if (dbError.message?.includes('permissions') || dbError.code === 'permission-denied' || dbError.message?.includes('Missing or insufficient permissions')) {
+        console.warn('[STATS] Permission Denied for server-side read. Falling back to optimistic zeros.');
         res.json({
           appointments: 0,
           clients: 0,
