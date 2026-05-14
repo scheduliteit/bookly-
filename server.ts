@@ -16,6 +16,7 @@ import { promisify } from 'util';
 import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import Stripe from 'stripe';
 
 // Lazy load references
 let google: any = null;
@@ -23,6 +24,7 @@ let twilio: any = null;
 let sgMail: any = null;
 let axios: any = null;
 let GoogleGenAI: any = null;
+let stripe: Stripe | null = null;
 
 const ensureServices = async () => {
   // if (!google) google = (await import('googleapis')).google; // REMOVED to save space
@@ -30,6 +32,12 @@ const ensureServices = async () => {
   if (!sgMail) sgMail = (await import('@sendgrid/mail')).default;
   if (!axios) axios = (await import('axios')).default;
   if (!GoogleGenAI) GoogleGenAI = (await import('@google/genai')).GoogleGenAI;
+  
+  if (!stripe && process.env.STRIPE_SECRET_KEY) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-01-27' as any,
+    });
+  }
 
   if (sgMail && process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -1743,7 +1751,7 @@ app.post('/api/payments/create-checkout-session', requireAuth, async (req: any, 
   
   try {
     // Check if Stripe is configured
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!process.env.STRIPE_SECRET_KEY || !stripe) {
       return res.status(501).json({ 
         error: 'Payment Gateway Unconfigured', 
         details: 'The server is missing STRIPE_SECRET_KEY.',
@@ -1751,10 +1759,33 @@ app.post('/api/payments/create-checkout-session', requireAuth, async (req: any, 
       });
     }
 
-    // This is where Stripe logic would go
-    // For now, returning a mock URL if not fully implemented
-    res.json({ url: successUrl }); 
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: currency || 'usd',
+            product_data: {
+              name: serviceName,
+            },
+            unit_amount: Math.round(amount * 100), // convert to cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        appointmentId,
+        userId: req.user.uid,
+        type: 'appointment_payment'
+      },
+    });
+
+    res.json({ url: session.url }); 
   } catch (error: any) {
+    console.error('[STRIPE] Error creating checkout session:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1763,7 +1794,7 @@ app.post('/api/payments/create-subscription-checkout', async (req: any, res: any
   const { plan, billingCycle, userId, email, successUrl, cancelUrl } = req.body;
   
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!process.env.STRIPE_SECRET_KEY || !stripe) {
       return res.status(501).json({ 
         error: 'Subscription Gateway Unconfigured', 
         details: 'The server is missing STRIPE_SECRET_KEY.',
@@ -1771,11 +1802,125 @@ app.post('/api/payments/create-subscription-checkout', async (req: any, res: any
       });
     }
 
-    // Mock successful redirect
-    res.json({ url: successUrl });
+    // Mapping plans to Stripe Price IDs (ideally these should be in env or DB)
+    // For now using placeholders that the user should replace
+    const priceId = billingCycle === 'annual' 
+      ? (plan === 'premium' ? process.env.STRIPE_ANNUAL_PREMIUM_PRICE_ID : process.env.STRIPE_ANNUAL_BASIC_PRICE_ID)
+      : (plan === 'premium' ? process.env.STRIPE_MONTHLY_PREMIUM_PRICE_ID : process.env.STRIPE_MONTHLY_BASIC_PRICE_ID);
+
+    if (!priceId) {
+      // In development, if price IDs are missing, we might want to return a mock or error
+      // Let's assume they are missing and handle it gracefully for the user
+      return res.status(400).json({ 
+        error: 'Price ID not configured',
+        details: `Missing Price ID for plan: ${plan}, cycle: ${billingCycle}`,
+        hint: 'Please set STRIPE_MONTHLY_BASIC_PRICE_ID, etc. in environment settings.'
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: email,
+      metadata: {
+        userId,
+        plan,
+        billingCycle,
+        type: 'subscription'
+      },
+    });
+
+    res.json({ url: session.url });
   } catch (error: any) {
+    console.error('[STRIPE] Error creating subscription checkout:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!stripe) return res.status(500).json({ error: 'Stripe not initialized' });
+
+  let event;
+
+  try {
+    if (endpointSecret && sig) {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } else {
+      event = JSON.parse(req.body.toString());
+      console.warn('[WEBHOOK] WARNING: Webhook signature verification skipped. Use only for local development.');
+    }
+  } catch (err: any) {
+    console.error(`[WEBHOOK] Error: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object as Stripe.Checkout.Session;
+        const metadata = session.metadata;
+
+        if (metadata?.type === 'subscription') {
+          const { userId, plan } = metadata;
+          console.log(`[WEBHOOK] Subscription completed for user ${userId}, plan ${plan}`);
+          if (db && userId) {
+            await db.collection('users').doc(userId).update({
+              currentPlan: plan,
+              subscriptionId: session.subscription,
+              subscriptionStatus: 'active',
+              updatedAt: new Date().toISOString()
+            });
+          }
+        } else if (metadata?.type === 'appointment_payment') {
+          const { appointmentId } = metadata;
+          console.log(`[WEBHOOK] Payment completed for appointment ${appointmentId}`);
+          if (db && appointmentId) {
+            await db.collection('appointments').doc(appointmentId).update({
+              paymentStatus: 'paid',
+              stripeSessionId: session.id,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+        break;
+      
+      case 'customer.subscription.deleted':
+        const subscription = event.data.object as Stripe.Subscription;
+        console.log(`[WEBHOOK] Subscription deleted: ${subscription.id}`);
+        if (db) {
+          const usersSnap = await db.collection('users').where('subscriptionId', '==', subscription.id).get();
+          if (usersSnap.size > 0) {
+            const userDoc = usersSnap.docs[0];
+            await userDoc.ref.update({
+              subscriptionStatus: 'canceled',
+              currentPlan: 'basic', // Downgrade or handle as needed
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+        break;
+      
+      default:
+        console.log(`[WEBHOOK] Unhandled event type ${event.type}`);
+    }
+  } catch (webhookProcessingError) {
+    console.error('[WEBHOOK] Error processing event:', webhookProcessingError);
+    return res.status(500).json({ error: 'Webhook processing failed' });
+  }
+
+  res.json({ received: true });
 });
 
 app.get('/api/payments/success', async (req, res) => {

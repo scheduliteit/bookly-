@@ -51,25 +51,19 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan, onPlanChange, user, onAu
       }
 
       // Real Stripe Flow
-      const response = await fetch('/api/payments/create-subscription-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plan: showCheckout.plan,
-          billingCycle,
-          userId: user?.id || 'guest',
-          email: user?.email || guestEmail,
-          successUrl: window.location.origin + '/dashboard?payment=success',
-          cancelUrl: window.location.origin + '/pricing?payment=cancel',
-        }),
+      const data = await paymentService.createSubscriptionCheckout({
+        plan: showCheckout.plan,
+        billingCycle,
+        userId: user?.id || 'guest',
+        email: user?.email || guestEmail,
+        successUrl: window.location.origin + '/dashboard?payment=success',
+        cancelUrl: window.location.origin + '/pricing?payment=cancel',
       });
-
-      const data = await response.json();
 
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Failed to initiate checkout');
+        throw new Error('Failed to initiate checkout');
       }
     } catch (err: any) {
       console.error("[PRICING] Activation Error:", err);

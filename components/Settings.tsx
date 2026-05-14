@@ -789,15 +789,19 @@ const Settings: React.FC<SettingsProps> = ({
                    </button>
                 </div>
                 
-                <div className="p-6 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                 <div className="p-6 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                    <div className="flex items-center gap-4">
-                      <CreditCard className="text-slate-400" />
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                        <CreditCard className="text-brand-blue" />
+                      </div>
                       <div>
-                         <p className="text-sm font-bold text-brand-dark">Bank Payout System</p>
-                         <p className="text-xs text-slate-500">Standard Payout Enabled</p>
+                         <p className="text-sm font-bold text-brand-dark">Stripe Payout System</p>
+                         <p className="text-xs text-slate-500">Automated Direct Deposits Enabled</p>
                       </div>
                    </div>
-                   <div className="w-3 h-3 bg-emerald-500 rounded-full" />
+                   <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                     <Check size={12} /> Active
+                   </div>
                 </div>
              </div>
           </div>

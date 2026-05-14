@@ -88,6 +88,18 @@ const App: React.FC = () => {
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<string | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      showToast("Subscription updated successfully!", "success");
+      // Clean up the URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (params.get('payment') === 'cancel') {
+      showToast("Payment was cancelled.", "error");
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'ILS'>('USD');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('easybookly_lang') as Language) || 'en');
   const t = translations[language];

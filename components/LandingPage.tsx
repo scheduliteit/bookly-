@@ -364,11 +364,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin, isLoggedIn,
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 max-w-4xl mx-auto space-y-8">
               <div className="inline-flex items-center gap-3 px-6 py-2 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-500/20">
-                 <Crown size={16} /> {t.betaTitle || "Early Adopter Beta"}
+                 <Crown size={16} /> Open Beta Access
               </div>
-              <h2 className="text-6xl md:text-[8rem] font-black text-brand-dark tracking-tight leading-[0.8]">{t.betaBadge || "Lifetime Free Access."}</h2>
+              <h2 className="text-6xl md:text-[8rem] font-black text-brand-dark tracking-tight leading-[0.8]">100% Free. Forever.</h2>
               <p className="text-xl md:text-3xl text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed">
-                 {t.betaOffer || "Join our invite-only beta today and get a Lifetime Premium account for $0. No credit card required, no catch—just pure performance."}
+                 Join our early adopter pilot and get the full Enterprise-grade experience for $0. No credit card, no subscription, no catch.
               </p>
           </div>
 
