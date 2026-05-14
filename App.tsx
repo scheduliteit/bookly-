@@ -38,7 +38,7 @@ const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'undefined' && API_KEY !== '';
 
 const App: React.FC = () => {
-  const isFreeMode = import.meta.env.VITE_IS_FREE_MODE === 'true';
+  const isFreeMode = true; // Always free as requested
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -222,9 +222,8 @@ const App: React.FC = () => {
                 lastSeenAt: now
               };
               
-              // Subscription Plan Logic
-              let planToSet: 'basic' | 'premium' = updatedUser.subscriptionPlan as 'basic' | 'premium';
-              if (isFreeMode) planToSet = 'premium';
+              // Subscription Plan Logic: Everyone is Premium
+              let planToSet: 'premium' = 'premium';
               
               setUser(updatedUser);
               // Save login update in background
@@ -248,7 +247,7 @@ const App: React.FC = () => {
             } else {
               console.log("[AUTH] No user record found in Firestore. Initializing new profile...");
               
-              // FREE FOR NOW: All users get premium by default
+              // EVERYONE GETS PREMIUM BY DEFAULT
               const initialPlan = 'premium';
               setSubscriptionPlan(initialPlan);
 
@@ -583,23 +582,13 @@ const App: React.FC = () => {
 
   // Force subscription plan selection before onboarding or dashboard
   if (!user.subscriptionPlan) {
-    if (isFreeMode) {
-      // Auto-assign premium if in free mode
-      updateUserSettings({ subscriptionPlan: 'premium' });
-      return (
-        <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-4">
-          <Loader2 className="animate-spin text-brand-blue" size={40} />
-          <p className="text-slate-500 font-bold animate-pulse">Activating your free premium account...</p>
-        </div>
-      );
-    }
+    // Auto-assign premium
+    updateUserSettings({ subscriptionPlan: 'premium' });
     return (
-      <Pricing 
-        currentPlan={subscriptionPlan} 
-        onPlanChange={(p) => updateUserSettings({ subscriptionPlan: p })} 
-        user={user} 
-        onBack={() => setShowLanding(true)}
-      />
+      <div className="h-screen w-screen bg-white flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="animate-spin text-brand-blue" size={40} />
+        <p className="text-slate-500 font-bold animate-pulse">Activating your free account...</p>
+      </div>
     );
   }
 
@@ -621,36 +610,6 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    if (isTrialExpired) {
-      return (
-        <div className="h-full flex items-center justify-center p-8">
-           <div className="bg-white border border-slate-100 rounded-[40px] p-12 max-w-xl text-center shadow-2xl shadow-brand-blue/5 space-y-8 animate-in zoom-in-95 duration-700">
-              <div className="w-20 h-20 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                 <Lock size={32} />
-              </div>
-              <div>
-                 <h2 className="text-3xl font-black text-brand-dark tracking-tight">Your AI Trial has Finished</h2>
-                 <p className="text-slate-500 font-medium mt-4">You've successfully managed your first 30 days! To continue using the Command Center, AI Assistant, and Automated Workflows, please upgrade to a paid plan.</p>
-              </div>
-              <div className="bg-slate-50 p-6 rounded-3xl flex items-center gap-4 text-left">
-                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-blue shadow-sm">
-                    <CheckCircle2 size={20} />
-                 </div>
-                 <div>
-                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight">Access Locked</p>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Dashboard • AI Features • Clients</p>
-                 </div>
-              </div>
-              <button 
-                onClick={() => setActiveTab('subscription')}
-                className="w-full py-5 bg-brand-blue text-white rounded-full font-black text-lg shadow-xl shadow-brand-blue/20 hover:scale-105 transition-all flex items-center justify-center gap-3"
-              >
-                Choose Your Plan <ArrowRight size={20} />
-              </button>
-           </div>
-        </div>
-      );
-    }
     return (
       <AnimatePresence mode="wait">
         <motion.div
@@ -895,14 +854,6 @@ const App: React.FC = () => {
       />
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 bg-white border-b border-[#eaebed] flex items-center justify-between px-8 shrink-0 z-20">
-          {trialDays > 0 && trialDays <= 10 && user?.subscriptionPlan !== 'premium' && (
-            <div className="absolute top-16 left-0 right-0 bg-brand-dark text-white py-1 px-8 flex items-center justify-between z-30 animate-in slide-in-from-top duration-500">
-               <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                 <Zap size={10} className="text-amber-400" /> Trial ends in {trialDays} days. Upgrade now to keep your AI features.
-               </p>
-               <button onClick={() => setActiveTab('subscription')} className="text-[10px] font-black underline uppercase tracking-widest decoration-amber-400">Upgrade</button>
-            </div>
-          )}
           <div className="flex items-center gap-6 flex-1">
              <div className="md:hidden flex items-center gap-3">
                <button 

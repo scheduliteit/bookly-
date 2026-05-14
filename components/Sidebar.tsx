@@ -56,7 +56,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
     { id: 'marketing', label: t.marketing, icon: Zap },
     { id: 'ai-assistant', label: t.aiAssistant, icon: Sparkles },
     { id: 'booking-links', label: t.publicPortal, icon: Globe },
-    { id: 'subscription', label: t.payouts, icon: CreditCard },
     { id: 'clients', label: t.clients, icon: Users },
     { id: 'help', label: t.help, icon: HelpCircle },
   );
