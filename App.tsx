@@ -153,15 +153,13 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!user?.id) return;
     
-    // Heartbeat every 5 minutes
+    // Initial heartbeat
+    api.user.heartbeat().catch(e => console.error("Initial HB Error:", e));
+
+    // Heartbeat every 1 minute for better "Live" accuracy
     const intervalId = setInterval(async () => {
-      setUser(current => {
-        if (!current) return current;
-        const updated = { ...current, lastSeenAt: new Date().toISOString() };
-        api.user.save(updated).catch(e => console.error("HB Sync Error:", e));
-        return updated;
-      });
-    }, 5 * 60 * 1000);
+      api.user.heartbeat().catch(e => console.error("HB Sync Error:", e));
+    }, 60 * 1000);
 
     return () => clearInterval(intervalId);
   }, [user?.id]);

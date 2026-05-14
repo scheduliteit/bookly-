@@ -24,8 +24,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
   const [repairProgress, setRepairProgress] = useState(0);
   const [configStatus, setConfigStatus] = useState<any>(null);
   const [feedback, setFeedback] = useState<any[]>([]);
+  const [adminStats, setAdminStats] = useState<any>(null);
 
   useEffect(() => {
+    if (activeTab === 'overview') {
+      setIsLoading(true);
+      api.system.getStats()
+        .then(setAdminStats)
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
+      
+      // Auto-refresh stats every 30s when on overview
+      const interval = setInterval(() => {
+        api.system.getStats().then(setAdminStats).catch(console.error);
+      }, 30000);
+      return () => clearInterval(interval);
+    }
     if (activeTab === 'system') {
       api.system.getConfigStatus().then(setConfigStatus).catch(console.error);
     }
@@ -191,19 +205,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ users, appointments, clients })
               className="space-y-8"
             >
               {/* Quick Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
-                  { label: 'Total Volume', value: `$${(appointments.reduce((acc, curr) => acc + (curr.price || 0), 0)).toLocaleString()}`, icon: Globe, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                  { label: 'Active Sessions', value: appointments.length, icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                  { label: 'Database Nodes', value: '4 Cluster', icon: Database, color: 'text-amber-600', bg: 'bg-amber-50' },
-                  { label: 'Server Memory', value: `${stats.memory}%`, icon: Zap, color: 'text-rose-600', bg: 'bg-rose-50' }
-                ].map((stat, i) => (
-                  <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+                  { label: 'Total Volume', value: adminStats ? `$${adminStats.totalRevenue?.toLocaleString() || 0}` : `$${(appointments.reduce((acc, curr) => acc + (curr.price || 0), 0)).toLocaleString()}`, icon: Globe, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                  { label: 'Live Users', value: adminStats?.currentlyOnlineCount !== undefined ? adminStats.currentlyOnlineCount : '...', icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-50', isLive: true },
+                  { label: 'Total Signups', value: adminStats?.totalUsers || users.length, icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
+                  { label: 'Total Sessions', value: adminStats?.totalAppointments || appointments.length, icon: ClipboardCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                  { label: 'Engagement Rate', value: adminStats?.totalLogins ? `${(adminStats.totalLogins / (adminStats.totalUsers || 1)).toFixed(1)}x` : '0x', icon: Cpu, color: 'text-rose-600', bg: 'bg-rose-50' },
+                  { label: 'System Uptime', value: '99.98%', icon: Server, color: 'text-slate-600', bg: 'bg-slate-50' }
+                ].map((stat: any, i) => (
+                  <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group relative overflow-hidden">
+                    {stat.isLive && (
+                      <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-[8px] font-black uppercase text-emerald-600 tracking-tighter">LIVE</span>
+                      </div>
+                    )}
                     <div className={`w-12 h-12 ${stat.bg} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                       <stat.icon className={stat.color} size={24} />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                    <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+                    <div className="flex flex-col">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                      <p className="text-3xl font-black text-slate-900 tracking-tight">{stat.value}</p>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -1812,6 +1812,20 @@ app.get('/api/payments/cancel', (req, res) => {
   `);
 });
 
+// Presence Heartbeat - Updates lastSeenAt without triggering large document writes
+app.post('/api/presence/heartbeat', requireAuth, async (req: any, res: any) => {
+  if (!db) return res.status(503).json({ error: 'Database initializing' });
+  try {
+    const now = new Date().toISOString();
+    await db.collection('users').doc(req.user.uid).update({
+      lastSeenAt: now
+    });
+    res.json({ status: 'ok', timestamp: now });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/admin/appointments', requireAuth, async (req: any, res: any) => {
   try {
     const requesterSnap = await db.collection('users').doc(req.user.uid).get();
@@ -1844,15 +1858,15 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res: any) => {
     const usersSnap = await db.collection('users').get();
     const totalUsers = usersSnap.size;
     
-    const fifteenMinutesAgo = new Date();
-    fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
-    const fifteenMinutesAgoStr = fifteenMinutesAgo.toISOString();
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+    const fiveMinutesAgoStr = fiveMinutesAgo.toISOString();
     
-    // Real active users in last 15 mins
+    // Real active users in last 5 mins (live feel)
     const currentlyOnlineData = usersSnap.docs.filter(doc => {
       const data = doc.data();
       const lastSeen = data.lastSeenAt || data.lastLoginAt || "";
-      return lastSeen >= fifteenMinutesAgoStr;
+      return lastSeen >= fiveMinutesAgoStr;
     });
     const currentlyOnlineCount = currentlyOnlineData.length;
 

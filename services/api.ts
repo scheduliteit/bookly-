@@ -190,6 +190,14 @@ export const api = {
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `users/${userId}`);
       });
+    },
+    heartbeat: async (): Promise<void> => {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      await fetch('/api/presence/heartbeat', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
     }
   },
   publicProfile: {
