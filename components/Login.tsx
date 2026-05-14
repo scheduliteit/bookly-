@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '../firebase';
+import firebaseConfig from '../firebase-applet-config.json';
 import Logo from './Logo';
 import { Language, translations } from '../services/translations';
 
@@ -48,7 +49,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
       } else if (error.code === 'auth/weak-password') {
         message = 'Password is too weak. Please use at least 6 characters.';
       } else if (error.code === 'auth/operation-not-allowed') {
-        message = '🚨 LOGIN DISABLED: You must enable "Email/Password" in your Firebase Console (Authentication > Sign-in method).';
+        const projectId = firebaseConfig.projectId;
+        message = `🚨 LOGIN DISABLED: You must enable "Email/Password" in your Firebase Console (Authentication > Sign-in method) for project: ${projectId}. If you already enabled it, please make sure to click "SAVE" in the console and refresh this page.`;
       } else if (error.code === 'auth/popup-blocked') {
         message = 'The login popup was blocked. Please allow popups for this site.';
       }
@@ -74,7 +76,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
       } else if (error.code === 'auth/cancelled-popup-request') {
         message = 'Login was cancelled.';
       } else if (error.code === 'auth/operation-not-allowed') {
-        message = '🚨 GOOGLE DISABLED: You must enable "Google" in your Firebase Console (Authentication > Sign-in method).';
+        const projectId = firebaseConfig.projectId;
+        message = `🚨 GOOGLE DISABLED: You must enable "Google" in your Firebase Console (Authentication > Sign-in method) for project: ${projectId}.`;
       }
       setError(message);
     } finally {
