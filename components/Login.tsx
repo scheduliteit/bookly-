@@ -50,7 +50,21 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
         message = 'Password is too weak. Please use at least 6 characters.';
       } else if (error.code === 'auth/operation-not-allowed') {
         const projectId = firebaseConfig.projectId;
-        message = `🚨 LOGIN DISABLED: You must enable "Email/Password" in your Firebase Console (Authentication > Sign-in method) for project: ${projectId}. If you already enabled it, please make sure to click "SAVE" in the console and refresh this page.`;
+        const consoleUrl = `https://console.firebase.google.com/project/${projectId}/authentication/providers`;
+        message = (
+          <div className="space-y-3">
+            <div className="font-black text-rose-700 underline underline-offset-4">🚨 AUTHENTICATION CONFIGURATION REQUIRED</div>
+            <p>You MUST enable "Email/Password" (and/or Google) in your Firebase Console to allow logins.</p>
+            <div className="bg-white/50 p-3 rounded-xl border border-rose-200 text-[10px] font-mono break-all">
+              1. Go to: <a href={consoleUrl} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline">{consoleUrl}</a>
+              <br /><br />
+              2. Click "Email/Password" → Toggle "Enable" → Click "Save".
+              <br /><br />
+              3. Check project ID: <span className="text-brand-dark font-black">{projectId}</span>
+            </div>
+            <div className="text-[9px] opacity-70 italic font-medium">If you did this already: Make sure you clicked "SAVE" and try refreshing this page in a NEW incognito window.</div>
+          </div>
+        ) as any;
       } else if (error.code === 'auth/popup-blocked') {
         message = 'The login popup was blocked. Please allow popups for this site.';
       }
@@ -77,7 +91,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
         message = 'Login was cancelled.';
       } else if (error.code === 'auth/operation-not-allowed') {
         const projectId = firebaseConfig.projectId;
-        message = `🚨 GOOGLE DISABLED: You must enable "Google" in your Firebase Console (Authentication > Sign-in method) for project: ${projectId}.`;
+        const consoleUrl = `https://console.firebase.google.com/project/${projectId}/authentication/providers`;
+        message = (
+          <div className="space-y-3">
+            <div className="font-black text-rose-700 underline underline-offset-4">🚨 GOOGLE LOGIN UNCONFIGURED</div>
+            <p>You must enable "Google" as a sign-in provider in your Firebase project.</p>
+            <div className="bg-white/50 p-3 rounded-xl border border-rose-200 text-[10px] font-mono break-all">
+              1. Go to: <a href={consoleUrl} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline">{consoleUrl}</a>
+              <br /><br />
+              2. Click "Add new provider" → Select "Google" → Click "Save".
+            </div>
+          </div>
+        ) as any;
       }
       setError(message);
     } finally {
