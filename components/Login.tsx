@@ -53,16 +53,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, initialMode = 'login', preFillEm
         const consoleUrl = `https://console.firebase.google.com/project/${projectId}/authentication/providers`;
         message = (
           <div className="space-y-3">
-            <div className="font-black text-rose-700 underline underline-offset-4">🚨 AUTHENTICATION CONFIGURATION REQUIRED</div>
+            <div className="font-black text-rose-700 underline underline-offset-4">🚨 AUTHENTICATION CONFIGURATION REQUIRED [v2]</div>
             <p>You MUST enable "Email/Password" (and/or Google) in your Firebase Console to allow logins.</p>
             <div className="bg-white/50 p-3 rounded-xl border border-rose-200 text-[10px] font-mono break-all">
               1. Go to: <a href={consoleUrl} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline">{consoleUrl}</a>
               <br /><br />
               2. Click "Email/Password" → Toggle "Enable" → Click "Save".
               <br /><br />
-              3. Check project ID: <span className="text-brand-dark font-black">{projectId}</span>
+              3. Check project ID matches EXACTLY: <span className="text-brand-dark font-black">{projectId}</span>
+              <br /><br />
+              4. If it still fails: Try clearing your browser cache or use an Incognito window.
             </div>
-            <div className="text-[9px] opacity-70 italic font-medium">If you did this already: Make sure you clicked "SAVE" and try refreshing this page in a NEW incognito window.</div>
+            <div className="text-[9px] opacity-70 italic font-medium">If you did this already: Make sure you clicked "SAVE" in the console. Sometimes it takes a minute to propagate.</div>
           </div>
         ) as any;
       } else if (error.code === 'auth/popup-blocked') {
